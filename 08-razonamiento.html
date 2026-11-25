@@ -168,33 +168,33 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div class="c8l3-votos" id="c8l3-votos" role="img" aria-label="Votos por cada respuesta"></div>
 <canvas id="c8l3-c" role="img" aria-label="Precisión del voto por mayoría según el número de cadenas"></canvas>
 <div class="legend"><span><i style="background:var(--c-apl)"></i>precisión del voto (5.000 rondas simuladas)</span><span><i style="background:var(--muted)"></i>una sola cadena</span><span><i style="background:var(--warm)"></i>el N elegido</span></div>
-<div class="readout texto" id="c8l3-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Autoconsistencia con un modelo local</h3></div><p>Vas a pedirle a un modelo pequeño el problema de la cámara siete veces, con cadena de pensamiento, temperatura 0,8 y semillas distintas, y a votar. Necesitas <a href="https://ollama.com/download" target="_blank" rel="noopener">Ollama</a> con <code>llama3.2:1b</code> (<code>ollama pull llama3.2:1b</code>). Guarda el script como <code>votar.py</code>:</p><div class="code-copia"><pre><code>import json, re, urllib.request
-from collections import Counter
-
-URL = "http://localhost:11434/api/generate"
-PROBLEMA = ("Una cámara fotografía el cielo cada 20 minutos, desde las 6:00 hasta "
-            "las 18:00, ambas incluidas. Cada foto ocupa 4 MB. Se borran las fotos "
-            "tomadas antes de las 7:00 y después de las 17:00. ¿Cuántos MB quedan? "
-            "Piensa paso a paso y termina con una línea 'Respuesta: &lt;número&gt;'.")
-
-def pedir(semilla):
-    cuerpo = {"model": "llama3.2:1b", "prompt": PROBLEMA, "stream": False,
-              "options": {"temperature": 0.8, "seed": semilla, "num_predict": 400}}
-    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),
-                                    headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(pedido) as r:
-        return json.load(r)["response"]
-
-respuestas = []
-for semilla in range(1, 8):
-    texto = pedir(semilla)
-    hallado = re.findall(r"Respuesta:\s*\**\s*(\d+)", texto)
-    final = hallado[-1] if hallado else "?"
-    respuestas.append(final)
-    print(f"semilla {semilla}: {final}")
-
-ganadora, votos = Counter(respuestas).most_common(1)[0]
-print(f"Votos: {dict(Counter(respuestas))} → gana {ganadora} con {votos} de 7")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python votar.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 votar.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Mira las siete respuestas y cuál gana la votación.</span></li><li><span>Cambia <code>temperature</code> a 0 y vuelve a ejecutar.</span></li></ol><p><b>Qué observar:</b> con temperatura 0,8 las cadenas toman caminos distintos y las respuestas varían; el voto suele ser más estable que cualquier respuesta suelta. Un modelo de 1.000 millones de parámetros se equivoca mucho en este problema, y si el error más común es más frecuente que el 124, el voto lo elige: es el límite que muestra el laboratorio. Con temperatura 0 las siete cadenas salen iguales y votar no agrega nada. Los números exactos dependen del modelo y de la versión.</p></div></section>
+<div class="readout texto" id="c8l3-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Autoconsistencia con un modelo local</h3></div><p>Vas a pedirle a un modelo pequeño el problema de la cámara siete veces, con cadena de pensamiento, temperatura 0,8 y semillas distintas, y a votar. Necesitas <a href="https://ollama.com/download" target="_blank" rel="noopener">Ollama</a> con <code>llama3.2:1b</code> (<code>ollama pull llama3.2:1b</code>). Guarda el script como <code>votar.py</code>:</p><div class="code-copia code-lineas"><pre><code><span class="ln">import json, re, urllib.request</span>
+<span class="ln">from collections import Counter</span>
+<span class="ln"></span>
+<span class="ln">URL = "http://localhost:11434/api/generate"</span>
+<span class="ln">PROBLEMA = ("Una cámara fotografía el cielo cada 20 minutos, desde las 6:00 hasta "</span>
+<span class="ln">            "las 18:00, ambas incluidas. Cada foto ocupa 4 MB. Se borran las fotos "</span>
+<span class="ln">            "tomadas antes de las 7:00 y después de las 17:00. ¿Cuántos MB quedan? "</span>
+<span class="ln">            "Piensa paso a paso y termina con una línea 'Respuesta: &lt;número&gt;'.")</span>
+<span class="ln"></span>
+<span class="ln">def pedir(semilla):</span>
+<span class="ln">    cuerpo = {"model": "llama3.2:1b", "prompt": PROBLEMA, "stream": False,</span>
+<span class="ln">              "options": {"temperature": 0.8, "seed": semilla, "num_predict": 400}}</span>
+<span class="ln">    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),</span>
+<span class="ln">                                    headers={"Content-Type": "application/json"})</span>
+<span class="ln">    with urllib.request.urlopen(pedido) as r:</span>
+<span class="ln">        return json.load(r)["response"]</span>
+<span class="ln"></span>
+<span class="ln">respuestas = []</span>
+<span class="ln">for semilla in range(1, 8):</span>
+<span class="ln">    texto = pedir(semilla)</span>
+<span class="ln">    hallado = re.findall(r"Respuesta:\s*\**\s*(\d+)", texto)</span>
+<span class="ln">    final = hallado[-1] if hallado else "?"</span>
+<span class="ln">    respuestas.append(final)</span>
+<span class="ln">    print(f"semilla {semilla}: {final}")</span>
+<span class="ln"></span>
+<span class="ln">ganadora, votos = Counter(respuestas).most_common(1)[0]</span>
+<span class="ln">print(f"Votos: {dict(Counter(respuestas))} → gana {ganadora} con {votos} de 7")</span></code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python votar.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 votar.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Mira las siete respuestas y cuál gana la votación.</span></li><li><span>Cambia <code>temperature</code> a 0 y vuelve a ejecutar.</span></li></ol><p><b>Qué observar:</b> con temperatura 0,8 las cadenas toman caminos distintos y las respuestas varían; el voto suele ser más estable que cualquier respuesta suelta. Un modelo de 1.000 millones de parámetros se equivoca mucho en este problema, y si el error más común es más frecuente que el 124, el voto lo elige: es el límite que muestra el laboratorio. Con temperatura 0 las siete cadenas salen iguales y votar no agrega nada. Los números exactos dependen del modelo y de la versión.</p></div></section>
 <section><h2>Modelos de razonamiento entrenados con refuerzo y recompensas verificables</h2><div class="prose"><p>Pedir «pensemos paso a paso» funciona, pero el modelo solo imita cadenas que vio en sus datos. En septiembre de 2024, OpenAI presentó o1, el primero de una familia de <b>modelos de razonamiento</b> (<i>reasoning models</i>): modelos entrenados para generar, antes de la respuesta, una cadena de pensamiento larga, a veces de miles de tokens. En enero de 2025, DeepSeek publicó R1 con sus pesos y un artículo que explica la receta, y desde entonces casi todos los laboratorios ofrecen modelos así.</p><p>La receta usa el <b>aprendizaje por refuerzo</b> (<i>reinforcement learning</i>, RL), que en el capítulo 5 apareció para el RLHF; el algoritmo en detalle está en <a href="https://aaramirez.github.io/aprendizaje-por-refuerzo/temario.html" target="_blank" rel="noopener">Aprendizaje por refuerzo</a>. La diferencia está en de dónde sale la recompensa. En el RLHF, un modelo de recompensa imita el gusto humano, y se puede engañar. Aquí se usan <b>recompensas verificables</b> (<i>verifiable rewards</i>): problemas cuya respuesta se puede comprobar con un programa, como un resultado de matemática que se compara con el correcto o un código que se corre contra sus pruebas.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como entrenar a un estudiante con exámenes de respuesta única y una plantilla de corrección. Nadie le dice cómo resolver: escribe lo que quiera en la hoja de borrador, y solo se mira el número final. Con miles de exámenes, el estudiante descubre por su cuenta qué hábitos le hacen acertar: releer el enunciado, verificar, probar otro camino cuando algo no cierra.</p></div><figure class="fig fig-esquema" id="08-diagrama-3"><div class="lienzo"><svg viewBox="0 0 920 420" style="min-width:760px" role="img" aria-label="El ciclo de entrenamiento de un modelo de razonamiento con refuerzo y recompensas verificables. Un problema con respuesta comprobable entra al modelo, que genera ocho intentos, cada uno con su cadena de pensamiento. Un verificador revisa solo la respuesta final o corre las pruebas del código y da recompensa 1 o 0. Cada intento se compara con el promedio de su grupo. Se actualizan los pesos para que las cadenas que acertaron sean más probables, y el ciclo se repite con otro problema">
 <defs>
 <marker id="g8d3-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
@@ -260,30 +260,30 @@ print(f"Votos: {dict(Counter(respuestas))} → gana {ganadora} con {votos} de 7"
 </div>
 <canvas id="c8l2-c" role="img" aria-label="Precisión según el presupuesto de pensamiento, en escala logarítmica, con el punto elegido marcado"></canvas>
 <div class="legend"><span><i style="background:var(--c-apl)"></i>precisión esperada</span><span><i style="background:var(--warm)"></i>el presupuesto elegido</span><span>eje horizontal: tokens de pensamiento, en escala logarítmica</span></div>
-<div class="readout texto" id="c8l2-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Un modelo local que piensa antes de responder</h3></div><p>Vas a darle el problema de la cámara a un modelo de razonamiento local con el pensamiento activado y desactivado, y a medir los tokens, el tiempo y la respuesta. Necesitas <a href="https://ollama.com/download" target="_blank" rel="noopener">Ollama</a> en una versión reciente y el modelo <code>qwen3:1.7b</code>, que admite el campo <code>think</code> (unos 1,4 GB). Guarda el script como <code>pensar.py</code>:</p><div class="code-copia"><pre><code>import json, urllib.request
-
-URL = "http://localhost:11434/api/generate"
-PROBLEMA = ("Una cámara fotografía el cielo cada 20 minutos, desde las 6:00 hasta "
-            "las 18:00, ambas incluidas. Cada foto ocupa 4 MB. Se borran las fotos "
-            "tomadas antes de las 7:00 y después de las 17:00. ¿Cuántos MB quedan? "
-            "Responde con el número.")
-
-def pedir(pensar):
-    cuerpo = {"model": "qwen3:1.7b", "prompt": PROBLEMA, "stream": False,
-              "think": pensar, "options": {"temperature": 0.6, "seed": 1}}
-    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),
-                                    headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(pedido) as r:
-        return json.load(r)
-
-for pensar in (False, True):
-    r = pedir(pensar)
-    pensamiento = r.get("thinking") or ""
-    print(f"--- think={pensar}")
-    print(f"tokens generados: {r['eval_count']}, segundos: {r['total_duration'] / 1e9:.1f}")
-    print(f"pensamiento: {len(pensamiento)} caracteres")
-    print(f"comienzo del pensamiento: {pensamiento[:300]!r}")
-    print(f"respuesta: {r['response'].strip()[:200]}\n")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>ollama pull qwen3:1.7b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python pensar.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>ollama pull qwen3:1.7b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python3 pensar.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Compara los tokens generados, los segundos y la respuesta con y sin pensamiento.</span></li><li><span>Lee el comienzo del pensamiento: busca si cuenta las fotos de las dos puntas.</span></li><li><span>Cambia <code>seed</code> a 2 y 3 y vuelve a ejecutar.</span></li></ol><p><b>Qué observar:</b> sin pensamiento, la respuesta llega rápido y con pocos tokens, y es más probable que diga 144. Con pensamiento, el modelo genera cientos o miles de tokens antes de responder, tarda bastante más y casi siempre llega a 124. Es el intercambio de esta sección: acierto a cambio de tiempo y tokens. Algunos modelos, como <code>gpt-oss</code>, aceptan en <code>think</code> los niveles <code>"low"</code>, <code>"medium"</code> y <code>"high"</code> en lugar de verdadero o falso; los valores que admite cada uno se ven con la API <code>/api/show</code>.</p></div></section>
+<div class="readout texto" id="c8l2-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Un modelo local que piensa antes de responder</h3></div><p>Vas a darle el problema de la cámara a un modelo de razonamiento local con el pensamiento activado y desactivado, y a medir los tokens, el tiempo y la respuesta. Necesitas <a href="https://ollama.com/download" target="_blank" rel="noopener">Ollama</a> en una versión reciente y el modelo <code>qwen3:1.7b</code>, que admite el campo <code>think</code> (unos 1,4 GB). Guarda el script como <code>pensar.py</code>:</p><div class="code-copia code-lineas"><pre><code><span class="ln">import json, urllib.request</span>
+<span class="ln"></span>
+<span class="ln">URL = "http://localhost:11434/api/generate"</span>
+<span class="ln">PROBLEMA = ("Una cámara fotografía el cielo cada 20 minutos, desde las 6:00 hasta "</span>
+<span class="ln">            "las 18:00, ambas incluidas. Cada foto ocupa 4 MB. Se borran las fotos "</span>
+<span class="ln">            "tomadas antes de las 7:00 y después de las 17:00. ¿Cuántos MB quedan? "</span>
+<span class="ln">            "Responde con el número.")</span>
+<span class="ln"></span>
+<span class="ln">def pedir(pensar):</span>
+<span class="ln">    cuerpo = {"model": "qwen3:1.7b", "prompt": PROBLEMA, "stream": False,</span>
+<span class="ln">              "think": pensar, "options": {"temperature": 0.6, "seed": 1}}</span>
+<span class="ln">    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),</span>
+<span class="ln">                                    headers={"Content-Type": "application/json"})</span>
+<span class="ln">    with urllib.request.urlopen(pedido) as r:</span>
+<span class="ln">        return json.load(r)</span>
+<span class="ln"></span>
+<span class="ln">for pensar in (False, True):</span>
+<span class="ln">    r = pedir(pensar)</span>
+<span class="ln">    pensamiento = r.get("thinking") or ""</span>
+<span class="ln">    print(f"--- think={pensar}")</span>
+<span class="ln">    print(f"tokens generados: {r['eval_count']}, segundos: {r['total_duration'] / 1e9:.1f}")</span>
+<span class="ln">    print(f"pensamiento: {len(pensamiento)} caracteres")</span>
+<span class="ln">    print(f"comienzo del pensamiento: {pensamiento[:300]!r}")</span>
+<span class="ln">    print(f"respuesta: {r['response'].strip()[:200]}\n")</span></code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>ollama pull qwen3:1.7b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python pensar.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>ollama pull qwen3:1.7b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python3 pensar.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Compara los tokens generados, los segundos y la respuesta con y sin pensamiento.</span></li><li><span>Lee el comienzo del pensamiento: busca si cuenta las fotos de las dos puntas.</span></li><li><span>Cambia <code>seed</code> a 2 y 3 y vuelve a ejecutar.</span></li></ol><p><b>Qué observar:</b> sin pensamiento, la respuesta llega rápido y con pocos tokens, y es más probable que diga 144. Con pensamiento, el modelo genera cientos o miles de tokens antes de responder, tarda bastante más y casi siempre llega a 124. Es el intercambio de esta sección: acierto a cambio de tiempo y tokens. Algunos modelos, como <code>gpt-oss</code>, aceptan en <code>think</code> los niveles <code>"low"</code>, <code>"medium"</code> y <code>"high"</code> en lugar de verdadero o falso; los valores que admite cada uno se ven con la API <code>/api/show</code>.</p></div></section>
 <section><h2>Herramientas dentro del razonamiento: buscar, calcular, ejecutar código</h2><div class="prose"><p>Un modelo que piensa sigue teniendo los límites de un modelo de lenguaje: hace mal las cuentas largas «de cabeza» (en parte por cómo se tokenizan los números, capítulo 1) y no sabe nada posterior a sus datos de entrenamiento. La solución es dejarlo usar <b>herramientas</b> (<i>tools</i>): una calculadora, un intérprete de Python, un buscador web.</p><p>La idea se exploró en 2022 con dos líneas de trabajo. Una hacía que el modelo escribiera un pequeño programa en lugar de la cuenta, y que la computadora lo ejecutara. La otra, llamada ReAct (<i>reasoning and acting</i>, razonar y actuar), alternaba pensamientos, acciones y observaciones: «pienso que necesito buscar X», «busco X», «leo el resultado», «pienso de nuevo». Los modelos de razonamiento actuales lo hacen dentro de su cadena: deciden en medio del pensamiento que conviene ejecutar código o buscar, reciben el resultado en su contexto y siguen pensando con él. Muchos se entrenan con el mismo refuerzo de la sección anterior, ahora con las herramientas disponibles durante el entrenamiento.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es la diferencia entre un experto que responde de memoria y uno que, a mitad de la explicación, dice «déjame verificarlo», abre la planilla, hace la cuenta y sigue hablando con el número correcto. Lo valioso no es que sepa hacer la cuenta, sino que sepa cuándo no confiar en su memoria.</p></div><figure class="fig fig-flujo" id="08-diagrama-4"><div class="lienzo"><svg viewBox="0 0 920 470" style="min-width:760px" role="img" aria-label="Diagrama de secuencia de un razonamiento con herramientas. El usuario pregunta cuántos MB ocupan las fotos si la cámara dispara cada 7 minutos de 5:43 a 19:12. El modelo piensa que contar a mano es propenso a errores y pide ejecutar una línea de Python. La herramienta devuelve 464. El modelo vuelve a pensar, verifica el resultado con una cuenta aproximada y responde 464 MB">
 <defs>
 <marker id="g8d4-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>

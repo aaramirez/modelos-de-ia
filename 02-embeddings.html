@@ -336,27 +336,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <text x="616" y="322" class="t t-s"><tspan class="t-b">−1</tspan>: direcciones opuestas</text>
 <text x="616" y="340" class="t t-s t-m">Estos seis tokens tienen d3 = d4 = 0,</text>
 <text x="616" y="354" class="t t-s t-m">así que el plano muestra el ángulo exacto.</text>
-</svg></div><figcaption><b>El coseno es un ángulo.</b> A la izquierda, seis tokens de Colibrí dibujados en el plano de sus dos primeras columnas: color (horizontal) y cielo (vertical). Como sus otras dos columnas valen 0, el dibujo muestra el ángulo exacto. Los arcos rojos marcan tres pares: «␣azul» y «␣gris» casi no forman ángulo (0,997); «␣cielo» y «␣azul» forman un ángulo mediano (0,65); «␣azul» y «␣noche» quedan casi perpendiculares (0,02). A la derecha, la fórmula y la cuenta completa para «␣cielo» y «␣azul».</figcaption></figure><div class="prose"><p>Esta misma operación, el producto punto entre vectores, es el corazón de la atención del capítulo 3: allí cada token calcula productos punto con todos los demás para decidir a cuáles mirar.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Calcula cosenos con los vectores de Colibrí</h3></div><p>Vas a calcular con Python, solo con la biblioteca estándar, los vecinos más cercanos de algunos tokens de Colibrí. Guarda este programa como <code>coseno_colibri.py</code>:</p><div class="code-copia"><pre><code>import math
-
-# Algunas filas de la tabla de embeddings de Colibrí (4 números por token)
-tabla = {
-    "␣cielo": [0.3, 0.9, 0.0, 0.0], "␣mar":   [0.4, 0.8, 0.0, 0.0],
-    "␣noche": [-0.3, 0.8, 0.1, 0.0], "␣azul":  [1.0, 0.4, 0.0, 0.0],
-    "␣gris":  [0.8, 0.4, 0.0, 0.0], "␣rojo":  [0.9, -0.1, 0.0, 0.0],
-    "␣color": [0.9, 0.2, 0.0, 0.3], "␣el":    [0.0, 0.1, 0.9, 0.0],
-    "¿":      [0.0, 0.0, 0.2, 0.9], "?":      [0.0, 0.0, 0.1, 1.0],
-}
-
-def coseno(a, b):
-    punto = sum(x * y for x, y in zip(a, b))
-    return punto / (math.hypot(*a) * math.hypot(*b))
-
-for palabra in ["␣cielo", "␣azul", "?"]:
-    otras = [(coseno(tabla[palabra], v), p) for p, v in tabla.items() if p != palabra]
-    otras.sort(reverse=True)
-    print(palabra, "-&gt;", ", ".join(f"{p} {c:.2f}" for c, p in otras[:3]))
-
-print("cielo y azul:", round(coseno(tabla["␣cielo"], tabla["␣azul"]), 3))</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python coseno_colibri.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 coseno_colibri.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Ejecuta el programa y compara el coseno de «␣cielo» y «␣azul» con la cuenta a mano del diagrama.</span></li><li><span>Cambia el vector de «␣noche» por <code>[-0.9, 0.0, 0.0, 0.0]</code> y vuelve a correrlo: ¿qué le pasa a su coseno con «␣azul»?</span></li><li><span>Multiplica por 10 todos los números de «␣mar» y confirma que sus cosenos no cambian.</span></li></ol><p><b>Qué observar:</b> los vecinos de «␣cielo» son «␣mar» (0,99), «␣noche» (0,77) y «␣gris» (0,71); los de «?», «¿» (0,99). El paso 2 da un coseno negativo, cercano a −0,9: vectores que apuntan en direcciones opuestas. El paso 3 muestra que el coseno ignora el largo: un vector diez veces más largo apunta igual.</p></div></section>
+</svg></div><figcaption><b>El coseno es un ángulo.</b> A la izquierda, seis tokens de Colibrí dibujados en el plano de sus dos primeras columnas: color (horizontal) y cielo (vertical). Como sus otras dos columnas valen 0, el dibujo muestra el ángulo exacto. Los arcos rojos marcan tres pares: «␣azul» y «␣gris» casi no forman ángulo (0,997); «␣cielo» y «␣azul» forman un ángulo mediano (0,65); «␣azul» y «␣noche» quedan casi perpendiculares (0,02). A la derecha, la fórmula y la cuenta completa para «␣cielo» y «␣azul».</figcaption></figure><div class="prose"><p>Esta misma operación, el producto punto entre vectores, es el corazón de la atención del capítulo 3: allí cada token calcula productos punto con todos los demás para decidir a cuáles mirar.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Calcula cosenos con los vectores de Colibrí</h3></div><p>Vas a calcular con Python, solo con la biblioteca estándar, los vecinos más cercanos de algunos tokens de Colibrí. Guarda este programa como <code>coseno_colibri.py</code>:</p><div class="code-copia code-lineas"><pre><code><span class="ln">import math</span>
+<span class="ln"></span>
+<span class="ln"># Algunas filas de la tabla de embeddings de Colibrí (4 números por token)</span>
+<span class="ln">tabla = {</span>
+<span class="ln">    "␣cielo": [0.3, 0.9, 0.0, 0.0], "␣mar":   [0.4, 0.8, 0.0, 0.0],</span>
+<span class="ln">    "␣noche": [-0.3, 0.8, 0.1, 0.0], "␣azul":  [1.0, 0.4, 0.0, 0.0],</span>
+<span class="ln">    "␣gris":  [0.8, 0.4, 0.0, 0.0], "␣rojo":  [0.9, -0.1, 0.0, 0.0],</span>
+<span class="ln">    "␣color": [0.9, 0.2, 0.0, 0.3], "␣el":    [0.0, 0.1, 0.9, 0.0],</span>
+<span class="ln">    "¿":      [0.0, 0.0, 0.2, 0.9], "?":      [0.0, 0.0, 0.1, 1.0],</span>
+<span class="ln">}</span>
+<span class="ln"></span>
+<span class="ln">def coseno(a, b):</span>
+<span class="ln">    punto = sum(x * y for x, y in zip(a, b))</span>
+<span class="ln">    return punto / (math.hypot(*a) * math.hypot(*b))</span>
+<span class="ln"></span>
+<span class="ln">for palabra in ["␣cielo", "␣azul", "?"]:</span>
+<span class="ln">    otras = [(coseno(tabla[palabra], v), p) for p, v in tabla.items() if p != palabra]</span>
+<span class="ln">    otras.sort(reverse=True)</span>
+<span class="ln">    print(palabra, "-&gt;", ", ".join(f"{p} {c:.2f}" for c, p in otras[:3]))</span>
+<span class="ln"></span>
+<span class="ln">print("cielo y azul:", round(coseno(tabla["␣cielo"], tabla["␣azul"]), 3))</span></code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python coseno_colibri.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 coseno_colibri.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Ejecuta el programa y compara el coseno de «␣cielo» y «␣azul» con la cuenta a mano del diagrama.</span></li><li><span>Cambia el vector de «␣noche» por <code>[-0.9, 0.0, 0.0, 0.0]</code> y vuelve a correrlo: ¿qué le pasa a su coseno con «␣azul»?</span></li><li><span>Multiplica por 10 todos los números de «␣mar» y confirma que sus cosenos no cambian.</span></li></ol><p><b>Qué observar:</b> los vecinos de «␣cielo» son «␣mar» (0,99), «␣noche» (0,77) y «␣gris» (0,71); los de «?», «¿» (0,99). El paso 2 da un coseno negativo, cercano a −0,9: vectores que apuntan en direcciones opuestas. El paso 3 muestra que el coseno ignora el largo: un vector diez veces más largo apunta igual.</p></div></section>
 <section><h2>Embeddings de frases y documentos</h2><div class="prose"><p>Un vector por token sirve para el modelo por dentro. Pero muchas aplicaciones necesitan un vector por <b>frase</b> o por <b>documento</b>: para buscar textos por significado, agrupar reclamos parecidos o detectar duplicados. La forma más simple es promediar los vectores de las palabras. Funciona sorprendentemente bien para textos cortos, pero pierde el orden: «el perro muerde al hombre» y «el hombre muerde al perro» dan el mismo promedio.</p><p>Los <b>modelos de embeddings</b> (<i>embedding models</i>) actuales hacen algo mejor: pasan el texto completo por un Transformer como los del capítulo 3 y lo resumen en un solo vector, de unos cientos a unos pocos miles de números. Se entrenan con pares de textos que deberían quedar cerca (una pregunta y su respuesta, una frase y su traducción) y pares que deberían quedar lejos. El trabajo que popularizó esta idea fue Sentence-BERT (2019). Como se entrenan con traducciones, muchos de estos modelos son <b>multilingües</b> (<i>multilingual</i>): «¿De qué color es el cielo?» y «What color is the sky?» quedan casi en el mismo punto.</p></div><div class="lab" id="02-lab-3"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Buscador semántico</h3></div><p class="hint">Escribe una búsqueda y compara dos buscadores sobre los mismos 12 documentos. El de la izquierda cuenta palabras exactas en común. El de la derecha convierte la búsqueda y cada documento en vectores (el promedio de los vectores de sus palabras) y los ordena por similitud coseno. Prueba «monarca» o «can»: ningún documento tiene esas palabras, pero el buscador semántico encuentra los del rey y el perro. Prueba «banco» y luego «banco peces».</p><style>
 [id="02-lab-3"] .c2l3-in{width:100%;box-sizing:border-box;font:500 .95rem var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
 [id="02-lab-3"] .c2l3-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
@@ -382,31 +382,31 @@ print("cielo y azul:", round(coseno(tabla["␣cielo"], tabla["␣azul"]), 3))</c
   <div class="c2l3-col"><h4 style="color:var(--c-fis)">Por palabras exactas</h4><div id="c2l3-lex"></div></div>
   <div class="c2l3-col"><h4 style="color:var(--c-enl)">Por significado (coseno)</h4><div id="c2l3-sem"></div></div>
 </div>
-<div class="readout texto" id="c2l3-out" aria-live="polite"></div></div><div class="prose"><p>Esta es la base de la <b>búsqueda semántica</b> (<i>semantic search</i>) y de la recuperación de documentos que usan los asistentes que responden con información de una empresa, conocida como <b>RAG</b> (<i>Retrieval-Augmented Generation</i>, generación aumentada con recuperación). Cómo se arma un RAG con una base de datos de vectores está en Aplicaciones con IA; aquí importa el porqué: buscar se vuelve medir ángulos.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Embeddings de frases con un modelo local</h3></div><p>Vas a convertir cinco frases en vectores con un modelo de embeddings que corre en tu computadora y medir cuánto se parecen. Necesitas <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> y el modelo <code>embeddinggemma</code> (unos 620 MB; cualquier modelo de embeddings sirve, por ejemplo <code>nomic-embed-text</code>):</p><div class="cmds"><div class="cmd-panel" data-so="win mac linux"><div class="cmd-l"><code>ollama pull embeddinggemma</code><button type="button" class="copiar">Copiar</button></div></div></div><p>Guarda este programa como <code>embeddings_ollama.py</code> (solo biblioteca estándar):</p><div class="code-copia"><pre><code>import json, math, urllib.request
-
-FRASES = [
-    "¿De qué color es el cielo?",
-    "What color is the sky?",
-    "¿Por qué el cielo se ve azul de día?",
-    "El banco me prestó dinero para la casa.",
-    "Un banco de peces nadaba cerca del arrecife.",
-]
-
-cuerpo = {"model": "embeddinggemma", "input": FRASES}
-pedido = urllib.request.Request("http://localhost:11434/api/embed",
-                                data=json.dumps(cuerpo).encode("utf-8"),
-                                headers={"Content-Type": "application/json"})
-with urllib.request.urlopen(pedido) as r:
-    vectores = json.load(r)["embeddings"]
-
-def coseno(a, b):
-    punto = sum(x * y for x, y in zip(a, b))
-    return punto / (math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b)))
-
-print("dimensiones de cada vector:", len(vectores[0]))
-for i, f in enumerate(FRASES[1:], start=1):
-    print(f"{coseno(vectores[0], vectores[i]):.2f}  {f}")
-print(f"{coseno(vectores[3], vectores[4]):.2f}  los dos «banco» entre sí")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python embeddings_ollama.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 embeddings_ollama.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Ejecuta el programa y anota cuántas dimensiones tiene cada vector.</span></li><li><span>Ordena las cuatro frases de mayor a menor parecido con la pregunta del curso.</span></li><li><span>Agrega una frase tuya que diga lo mismo que la pregunta con otras palabras y vuelve a correrlo.</span></li></ol><p><b>Qué observar:</b> el vector tiene cientos de números (768 con <code>embeddinggemma</code>). La traducción al inglés y la pregunta sobre por qué el cielo es azul quedan más cerca de la pregunta del curso que las frases sobre bancos, aunque compartan pocas palabras. Los dos «banco» quedan bastante lejos entre sí: el modelo leyó la frase completa y separó los dos sentidos. Las cifras exactas cambian de un modelo a otro.</p></div></section>
+<div class="readout texto" id="c2l3-out" aria-live="polite"></div></div><div class="prose"><p>Esta es la base de la <b>búsqueda semántica</b> (<i>semantic search</i>) y de la recuperación de documentos que usan los asistentes que responden con información de una empresa, conocida como <b>RAG</b> (<i>Retrieval-Augmented Generation</i>, generación aumentada con recuperación). Cómo se arma un RAG con una base de datos de vectores está en Aplicaciones con IA; aquí importa el porqué: buscar se vuelve medir ángulos.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Embeddings de frases con un modelo local</h3></div><p>Vas a convertir cinco frases en vectores con un modelo de embeddings que corre en tu computadora y medir cuánto se parecen. Necesitas <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> y el modelo <code>embeddinggemma</code> (unos 620 MB; cualquier modelo de embeddings sirve, por ejemplo <code>nomic-embed-text</code>):</p><div class="cmds"><div class="cmd-panel" data-so="win mac linux"><div class="cmd-l"><code>ollama pull embeddinggemma</code><button type="button" class="copiar">Copiar</button></div></div></div><p>Guarda este programa como <code>embeddings_ollama.py</code> (solo biblioteca estándar):</p><div class="code-copia code-lineas"><pre><code><span class="ln">import json, math, urllib.request</span>
+<span class="ln"></span>
+<span class="ln">FRASES = [</span>
+<span class="ln">    "¿De qué color es el cielo?",</span>
+<span class="ln">    "What color is the sky?",</span>
+<span class="ln">    "¿Por qué el cielo se ve azul de día?",</span>
+<span class="ln">    "El banco me prestó dinero para la casa.",</span>
+<span class="ln">    "Un banco de peces nadaba cerca del arrecife.",</span>
+<span class="ln">]</span>
+<span class="ln"></span>
+<span class="ln">cuerpo = {"model": "embeddinggemma", "input": FRASES}</span>
+<span class="ln">pedido = urllib.request.Request("http://localhost:11434/api/embed",</span>
+<span class="ln">                                data=json.dumps(cuerpo).encode("utf-8"),</span>
+<span class="ln">                                headers={"Content-Type": "application/json"})</span>
+<span class="ln">with urllib.request.urlopen(pedido) as r:</span>
+<span class="ln">    vectores = json.load(r)["embeddings"]</span>
+<span class="ln"></span>
+<span class="ln">def coseno(a, b):</span>
+<span class="ln">    punto = sum(x * y for x, y in zip(a, b))</span>
+<span class="ln">    return punto / (math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b)))</span>
+<span class="ln"></span>
+<span class="ln">print("dimensiones de cada vector:", len(vectores[0]))</span>
+<span class="ln">for i, f in enumerate(FRASES[1:], start=1):</span>
+<span class="ln">    print(f"{coseno(vectores[0], vectores[i]):.2f}  {f}")</span>
+<span class="ln">print(f"{coseno(vectores[3], vectores[4]):.2f}  los dos «banco» entre sí")</span></code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python embeddings_ollama.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 embeddings_ollama.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Ejecuta el programa y anota cuántas dimensiones tiene cada vector.</span></li><li><span>Ordena las cuatro frases de mayor a menor parecido con la pregunta del curso.</span></li><li><span>Agrega una frase tuya que diga lo mismo que la pregunta con otras palabras y vuelve a correrlo.</span></li></ol><p><b>Qué observar:</b> el vector tiene cientos de números (768 con <code>embeddinggemma</code>). La traducción al inglés y la pregunta sobre por qué el cielo es azul quedan más cerca de la pregunta del curso que las frases sobre bancos, aunque compartan pocas palabras. Los dos «banco» quedan bastante lejos entre sí: el modelo leyó la frase completa y separó los dos sentidos. Las cifras exactas cambian de un modelo a otro.</p></div></section>
 <section><h2>Embeddings contextuales: «banco» de peces y «banco» de dinero</h2><div class="prose"><p>La tabla de embeddings tiene un problema de fondo: da <b>un solo vector por token</b>. «Banco» tiene la misma fila en «el banco presta dinero» y en «un banco de peces». Ese vector es un promedio de todos sus sentidos y queda a mitad de camino, como viste en el laboratorio 1.</p></div><div class="analogia"><b>Imagínalo así</b><p>Una palabra suelta es como una foto carné: sirve para identificar a alguien, pero no dice qué está haciendo. La misma persona en una foto en la playa y en otra en una oficina cuenta dos historias distintas. Los embeddings contextuales son la foto con el fondo: el mismo token, ubicado según lo que lo rodea.</p></div><div class="prose"><p>La solución, que llegó con ELMo y BERT en 2018 y hoy está en todos los modelos de lenguaje, es que el vector de cada token <b>cambie según su contexto</b>. El vector de la tabla es solo el punto de partida. Después, capa tras capa, cada token mira a los demás tokens de la frase y mezcla en su vector algo de lo que ve. Al salir de las capas, el «banco» que estaba junto a «presta dinero» quedó cerca de los préstamos, y el que estaba junto a «de peces», cerca del agua. A estos vectores que dependen de la frase se los llama <b>embeddings contextuales</b> (<i>contextual embeddings</i>).</p></div><figure class="fig fig-esquema" id="02-diagrama-4"><div class="lienzo"><svg viewBox="0 0 960 360" style="min-width:760px" role="img" aria-label="Embeddings fijos y contextuales. En las frases el banco presta dinero y un banco de peces nada en el mar, la tabla da el mismo vector a banco, que queda entre el dinero y los peces. Después de las capas de atención, cada banco tiene su propio vector: uno junto a préstamo y dinero, el otro junto a peces y mar.">
 <defs>
 <marker id="m2d4-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>

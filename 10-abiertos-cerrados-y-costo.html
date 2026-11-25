@@ -132,25 +132,25 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="c10l1-k"><span>Tokens/s del equipo</span><output id="c10l1-k4"></output></div>
   <div class="c10l1-k"><span>US$ por millón de tokens</span><output id="c10l1-k5"></output></div>
 </div>
-<div class="readout texto" id="c10l1-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Calcula la memoria de un modelo real desde su configuración</h3></div><p>Todo modelo publicado en Hugging Face trae un archivo <code>config.json</code> con su arquitectura. Este script lo descarga (es público y no pide cuenta) y calcula los pesos y la caché KV. Solo usa la biblioteca estándar de Python.</p><div class="code-copia"><pre><code>import json, urllib.request
-
-URL = "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/resolve/main/config.json"
-c = json.load(urllib.request.urlopen(URL))
-
-capas = c["num_hidden_layers"]
-cabezas_kv = c["num_key_value_heads"]
-dim_cabeza = c["hidden_size"] // c["num_attention_heads"]
-print("capas:", capas, "| cabezas KV:", cabezas_kv, "| dimensión por cabeza:", dim_cabeza)
-print("contexto máximo:", c["max_position_embeddings"], "tokens")
-
-params = 7.6e9  # dato de la ficha del modelo
-for bits in (16, 8, 4):
-    print(f"pesos en {bits} bits: {params * bits / 8 / 1e9:.1f} GB")
-
-por_token = 2 * capas * cabezas_kv * dim_cabeza * 2  # bytes, en 16 bits
-print(f"caché KV: {por_token / 1024:.0f} KB por token")
-for tokens in (4096, 32768):
-    print(f"  {tokens} tokens: {por_token * tokens / 1024**3:.2f} GB")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><p>Guárdalo como <code>memoria.py</code> y córrelo:</p><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python memoria.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 memoria.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Compara la caché por token con los 128 KB de Llama 3 8B del texto.</span></li><li><span>Cambia la URL por la de otro modelo público (en su página, pestaña <i>Files</i>, abre <code>config.json</code> y copia el enlace) y ajusta <code>params</code> con el dato de su ficha.</span></li><li><span>Si tienes Ollama con el modelo del capítulo 1, corre <code>ollama show llama3.2:1b</code> y mira su arquitectura, su contexto y su cuantización.</span></li></ol><p><b>Qué observar:</b> este modelo tiene 28 capas pero solo 4 cabezas de clave y valor, así que su caché ocupa 56 KB por token, menos de la mitad que la de Llama 3 8B aunque los dos tengan un tamaño parecido. La arquitectura, no solo el número de parámetros, decide cuánta memoria pide un contexto largo.</p></div></section>
+<div class="readout texto" id="c10l1-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Calcula la memoria de un modelo real desde su configuración</h3></div><p>Todo modelo publicado en Hugging Face trae un archivo <code>config.json</code> con su arquitectura. Este script lo descarga (es público y no pide cuenta) y calcula los pesos y la caché KV. Solo usa la biblioteca estándar de Python.</p><div class="code-copia code-lineas"><pre><code><span class="ln">import json, urllib.request</span>
+<span class="ln"></span>
+<span class="ln">URL = "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/resolve/main/config.json"</span>
+<span class="ln">c = json.load(urllib.request.urlopen(URL))</span>
+<span class="ln"></span>
+<span class="ln">capas = c["num_hidden_layers"]</span>
+<span class="ln">cabezas_kv = c["num_key_value_heads"]</span>
+<span class="ln">dim_cabeza = c["hidden_size"] // c["num_attention_heads"]</span>
+<span class="ln">print("capas:", capas, "| cabezas KV:", cabezas_kv, "| dimensión por cabeza:", dim_cabeza)</span>
+<span class="ln">print("contexto máximo:", c["max_position_embeddings"], "tokens")</span>
+<span class="ln"></span>
+<span class="ln">params = 7.6e9  # dato de la ficha del modelo</span>
+<span class="ln">for bits in (16, 8, 4):</span>
+<span class="ln">    print(f"pesos en {bits} bits: {params * bits / 8 / 1e9:.1f} GB")</span>
+<span class="ln"></span>
+<span class="ln">por_token = 2 * capas * cabezas_kv * dim_cabeza * 2  # bytes, en 16 bits</span>
+<span class="ln">print(f"caché KV: {por_token / 1024:.0f} KB por token")</span>
+<span class="ln">for tokens in (4096, 32768):</span>
+<span class="ln">    print(f"  {tokens} tokens: {por_token * tokens / 1024**3:.2f} GB")</span></code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><p>Guárdalo como <code>memoria.py</code> y córrelo:</p><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python memoria.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 memoria.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Compara la caché por token con los 128 KB de Llama 3 8B del texto.</span></li><li><span>Cambia la URL por la de otro modelo público (en su página, pestaña <i>Files</i>, abre <code>config.json</code> y copia el enlace) y ajusta <code>params</code> con el dato de su ficha.</span></li><li><span>Si tienes Ollama con el modelo del capítulo 1, corre <code>ollama show llama3.2:1b</code> y mira su arquitectura, su contexto y su cuantización.</span></li></ol><p><b>Qué observar:</b> este modelo tiene 28 capas pero solo 4 cabezas de clave y valor, así que su caché ocupa 56 KB por token, menos de la mitad que la de Llama 3 8B aunque los dos tengan un tamaño parecido. La arquitectura, no solo el número de parámetros, decide cuánta memoria pide un contexto largo.</p></div></section>
 <section><h2>Cuantización: de 16 a 8 y 4 bits</h2><div class="prose"><p>Si el modelo no cabe, la herramienta principal es la <b>cuantización</b> (<i>quantization</i>): guardar cada peso con menos bits. En lugar de un número de 16 bits con miles de valores posibles, se guarda un entero de 8 bits (256 valores) o de 4 bits (solo 16 valores), y una <b>escala</b> (<i>scale</i>) que dice cuánto vale cada escalón.</p></div><div class="analogia"><b>Imagínalo así</b><p>Una paleta de pintura con miles de tonos frente a una caja de 16 lápices de colores. Con 16 lápices bien elegidos, un retrato se reconoce perfectamente; lo que se pierde son los degradados finos. Y si el dibujo tiene un solo punto de un color muy extremo, desperdiciar un lápiz en él deja menos lápices para todo lo demás.</p></div><div class="prose"><p>La receta más simple, la <b>cuantización por máximo absoluto</b> (<i>absmax</i>), funciona así para 8 bits: se busca el peso de mayor valor absoluto del grupo, se define la escala como ese máximo dividido entre 127, y cada peso se guarda como el entero más cercano a peso ÷ escala. Si el máximo es 0,8, la escala es 0,0063; el peso 0,31 se guarda como 49, y al volver da 0,3087: un error de 0,0013. Con 4 bits solo hay enteros de −7 a 7, la escala es 0,8 ÷ 7 = 0,114, y el mismo peso se guarda como 3 y vuelve como 0,343: un error 25 veces mayor.</p></div><figure class="fig fig-esquema" id="10-diagrama-2"><div class="lienzo"><svg viewBox="0 0 960 430" style="min-width:760px" role="img" aria-label="Cuantizar es redondear a una escalera. Doce pesos de un bloque, entre menos 0,62 y 0,8. Con 8 bits hay 255 escalones y cada peso cae casi en su lugar: error medio 0,001. Con 4 bits hay 15 escalones de 0,114 y cada peso se corre hasta el más cercano: error medio 0,031. Si el bloque tiene un valor atípico de 3,2, la escala se estira a 0,457 y los doce pesos se amontonan en cuatro escalones del centro: error medio 0,129.">
 <defs><marker id="m10d2-w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-warm"/></marker></defs>
 <text x="16" y="24" class="t t-xs t-b t-m">① LOS PESOS ORIGINALES DE UN BLOQUE (16 BITS)</text>

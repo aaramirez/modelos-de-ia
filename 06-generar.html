@@ -220,34 +220,34 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="c6l2-k"><span>«El cielo es azul.»</span><output id="c6l2-ka"></output></div>
   <div class="c6l2-k"><span>Sin sentido</span><output id="c6l2-kr"></output></div>
 </div>
-<div class="readout texto" id="c6l2-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Las probabilidades de un modelo real con Ollama</h3></div><p>Vas a pedirle a un modelo local la respuesta a la pregunta del curso, ver las cinco opciones que consideró en cada token y generar con varias temperaturas y semillas. Necesitas <a href="https://ollama.com/download" target="_blank" rel="noopener">Ollama</a> en una versión reciente (las versiones antiguas no devuelven las probabilidades, <code>logprobs</code>) y el modelo descargado con <code>ollama pull llama3.2:1b</code>. Guarda el script como <code>muestreo.py</code>:</p><div class="code-copia"><pre><code>import json, math, urllib.request
-
-URL = "http://localhost:11434/api/generate"
-MODELO = "llama3.2:1b"
-PREGUNTA = "¿De qué color es el cielo? Responde en una frase."
-
-def pedir(temperatura, semilla):
-    cuerpo = {"model": MODELO, "prompt": PREGUNTA, "stream": False,
-              "logprobs": True, "top_logprobs": 5,
-              "options": {"temperature": temperatura, "seed": semilla,
-                          "num_predict": 30}}
-    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),
-                                    headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(pedido) as r:
-        return json.load(r)
-
-r = pedir(0, 1)
-print("Respuesta:", r["response"].strip())
-print("Lo que consideró en los primeros 6 tokens:")
-for paso in r.get("logprobs", [])[:6]:
-    opciones = ", ".join(f"{o['token']!r} {math.exp(o['logprob']):.0%}"
-                         for o in paso["top_logprobs"])
-    print(f"  salió {paso['token']!r:14} | {opciones}")
-
-for t in (0, 0.7, 1.5):
-    for semilla in (1, 2, 3):
-        texto = pedir(t, semilla)["response"].strip().replace("\n", " ")
-        print(f"T={t:&lt;4} semilla={semilla}: {texto[:90]}")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>ollama pull llama3.2:1b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python muestreo.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>ollama pull llama3.2:1b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python3 muestreo.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Mira la tabla de los primeros tokens: qué salió y qué otras cuatro opciones tenía, con su probabilidad.</span></li><li><span>Compara las tres respuestas de cada temperatura.</span></li><li><span>Ejecuta el script otra vez sin cambiar nada y compara con la primera corrida.</span></li></ol><p><b>Qué observar:</b> con temperatura 0 las tres semillas dan la misma respuesta, porque no hay sorteo. Con 0,7 aparecen variaciones de redacción y con 1,5, variaciones de contenido. Al repetir la corrida, cada par de temperatura y semilla da el mismo texto: el azar es reproducible. En los tokens donde la opción ganadora tiene menos del 50 %, el modelo tenía dudas reales; ahí es donde la temperatura cambia la respuesta. Si tu versión de Ollama no devuelve <code>logprobs</code>, la tabla sale vacía y el resto funciona igual.</p></div></section>
+<div class="readout texto" id="c6l2-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Las probabilidades de un modelo real con Ollama</h3></div><p>Vas a pedirle a un modelo local la respuesta a la pregunta del curso, ver las cinco opciones que consideró en cada token y generar con varias temperaturas y semillas. Necesitas <a href="https://ollama.com/download" target="_blank" rel="noopener">Ollama</a> en una versión reciente (las versiones antiguas no devuelven las probabilidades, <code>logprobs</code>) y el modelo descargado con <code>ollama pull llama3.2:1b</code>. Guarda el script como <code>muestreo.py</code>:</p><div class="code-copia code-lineas"><pre><code><span class="ln">import json, math, urllib.request</span>
+<span class="ln"></span>
+<span class="ln">URL = "http://localhost:11434/api/generate"</span>
+<span class="ln">MODELO = "llama3.2:1b"</span>
+<span class="ln">PREGUNTA = "¿De qué color es el cielo? Responde en una frase."</span>
+<span class="ln"></span>
+<span class="ln">def pedir(temperatura, semilla):</span>
+<span class="ln">    cuerpo = {"model": MODELO, "prompt": PREGUNTA, "stream": False,</span>
+<span class="ln">              "logprobs": True, "top_logprobs": 5,</span>
+<span class="ln">              "options": {"temperature": temperatura, "seed": semilla,</span>
+<span class="ln">                          "num_predict": 30}}</span>
+<span class="ln">    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),</span>
+<span class="ln">                                    headers={"Content-Type": "application/json"})</span>
+<span class="ln">    with urllib.request.urlopen(pedido) as r:</span>
+<span class="ln">        return json.load(r)</span>
+<span class="ln"></span>
+<span class="ln">r = pedir(0, 1)</span>
+<span class="ln">print("Respuesta:", r["response"].strip())</span>
+<span class="ln">print("Lo que consideró en los primeros 6 tokens:")</span>
+<span class="ln">for paso in r.get("logprobs", [])[:6]:</span>
+<span class="ln">    opciones = ", ".join(f"{o['token']!r} {math.exp(o['logprob']):.0%}"</span>
+<span class="ln">                         for o in paso["top_logprobs"])</span>
+<span class="ln">    print(f"  salió {paso['token']!r:14} | {opciones}")</span>
+<span class="ln"></span>
+<span class="ln">for t in (0, 0.7, 1.5):</span>
+<span class="ln">    for semilla in (1, 2, 3):</span>
+<span class="ln">        texto = pedir(t, semilla)["response"].strip().replace("\n", " ")</span>
+<span class="ln">        print(f"T={t:&lt;4} semilla={semilla}: {texto[:90]}")</span></code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>ollama pull llama3.2:1b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python muestreo.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>ollama pull llama3.2:1b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python3 muestreo.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Mira la tabla de los primeros tokens: qué salió y qué otras cuatro opciones tenía, con su probabilidad.</span></li><li><span>Compara las tres respuestas de cada temperatura.</span></li><li><span>Ejecuta el script otra vez sin cambiar nada y compara con la primera corrida.</span></li></ol><p><b>Qué observar:</b> con temperatura 0 las tres semillas dan la misma respuesta, porque no hay sorteo. Con 0,7 aparecen variaciones de redacción y con 1,5, variaciones de contenido. Al repetir la corrida, cada par de temperatura y semilla da el mismo texto: el azar es reproducible. En los tokens donde la opción ganadora tiene menos del 50 %, el modelo tenía dudas reales; ahí es donde la temperatura cambia la respuesta. Si tu versión de Ollama no devuelve <code>logprobs</code>, la tabla sale vacía y el resto funciona igual.</p></div></section>
 <section><h2>Generar token por token: la caché de claves y valores y la latencia</h2><div class="prose"><p>El bucle de la figura del inicio tiene un costo escondido. Para escribir el token 301 de la respuesta, el modelo necesita mirar con atención (capítulo 3) a los 300 anteriores y a toda la pregunta. Si en cada paso se volviera a pasar todo el texto por todas las capas, el trabajo crecería con el cuadrado del largo.</p><p>La salida es notar que, en un modelo que solo mira hacia atrás, las <b>claves y valores</b> (<i>keys</i> y <i>values</i>) de un token ya procesado no cambian cuando llegan tokens nuevos. Se calculan una vez y se guardan en la <b>caché de claves y valores</b> (<i>KV cache</i>). En cada paso, solo el token nuevo atraviesa las capas: calcula su consulta, la compara con las claves guardadas, mezcla los valores guardados y agrega su propia clave y su propio valor a la caché.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como un acta de reunión. Quien llega tarde no pide que le repitan toda la reunión desde el principio: lee el acta, que ya resume cada intervención, y agrega la suya al final. La caché es el acta del modelo: cada token deja escrito lo que otros necesitarán consultar de él.</p></div><figure class="fig fig-flujo" id="06-diagrama-3"><div class="lienzo"><svg viewBox="0 0 920 500" style="min-width:760px" role="img" aria-label="Diagrama de secuencia de la generación con caché de claves y valores. En el prellenado la aplicación envía la pregunta completa, el modelo procesa todos sus tokens a la vez, guarda sus claves y valores en la caché y devuelve el primer token. En la decodificación, cada token nuevo entra solo, el modelo lee de la caché las claves y valores anteriores, agrega los suyos y devuelve el siguiente token, una vez por token hasta el final">
 <defs>
 <marker id="g6d3-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
@@ -346,35 +346,35 @@ for t in (0, 0.7, 1.5):
   <div class="legend"><span><i style="background:var(--good)"></i>propuesto y aceptado</span><span><i style="background:var(--warm)"></i>rechazado</span><span><i style="background:var(--accent)"></i>lo escribe el modelo grande</span></div>
   <div class="readout texto" id="c6l3-out2" aria-live="polite"></div>
 </div></div></section>
-<section><h2>Decodificación restringida: forzar un formato</h2><div class="prose"><p>A veces la respuesta no la lee una persona sino un programa, que espera un JSON (<i>JavaScript Object Notation</i>, un formato de texto para datos) con ciertos campos. Pedirlo en las instrucciones funciona casi siempre, pero «casi» no alcanza cuando un error rompe el sistema que lo recibe.</p><p>La <b>decodificación restringida</b> (<i>constrained decoding</i>) resuelve eso en el muestreador. Antes de sortear cada token, se revisa cuáles mantendrían el texto dentro de una <b>gramática</b> (<i>grammar</i>) o de un esquema JSON, y al resto se les pone logit −∞: su probabilidad queda en cero. Si el texto va en <code>{"color": </code>, solo se permiten tokens que abran una cadena entre comillas; si el esquema dice que <code>color</code> solo puede ser <code>"azul"</code>, <code>"gris"</code> o <code>"negro"</code>, ningún otro valor tiene probabilidad. El modelo sigue eligiendo entre lo permitido según sus preferencias, pero no puede salirse del formato.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como un formulario con listas desplegables en lugar de campos libres. La persona sigue decidiendo qué responder, pero el formulario no le deja escribir una fecha donde va un número de teléfono.</p></div><div class="prose"><p>Por dentro, la gramática se convierte en una máquina de estados que, en cada paso, sabe qué tokens son válidos. Bibliotecas abiertas como Outlines o las gramáticas GBNF de llama.cpp lo hacen así, y Ollama lo expone con el campo <code>format</code>, que acepta un esquema JSON. La restricción garantiza la forma, no el contenido: el modelo puede devolver un JSON perfecto con un dato equivocado. Cómo se usan las salidas estructuradas en un producto está en <a href="https://aaramirez.github.io/aplicaciones-con-ia/temario.html" target="_blank" rel="noopener">Aplicaciones con IA</a>.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Forzar un JSON aunque la temperatura sea alta</h3></div><p>Vas a pedir lo mismo dos veces, con temperatura 1,5 para que el modelo se desordene: una vez sin restricción y otra con un esquema JSON en el campo <code>format</code>. Usa el mismo modelo de la práctica anterior. Guarda el script como <code>formato.py</code>:</p><div class="code-copia"><pre><code>import json, urllib.request
-
-URL = "http://localhost:11434/api/generate"
-ESQUEMA = {"type": "object",
-           "properties": {"dia": {"type": "string"},
-                          "atardecer": {"type": "string"},
-                          "noche": {"type": "string"}},
-           "required": ["dia", "atardecer", "noche"]}
-
-def pedir(formato):
-    cuerpo = {"model": "llama3.2:1b", "stream": False,
-              "prompt": "¿De qué color es el cielo de día, al atardecer y de noche? "
-                        "Responde en JSON con las claves dia, atardecer y noche.",
-              "options": {"temperature": 1.5, "seed": 4, "num_predict": 120}}
-    if formato:
-        cuerpo["format"] = ESQUEMA
-    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),
-                                    headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(pedido) as r:
-        return json.load(r)["response"]
-
-for formato in (False, True):
-    texto = pedir(formato)
-    try:
-        json.loads(texto)
-        valido = "JSON válido"
-    except ValueError:
-        valido = "NO es JSON válido"
-    print(f"--- con esquema: {formato} → {valido}\n{texto}\n")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python formato.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 formato.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Mira si la primera respuesta, sin esquema, se puede leer como JSON.</span></li><li><span>Cambia <code>seed</code> a 5, 6 y 7 y vuelve a ejecutar.</span></li></ol><p><b>Qué observar:</b> sin esquema, con temperatura alta, la respuesta a veces trae texto antes o después del JSON, comillas mal puestas o claves con otro nombre, y el programa falla. Con esquema, siempre sale un JSON con las tres claves, aunque los colores que diga puedan ser raros: la restricción controla la forma, no la verdad.</p></div></section>
+<section><h2>Decodificación restringida: forzar un formato</h2><div class="prose"><p>A veces la respuesta no la lee una persona sino un programa, que espera un JSON (<i>JavaScript Object Notation</i>, un formato de texto para datos) con ciertos campos. Pedirlo en las instrucciones funciona casi siempre, pero «casi» no alcanza cuando un error rompe el sistema que lo recibe.</p><p>La <b>decodificación restringida</b> (<i>constrained decoding</i>) resuelve eso en el muestreador. Antes de sortear cada token, se revisa cuáles mantendrían el texto dentro de una <b>gramática</b> (<i>grammar</i>) o de un esquema JSON, y al resto se les pone logit −∞: su probabilidad queda en cero. Si el texto va en <code>{"color": </code>, solo se permiten tokens que abran una cadena entre comillas; si el esquema dice que <code>color</code> solo puede ser <code>"azul"</code>, <code>"gris"</code> o <code>"negro"</code>, ningún otro valor tiene probabilidad. El modelo sigue eligiendo entre lo permitido según sus preferencias, pero no puede salirse del formato.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como un formulario con listas desplegables en lugar de campos libres. La persona sigue decidiendo qué responder, pero el formulario no le deja escribir una fecha donde va un número de teléfono.</p></div><div class="prose"><p>Por dentro, la gramática se convierte en una máquina de estados que, en cada paso, sabe qué tokens son válidos. Bibliotecas abiertas como Outlines o las gramáticas GBNF de llama.cpp lo hacen así, y Ollama lo expone con el campo <code>format</code>, que acepta un esquema JSON. La restricción garantiza la forma, no el contenido: el modelo puede devolver un JSON perfecto con un dato equivocado. Cómo se usan las salidas estructuradas en un producto está en <a href="https://aaramirez.github.io/aplicaciones-con-ia/temario.html" target="_blank" rel="noopener">Aplicaciones con IA</a>.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Forzar un JSON aunque la temperatura sea alta</h3></div><p>Vas a pedir lo mismo dos veces, con temperatura 1,5 para que el modelo se desordene: una vez sin restricción y otra con un esquema JSON en el campo <code>format</code>. Usa el mismo modelo de la práctica anterior. Guarda el script como <code>formato.py</code>:</p><div class="code-copia code-lineas"><pre><code><span class="ln">import json, urllib.request</span>
+<span class="ln"></span>
+<span class="ln">URL = "http://localhost:11434/api/generate"</span>
+<span class="ln">ESQUEMA = {"type": "object",</span>
+<span class="ln">           "properties": {"dia": {"type": "string"},</span>
+<span class="ln">                          "atardecer": {"type": "string"},</span>
+<span class="ln">                          "noche": {"type": "string"}},</span>
+<span class="ln">           "required": ["dia", "atardecer", "noche"]}</span>
+<span class="ln"></span>
+<span class="ln">def pedir(formato):</span>
+<span class="ln">    cuerpo = {"model": "llama3.2:1b", "stream": False,</span>
+<span class="ln">              "prompt": "¿De qué color es el cielo de día, al atardecer y de noche? "</span>
+<span class="ln">                        "Responde en JSON con las claves dia, atardecer y noche.",</span>
+<span class="ln">              "options": {"temperature": 1.5, "seed": 4, "num_predict": 120}}</span>
+<span class="ln">    if formato:</span>
+<span class="ln">        cuerpo["format"] = ESQUEMA</span>
+<span class="ln">    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),</span>
+<span class="ln">                                    headers={"Content-Type": "application/json"})</span>
+<span class="ln">    with urllib.request.urlopen(pedido) as r:</span>
+<span class="ln">        return json.load(r)["response"]</span>
+<span class="ln"></span>
+<span class="ln">for formato in (False, True):</span>
+<span class="ln">    texto = pedir(formato)</span>
+<span class="ln">    try:</span>
+<span class="ln">        json.loads(texto)</span>
+<span class="ln">        valido = "JSON válido"</span>
+<span class="ln">    except ValueError:</span>
+<span class="ln">        valido = "NO es JSON válido"</span>
+<span class="ln">    print(f"--- con esquema: {formato} → {valido}\n{texto}\n")</span></code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python formato.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 formato.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Mira si la primera respuesta, sin esquema, se puede leer como JSON.</span></li><li><span>Cambia <code>seed</code> a 5, 6 y 7 y vuelve a ejecutar.</span></li></ol><p><b>Qué observar:</b> sin esquema, con temperatura alta, la respuesta a veces trae texto antes o después del JSON, comillas mal puestas o claves con otro nombre, y el programa falla. Con esquema, siempre sale un JSON con las tres claves, aunque los colores que diga puedan ser raros: la restricción controla la forma, no la verdad.</p></div></section>
 <section><h2>Decodificación especulativa</h2><div class="prose"><p>La decodificación es lenta porque cada token exige una pasada completa del modelo grande, y esa pasada está limitada por la memoria, no por el cálculo: la GPU podría verificar varios tokens en el mismo tiempo que tarda en producir uno. La <b>decodificación especulativa</b> (<i>speculative decoding</i>), propuesta en 2022 por dos equipos de Google y DeepMind casi al mismo tiempo, aprovecha esa capacidad sobrante.</p><p>La idea: un <b>modelo borrador</b> (<i>draft model</i>), mucho más pequeño y rápido, adivina los próximos <i>k</i> tokens. Después, el modelo grande los revisa todos en una sola pasada, como si fueran parte de la entrada (igual que en el prellenado). Acepta los que habría escrito él y, en el primer desacuerdo, descarta el resto y pone su propio token.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como un practicante que redacta el borrador de una carta y un abogado que la revisa. El abogado lee las cuatro frases del borrador de una sola vez, firma las tres primeras y corrige la cuarta. Escribir él mismo cada frase le habría tomado cuatro veces más.</p></div><figure class="fig fig-flujo" id="06-diagrama-4"><div class="lienzo"><svg viewBox="0 0 920 430" style="min-width:760px" role="img" aria-label="Diagrama de secuencia de una ronda de decodificación especulativa. El modelo borrador, pequeño y rápido, propone cuatro tokens: dispersa, más, la, roja. El modelo grande los revisa los cuatro en una sola pasada, acepta los tres primeros, rechaza roja y escribe en su lugar luz. El texto avanza cuatro tokens con una sola pasada del modelo grande">
 <defs>
 <marker id="g6d4-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
