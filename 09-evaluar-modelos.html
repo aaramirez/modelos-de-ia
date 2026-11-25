@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evaluar modelos · Modelos de IA · Modelos de IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Cómo funciona por dentro un modelo de lenguaje: tokens, embeddings, atención y el Transformer, cómo se entrena y se alinea, cómo genera y razona, y cómo se evalúa y se elige.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="evaluar-modelos">
+<header class="topbar"><a class="brand" href="index.html">Modelos de <b>IA</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 09 DE 10</span><h1>Evaluar modelos: benchmarks, contaminación, personas y jueces</h1><p class="lede">Cada modelo nuevo llega con una tabla de números donde gana en casi todo. Este capítulo abre esa tabla: qué mide cada benchmark, por qué se satura, cómo se cuela el examen en los datos de entrenamiento, qué aportan las arenas de personas y los modelos jueces, y cuánto de una diferencia es solo ruido.</p></header>
+<section><h2>Qué es un benchmark: preguntas, respuestas y una métrica</h2><div class="prose"><p>En los capítulos anteriores seguiste la pregunta del curso, «¿De qué color es el cielo?», por dentro del modelo: se partió en tokens, se volvió vectores, pasó por las capas de atención y salió, muestreada token por token, como «El cielo es azul.». Ahora la pregunta cambia de lado: ya no es «cómo responde el modelo», sino <b>«qué tan bien responde, y comparado con qué»</b>.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un examen de admisión a la universidad no mide la inteligencia de nadie. Mide cuántas preguntas de ese examen, en ese formato y con ese tiempo, responde bien una persona un día dado. Sirve para comparar a miles de aspirantes con la misma vara, y aun así todos conocemos a alguien que sacó un puntaje altísimo porque practicó con los exámenes de años anteriores. Un benchmark es exactamente eso para un modelo.</p></div><div class="prose"><p>Un <b>benchmark</b> (<i>benchmark</i>, prueba de referencia) tiene tres piezas: un <b>conjunto de preguntas</b> (<i>dataset</i>), las <b>respuestas esperadas</b> (o una forma de comprobarlas, como pruebas unitarias para el código) y una <b>métrica</b> (<i>metric</i>) que convierte las respuestas del modelo en un número, casi siempre el porcentaje de aciertos. Entre esas piezas hay una cuarta que casi nunca aparece en la tabla y que decide mucho: el <b>protocolo</b> (<i>evaluation protocol</i>), es decir, cómo se le hace la pregunta al modelo.</p><p>El protocolo incluye la plantilla del prompt, cuántos ejemplos resueltos se le muestran antes (<i>few-shot</i>, con pocos ejemplos, o <i>zero-shot</i>, sin ejemplos), si se le pide razonar paso a paso, la temperatura, cuántos tokens puede gastar pensando y cómo se <b>extrae</b> la respuesta del texto que genera. Esto último parece un detalle y no lo es: si la respuesta correcta es «B» y el modelo escribe «La opción correcta es la b)», un extractor estricto lo cuenta como error.</p></div><figure class="fig fig-flujo" id="09-diagrama-1"><div class="lienzo"><svg viewBox="0 0 960 360" style="min-width:760px" role="img" aria-label="Cómo un benchmark convierte preguntas en un número. Seis pasos: la pregunta de opción múltiple con su respuesta esperada, el protocolo con plantilla, ejemplos y temperatura, el modelo que genera texto, la respuesta generada, el extractor que saca la letra y la compara con la esperada, y el puntaje final de 87,3 por ciento con un margen de 1,8 puntos sobre 1.319 preguntas. Debajo, en rojo, dónde se cuela la variación: el formato del prompt, la semilla, el extractor y el tamaño del conjunto.">
+<defs>
+<marker id="m9d1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+</defs>
+
+<path d="M714 56 V30 H90 V56" class="ln ln-d" style="stroke-width:1.6" marker-end="url(#m9d1-a)"/>
+<rect x="250" y="21" width="300" height="18" class="caja" style="stroke:none"/>
+<text x="400" y="34" class="t t-s t-m" text-anchor="middle">se repite con cada pregunta del conjunto</text>
+
+<rect x="22" y="60" width="136" height="150" rx="12" class="caja" style="stroke-width:1.6"/>
+<text x="34" y="82" class="t t-xs t-b t-m">① PREGUNTA</text>
+<text x="34" y="104" class="t t-s">¿De qué color es</text>
+<text x="34" y="119" class="t t-s">el cielo de día?</text>
+<text x="34" y="141" class="t t-s t-mono">A) rojo  B) azul</text>
+<text x="34" y="156" class="t t-s t-mono">C) verde D) gris</text>
+<text x="34" y="190" class="t t-s t-m">esperada: B</text>
+<line x1="158" y1="135" x2="174" y2="135" class="ln" style="stroke-width:2" marker-end="url(#m9d1-a)"/>
+
+<rect x="178" y="60" width="136" height="150" rx="12" class="c-fis" style="stroke-width:1.6"/>
+<text x="190" y="82" class="t t-xs t-b k-fis">② PROTOCOLO</text>
+<text x="190" y="104" class="t t-s">plantilla del prompt</text>
+<text x="190" y="122" class="t t-s">5 ejemplos resueltos</text>
+<text x="190" y="140" class="t t-s">«piensa paso a paso»</text>
+<text x="190" y="158" class="t t-s">temperatura 0</text>
+<text x="190" y="190" class="t t-s t-m">casi nunca se publica</text>
+<line x1="314" y1="135" x2="330" y2="135" class="ln" style="stroke-width:2" marker-end="url(#m9d1-a)"/>
+
+<rect x="334" y="60" width="136" height="150" rx="12" class="c-red" style="stroke-width:1.6"/>
+<text x="346" y="82" class="t t-xs t-b k-red">③ MODELO</text>
+<text x="346" y="104" class="t t-s">lee el prompt</text>
+<text x="346" y="122" class="t t-s">y genera texto</text>
+<text x="346" y="140" class="t t-s">token por token</text>
+<text x="346" y="190" class="t t-s t-m">el que se evalúa</text>
+<line x1="470" y1="135" x2="486" y2="135" class="ln" style="stroke-width:2" marker-end="url(#m9d1-a)"/>
+
+<rect x="490" y="60" width="136" height="150" rx="12" class="c-apl" style="stroke-width:1.6"/>
+<text x="502" y="82" class="t t-xs t-b k-apl">④ RESPUESTA</text>
+<text x="502" y="104" class="t t-s">«El cielo es azul,</text>
+<text x="502" y="122" class="t t-s">así que la</text>
+<text x="502" y="140" class="t t-s">respuesta es la b)»</text>
+<text x="502" y="190" class="t t-s t-m">texto libre</text>
+<line x1="626" y1="135" x2="642" y2="135" class="ln" style="stroke-width:2" marker-end="url(#m9d1-a)"/>
+
+<rect x="646" y="60" width="136" height="150" rx="12" class="caja" style="stroke-width:1.6"/>
+<text x="658" y="82" class="t t-xs t-b t-m">⑤ EXTRAER Y</text>
+<text x="658" y="96" class="t t-xs t-b t-m">COMPARAR</text>
+<text x="658" y="118" class="t t-s">extractor: «B»</text>
+<text x="658" y="136" class="t t-s">esperada: «B»</text>
+<text x="658" y="160" class="t t-b">acierto: 1</text>
+<text x="658" y="190" class="t t-s t-m">la métrica</text>
+<line x1="782" y1="135" x2="798" y2="135" class="ln" style="stroke-width:2" marker-end="url(#m9d1-a)"/>
+
+<rect x="802" y="60" width="136" height="150" rx="12" class="caja" style="stroke-dasharray:5 4;stroke-width:1.6"/>
+<text x="814" y="82" class="t t-xs t-b t-m">⑥ PUNTAJE</text>
+<text x="814" y="122" class="t t-b t-mono" style="font-size:22px">87,3 %</text>
+<text x="814" y="146" class="t t-b k-warm">± 1,8 puntos</text>
+<text x="814" y="172" class="t t-s">sobre 1.319</text>
+<text x="814" y="187" class="t t-s">preguntas</text>
+
+<text x="22" y="252" class="t t-xs t-b k-warm">DÓNDE SE CUELA LA VARIACIÓN</text>
+<line x1="246" y1="210" x2="246" y2="270" class="ln s-warm ln-d"/>
+<circle cx="246" cy="274" r="4" class="k-warm"/>
+<text x="178" y="296" class="t t-s">el formato del prompt</text>
+<text x="178" y="311" class="t t-s">cambia el puntaje: hasta</text>
+<text x="178" y="326" class="t t-s">76 puntos en un estudio</text>
+<line x1="402" y1="210" x2="402" y2="270" class="ln s-warm ln-d"/>
+<circle cx="402" cy="274" r="4" class="k-warm"/>
+<text x="334" y="296" class="t t-s">semilla y temperatura:</text>
+<text x="334" y="311" class="t t-s">otra corrida da</text>
+<text x="334" y="326" class="t t-s">otro número</text>
+<line x1="714" y1="210" x2="714" y2="270" class="ln s-warm ln-d"/>
+<circle cx="714" cy="274" r="4" class="k-warm"/>
+<text x="646" y="296" class="t t-s">un extractor estricto</text>
+<text x="646" y="311" class="t t-s">cuenta «la b)» como</text>
+<text x="646" y="326" class="t t-s">error</text>
+<line x1="870" y1="210" x2="870" y2="270" class="ln s-warm ln-d"/>
+<circle cx="870" cy="274" r="4" class="k-warm"/>
+<text x="802" y="296" class="t t-s">el tamaño fija el</text>
+<text x="802" y="311" class="t t-s">margen: ±6 con 198</text>
+<text x="802" y="326" class="t t-s">preguntas</text>
+</svg></div><figcaption><b>De una pregunta a un número con margen.</b> Se lee de izquierda a derecha. Cada pregunta del conjunto pasa por la plantilla del protocolo (con sus ejemplos y su formato), llega al modelo, que genera un texto; un extractor saca la respuesta y la métrica la compara con la esperada. Abajo, en rojo, los puntos donde se cuela la variación: el formato del prompt, la semilla del muestreo, el extractor y el tamaño del conjunto, que fija el margen de error del número final.</figcaption></figure><div class="prose"><p>Hay dos grandes familias de métricas. Las de <b>respuesta verificable</b> comparan contra algo exacto: la letra de una opción múltiple, el número final de un problema, el código que pasa sus pruebas. Son baratas y repetibles. Las de <b>respuesta abierta</b> (un resumen, una explicación, una conversación) no tienen una única respuesta correcta y necesitan un juez: una persona o un modelo. Las dos aparecen en este capítulo.</p><p>Para el código y los agentes se usan métricas propias. <b>pass@k</b> (<i>pass at k</i>) es la probabilidad de que al menos una de <i>k</i> respuestas generadas pase las pruebas: con <i>k</i> = 1 mide si acierta a la primera; con <i>k</i> = 10, si acierta en alguno de diez intentos, que es mucho más fácil. Su pariente <b>pass^k</b> (<i>pass hat k</i>), propuesta en 2024 con el benchmark de agentes τ-bench, pide lo contrario: que acierte en <b>todos</b> los <i>k</i> intentos. Un agente que resuelve una tarea 7 de cada 10 veces tiene un pass@1 de 70 %, pero su pass^8 es apenas 0,7⁸ ≈ 6 %: para un sistema que tiene que funcionar siempre, la segunda cifra es la que importa.</p></div></section>
+<section><h2>Los más citados: conocimiento, matemática, código, agentes</h2><div class="prose"><p>Las tablas de los anuncios repiten unos pocos nombres. No hace falta memorizarlos, pero sí saber qué tipo de habilidad mide cada familia y qué tamaño tiene, porque el tamaño fija cuánto se puede confiar en una diferencia.</p><div class="tbl"><table><thead><tr><th>Familia</th><th>Ejemplos (año)</th><th>Qué mide</th><th>Tamaño aproximado</th></tr></thead><tbody><tr><td>Conocimiento general</td><td>MMLU (2020), MMLU-Pro (2024)</td><td>Opción múltiple de 57 materias, de derecho a virología</td><td>unas 14.000 preguntas de prueba</td></tr><tr><td>Conocimiento experto</td><td>GPQA (2023), su subconjunto Diamond</td><td>Preguntas de biología, física y química que no se resuelven buscando en la web</td><td>198 en Diamond</td></tr><tr><td>Matemática escolar</td><td>GSM8K (2021)</td><td>Problemas de palabras de primaria y secundaria</td><td>1.319 de prueba</td></tr><tr><td>Matemática de competencia</td><td>MATH (2021), AIME</td><td>Problemas de olimpiada; el AIME es un examen real de 15 problemas</td><td>30 problemas por año en el AIME</td></tr><tr><td>Código</td><td>HumanEval (2021), LiveCodeBench</td><td>Funciones que deben pasar pruebas unitarias</td><td>164 en HumanEval</td></tr><tr><td>Ingeniería de software</td><td>SWE-bench (2023), SWE-bench Verified (2024)</td><td>Arreglar un <i>issue</i> real de un repositorio de GitHub</td><td>500 en Verified</td></tr><tr><td>Agentes</td><td>τ-bench (2024), GAIA (2023), Terminal-Bench</td><td>Completar tareas con herramientas, en varios pasos</td><td>de decenas a cientos de tareas</td></tr><tr><td>Lo más difícil</td><td>Humanity's Last Exam (2025)</td><td>Preguntas de expertos en el borde del conocimiento</td><td>unas 2.500 públicas</td></tr></tbody></table></div><p>Los tamaños vienen de los artículos originales y de las páginas públicas de cada benchmark; los resultados de cada modelo cambian cada mes, así que este capítulo no da ninguno. Si quieres ver resultados actuales con su fecha, el tablero público de <a href="https://epoch.ai/benchmarks" target="_blank" rel="noopener">Epoch AI</a> los recopila con la metodología de cada uno.</p><p>Fíjate en la última columna. Una diferencia de un punto en MMLU son unas 140 preguntas: puede significar algo. Un punto en el AIME de un año no existe: cada problema vale 3,3 puntos. En GPQA Diamond, un problema vale medio punto, y la diferencia entre dos modelos que aciertan el 70 % puede ser de solo cuatro preguntas. La sección de varianza vuelve sobre esto con un laboratorio.</p><p>La evolución de la tabla también cuenta una historia. Los primeros benchmarks medían si el modelo <b>sabía</b> (conocimiento), después si <b>razonaba</b> (matemática con pasos), después si <b>producía algo que funciona</b> (código con pruebas) y, desde 2024, si <b>actúa</b> (agentes que usan herramientas y terminan una tarea). Cada familia nació porque la anterior dejó de distinguir entre los mejores modelos.</p></div></section>
+<section><h2>Saturación y contaminación: cuando el examen ya estaba en los datos</h2><div class="prose"><p>Un benchmark se <b>satura</b> (<i>saturation</i>) cuando los mejores modelos sacan puntajes tan altos que ya no se distinguen entre sí. MMLU y GSM8K pasaron de ser difíciles a tener a los mejores modelos por encima del 90 % en unos cuatro años. Arriba de cierto punto, lo que queda por acertar son en buena parte <b>preguntas mal hechas</b>: un estudio de 2024 revisó a mano una muestra de MMLU, estimó que cerca del 6,5 % de sus preguntas tiene errores en la respuesta esperada o en el enunciado, y en la materia de virología encontró errores en el 57 % de las revisadas (<a href="https://arxiv.org/abs/2406.04127" target="_blank" rel="noopener">Are We Done with MMLU?</a>). Un modelo que «sube» de 91 a 93 en un examen con 6 % de errores puede estar aprendiendo las respuestas equivocadas.</p><p>La <b>contaminación</b> (<i>data contamination</i>) es más grave: las preguntas del benchmark, o sus respuestas, estaban en los datos de entrenamiento. Nadie tiene que hacer trampa a propósito. Los modelos se preentrenan con billones de tokens de la web (capítulo 4), y la web está llena de copias de los benchmarks: repositorios con los datos, foros donde se discuten las soluciones, páginas que los traducen. Un modelo que vio la pregunta y su respuesta puede acertarla de memoria, sin la habilidad que la pregunta pretendía medir.</p></div><div class="analogia"><b>Imagínalo así</b><p>Si el examen final de un curso es siempre el mismo y circula entre los estudiantes, la nota deja de medir cuánto aprendieron y empieza a medir quién consiguió la copia. El profesor no lo nota mirando las notas: lo nota cuando cambia las preguntas y el promedio se cae.</p></div><div class="prose"><p>Eso es justo lo que se hace para detectarla. En 2024, un equipo escribió <b>GSM1k</b>, unos 1.250 problemas nuevos con el mismo estilo y la misma dificultad que GSM8K, y comparó: varias familias de modelos perdieron hasta 8 puntos con las preguntas nuevas, y la caída se relacionaba con cuánto «recordaba» cada modelo los problemas originales; los modelos más avanzados, en cambio, casi no cayeron (<a href="https://arxiv.org/abs/2405.00332" target="_blank" rel="noopener">el estudio</a>). Las defensas que se usan hoy son de cuatro tipos:</p><ul><li><b>Detección por solapamiento</b>: buscar en los datos de entrenamiento secuencias largas idénticas a las del benchmark (por ejemplo, 13 tokens seguidos) y reportar el puntaje sin esas preguntas.</li><li><b>Cadenas canario</b> (<i>canary strings</i>): un identificador único escrito en los archivos del benchmark, para que quien arma un corpus pueda filtrarlos y para que se pueda preguntar al modelo si lo conoce.</li><li><b>Conjuntos privados o reservados</b> (<i>held-out</i>): parte de las preguntas nunca se publica y solo la corre quien administra el benchmark.</li><li><b>Benchmarks vivos</b> (<i>live benchmarks</i>), como LiveBench o LiveCodeBench: agregan preguntas nuevas cada mes y fechan cada una. Así se puede mirar solo lo publicado <b>después</b> de la fecha de corte de los datos del modelo, que no pudo haberlo visto.</li></ul></div><figure class="fig fig-esquema" id="09-diagrama-2"><div class="lienzo"><svg viewBox="0 0 960 350" style="min-width:760px" role="img" aria-label="Cómo el examen llega a los datos de entrenamiento. Un benchmark publicado se copia en un repositorio, en un foro con soluciones y en una traducción; esas copias entran al rastreo de la web con que se preentrena el modelo. Una línea vertical marca la fecha de corte de los datos del modelo: las preguntas publicadas antes pudo verlas; las de un benchmark vivo, publicadas después, no.">
+<defs>
+<marker id="m9d2-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="m9d2-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-tra"/></marker>
+</defs>
+
+<line x1="636" y1="30" x2="636" y2="282" class="ln s-warm" style="stroke-width:2;stroke-dasharray:6 4"/>
+<text x="644" y="40" class="t t-xs t-b k-warm">FECHA DE CORTE</text>
+<text x="644" y="54" class="t t-s k-warm">de los datos del modelo</text>
+
+<rect x="24" y="96" width="160" height="70" rx="12" class="caja" style="stroke-dasharray:5 4;stroke-width:1.6"/>
+<text x="36" y="118" class="t t-xs t-b t-m">BENCHMARK</text>
+<text x="36" y="138" class="t t-s">preguntas y respuestas</text>
+<text x="36" y="153" class="t t-s">publicadas en la web</text>
+
+<line x1="184" y1="118" x2="222" y2="86" class="ln" marker-end="url(#m9d2-a)"/>
+<line x1="184" y1="131" x2="222" y2="131" class="ln" marker-end="url(#m9d2-a)"/>
+<line x1="184" y1="144" x2="222" y2="176" class="ln" marker-end="url(#m9d2-a)"/>
+<rect x="226" y="66" width="168" height="34" rx="8" class="c-fis"/>
+<text x="238" y="88" class="t t-s">repositorio con los datos</text>
+<rect x="226" y="114" width="168" height="34" rx="8" class="c-fis"/>
+<text x="238" y="136" class="t t-s">foro con las soluciones</text>
+<rect x="226" y="162" width="168" height="34" rx="8" class="c-fis"/>
+<text x="238" y="184" class="t t-s">traducción en un blog</text>
+
+<line x1="394" y1="83" x2="428" y2="110" class="ln" marker-end="url(#m9d2-a)"/>
+<line x1="394" y1="131" x2="428" y2="131" class="ln" marker-end="url(#m9d2-a)"/>
+<line x1="394" y1="179" x2="428" y2="152" class="ln" marker-end="url(#m9d2-a)"/>
+<rect x="432" y="88" width="176" height="86" rx="12" class="c-tra" style="stroke-width:1.6"/>
+<text x="444" y="110" class="t t-xs t-b k-tra">RASTREO DE LA WEB</text>
+<text x="444" y="130" class="t t-s">billones de tokens para</text>
+<text x="444" y="145" class="t t-s">preentrenar, con copias</text>
+<text x="444" y="160" class="t t-s">del examen adentro</text>
+
+<line x1="608" y1="131" x2="684" y2="131" class="ln s-tra" style="stroke-width:2" marker-end="url(#m9d2-t)"/>
+<rect x="688" y="88" width="248" height="86" rx="12" class="c-red" style="stroke-width:1.6"/>
+<text x="700" y="110" class="t t-xs t-b k-red">MODELO</text>
+<text x="700" y="130" class="t t-s">aprendió de todo lo publicado</text>
+<text x="700" y="145" class="t t-s">antes de su fecha de corte,</text>
+<text x="700" y="160" class="t t-s">quizás también las respuestas</text>
+
+<line x1="24" y1="232" x2="930" y2="232" class="ln" style="stroke-width:1.8" marker-end="url(#m9d2-a)"/>
+<text x="930" y="222" class="t t-s t-m" text-anchor="end">tiempo</text>
+<circle cx="104" cy="232" r="5" class="k-warm"/>
+<text x="104" y="216" class="t t-s t-m" text-anchor="middle">se publica</text>
+
+<text x="24" y="270" class="t t-xs t-b t-m">PREGUNTAS PUBLICADAS ANTES</text>
+<rect x="24" y="282" width="110" height="28" rx="6" class="caja" style="stroke:var(--warm)"/>
+<text x="79" y="300" class="t t-s" text-anchor="middle">del examen</text>
+<rect x="144" y="282" width="110" height="28" rx="6" class="caja" style="stroke:var(--warm)"/>
+<text x="199" y="300" class="t t-s" text-anchor="middle">de un foro</text>
+<rect x="264" y="282" width="110" height="28" rx="6" class="caja" style="stroke:var(--warm)"/>
+<text x="319" y="300" class="t t-s" text-anchor="middle">de un libro</text>
+<text x="24" y="334" class="t t-s k-warm">pudo verlas: acertar no prueba la habilidad</text>
+<text x="648" y="270" class="t t-xs t-b t-m">BENCHMARK VIVO</text>
+<rect x="648" y="282" width="86" height="28" rx="6" class="caja" style="stroke:var(--good);stroke-width:1.6"/>
+<text x="691" y="300" class="t t-s" text-anchor="middle">mes 1</text>
+<rect x="744" y="282" width="86" height="28" rx="6" class="caja" style="stroke:var(--good);stroke-width:1.6"/>
+<text x="787" y="300" class="t t-s" text-anchor="middle">mes 2</text>
+<rect x="840" y="282" width="86" height="28" rx="6" class="caja" style="stroke:var(--good);stroke-width:1.6"/>
+<text x="883" y="300" class="t t-s" text-anchor="middle">mes 3</text>
+<text x="648" y="334" class="t t-s" style="fill:var(--good)">preguntas nuevas: no pudo verlas</text>
+</svg></div><figcaption><b>Cómo el examen llega a los datos.</b> La línea de tiempo corre hacia la derecha. El benchmark se publica, se copia en repositorios, foros y traducciones, y esas copias entran en el rastreo de la web que se usa para preentrenar. El modelo tiene una fecha de corte de datos: todo lo que se publicó antes pudo verlo. A la derecha de la fecha de corte, las preguntas de un benchmark vivo son las únicas que el modelo seguro no vio, y su puntaje en ellas es el más limpio.</figcaption></figure><div class="prose"><p>Detrás de la saturación y la contaminación hay un principio con nombre propio, la <b>ley de Goodhart</b> (<i>Goodhart's law</i>): cuando una medida se convierte en objetivo, deja de ser una buena medida. Si un laboratorio sabe que su modelo se juzgará por cinco números, todo su proceso empuja, aunque sea sin querer, hacia esos cinco números: los datos que elige, los ajustes que prueba, la versión que publica.</p></div></section>
+<section><h2>Evaluación humana y arenas de comparación</h2><div class="prose"><p>Para las respuestas abiertas, el juez de referencia es una persona. Pedirle a una persona una nota de 1 a 10 funciona mal: cada quien usa la escala a su manera y la misma persona cambia de criterio en una tarde. Funciona mucho mejor una <b>comparación por pares</b> (<i>pairwise comparison</i>): dos respuestas a la misma pregunta, lado a lado, y una sola decisión, «¿cuál es mejor?».</p><p>Sobre esa idea se armó en 2023 <b>Chatbot Arena</b>, hoy LMArena, la tabla de posiciones más citada. Su flujo es simple. Una persona escribe cualquier pregunta; la arena se la manda a dos modelos elegidos al azar sin decir cuáles son; la persona lee las dos respuestas y vota por una, por un empate o por «las dos son malas»; recién después se revelan los nombres. Con millones de votos, un modelo estadístico convierte las victorias y derrotas en un puntaje por modelo.</p></div><figure class="fig fig-flujo" id="09-diagrama-3"><div class="lienzo"><svg viewBox="0 0 960 470" style="min-width:760px" role="img" aria-label="Diagrama de secuencia de una batalla en la arena. La persona escribe su pregunta; la arena la manda a dos modelos anónimos; cada uno responde; la persona ve las dos respuestas lado a lado y vota; recién entonces se revelan los nombres. Abajo, el modelo de Bradley-Terry convierte millones de votos en un puntaje por modelo con su intervalo de confianza; dos modelos con intervalos superpuestos están empatados.">
+<defs>
+<marker id="m9d3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="m9d3-f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-fis"/></marker>
+<marker id="m9d3-p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-apl"/></marker>
+<marker id="m9d3-w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-warm"/></marker>
+</defs>
+
+<rect x="40" y="18" width="140" height="44" rx="10" class="caja" style="stroke-width:1.6"/>
+<text x="110" y="45" class="t t-b" text-anchor="middle">Persona</text>
+<rect x="260" y="18" width="140" height="44" rx="10" class="caja" style="stroke-dasharray:5 4;stroke-width:1.6"/>
+<text x="330" y="45" class="t t-b" text-anchor="middle">Arena</text>
+<rect x="480" y="18" width="140" height="44" rx="10" class="c-red" style="stroke-width:1.6"/>
+<text x="550" y="38" class="t t-b" text-anchor="middle">Modelo A</text>
+<text x="550" y="54" class="t t-s t-m" text-anchor="middle">nombre oculto</text>
+<rect x="660" y="18" width="140" height="44" rx="10" class="c-red" style="stroke-width:1.6"/>
+<text x="730" y="38" class="t t-b" text-anchor="middle">Modelo B</text>
+<text x="730" y="54" class="t t-s t-m" text-anchor="middle">nombre oculto</text>
+<line x1="110" y1="62" x2="110" y2="346" class="vida"/>
+<line x1="330" y1="62" x2="330" y2="346" class="vida"/>
+<line x1="550" y1="62" x2="550" y2="346" class="vida"/>
+<line x1="730" y1="62" x2="730" y2="346" class="vida"/>
+
+<line x1="110" y1="100" x2="326" y2="100" class="ln s-fis" style="stroke-width:2" marker-end="url(#m9d3-f)"/>
+<text x="118" y="92" class="t t-s">① «¿De qué color es el cielo?»</text>
+
+<line x1="330" y1="134" x2="546" y2="134" class="ln s-fis" style="stroke-width:2" marker-end="url(#m9d3-f)"/>
+<line x1="330" y1="150" x2="726" y2="150" class="ln s-fis" style="stroke-width:2" marker-end="url(#m9d3-f)"/>
+<text x="338" y="126" class="t t-s">② la misma pregunta a los dos</text>
+
+<line x1="550" y1="192" x2="334" y2="192" class="ln s-apl" style="stroke-width:2" marker-end="url(#m9d3-p)"/>
+<text x="542" y="184" class="t t-s" text-anchor="end">③ «Azul, por la dispersión…»</text>
+<line x1="730" y1="222" x2="334" y2="222" class="ln s-apl" style="stroke-width:2" marker-end="url(#m9d3-p)"/>
+<text x="722" y="214" class="t t-s" text-anchor="end">③ «De día suele ser azul, porque…» (más larga)</text>
+
+<line x1="330" y1="262" x2="114" y2="262" class="ln" style="stroke-width:2" marker-end="url(#m9d3-a)"/>
+<text x="322" y="254" class="t t-s" text-anchor="end">④ A y B lado a lado</text>
+
+<line x1="110" y1="298" x2="326" y2="298" class="ln s-warm" style="stroke-width:2" marker-end="url(#m9d3-w)"/>
+<text x="118" y="290" class="t t-s k-warm">⑤ voto: «B es mejor»</text>
+
+<line x1="330" y1="334" x2="114" y2="334" class="ln ln-d" style="stroke-width:1.6" marker-end="url(#m9d3-a)"/>
+<text x="322" y="326" class="t t-s t-m" text-anchor="end">⑥ se revelan los nombres</text>
+
+<rect x="840" y="80" width="8" height="266" rx="3" class="caja" style="stroke-dasharray:3 2"/>
+<text x="858" y="200" class="t t-xs t-b t-m">BATALLA</text>
+<text x="858" y="216" class="t t-s">un voto por</text>
+<text x="858" y="231" class="t t-s">pregunta</text>
+<rect x="840" y="368" width="8" height="84" rx="3" class="c-tra"/>
+<text x="858" y="400" class="t t-xs t-b k-tra">CÁLCULO</text>
+<text x="858" y="416" class="t t-s">millones</text>
+<text x="858" y="431" class="t t-s">de votos</text>
+
+<rect x="40" y="364" width="760" height="92" rx="12" class="caja" style="stroke-width:1.4"/>
+<text x="56" y="386" class="t t-xs t-b t-m">BRADLEY-TERRY: PUNTAJE E INTERVALO AL 95 %</text>
+<text x="56" y="408" class="t t-s">P(A le gana a B) depende solo de la</text>
+<text x="56" y="423" class="t t-s">diferencia de puntajes: 100 puntos ≈ 64 %,</text>
+<text x="56" y="438" class="t t-s">20 puntos ≈ 53 % de las batallas</text>
+
+<text x="420" y="390" class="t t-s t-m">Modelo X</text>
+<line x1="560" y1="384" x2="700" y2="384" class="ln s-red" style="stroke-width:6;stroke-linecap:round;opacity:.45"/>
+<circle cx="630" cy="384" r="4" class="k-red"/>
+<text x="420" y="418" class="t t-s t-m">Modelo Y</text>
+<line x1="540" y1="412" x2="690" y2="412" class="ln s-red" style="stroke-width:6;stroke-linecap:round;opacity:.45"/>
+<circle cx="615" cy="412" r="4" class="k-red"/>
+<text x="420" y="446" class="t t-s k-warm">se superponen: empatados</text>
+</svg></div><figcaption><b>Una batalla en la arena.</b> Participantes arriba: la persona, la arena y dos modelos anónimos. ① La persona escribe su pregunta. ② La arena la manda a los dos modelos sin revelar cuáles son. ③ Cada modelo responde. ④ La persona ve las dos respuestas lado a lado y ⑤ vota. ⑥ Solo entonces se revelan los nombres, y el voto se suma a la tabla. Abajo, la fase de cálculo: el modelo de Bradley-Terry convierte millones de votos en un puntaje con su intervalo de confianza, y dos modelos cuyos intervalos se superponen quedan empatados.</figcaption></figure><div class="prose"><p>Ese modelo estadístico se llama <b>Bradley-Terry</b> (<i>Bradley-Terry model</i>) y es primo del <b>Elo</b> del ajedrez: a cada modelo le asigna una fuerza, y la probabilidad de que A le gane a B depende solo de la diferencia de fuerzas. Una diferencia de 100 puntos significa que el de arriba gana unas 64 de cada 100 batallas; una de 20 puntos, apenas 53 de cada 100. Por eso la tabla publica un <b>intervalo de confianza</b> (<i>confidence interval</i>) junto a cada puntaje, y dos modelos cuyos intervalos se tocan están, para efectos prácticos, empatados.</p></div><div class="practica"><div class="practica-title"><span class="tag">En el navegador</span><h3>Lee una tabla de la arena con sus márgenes</h3></div><p>Vas a mirar la tabla pública de la arena y a buscar empates que el orden esconde. Solo necesitas el navegador.</p><ol class="steps"><li><span>Abre la <a href="https://huggingface.co/spaces/lmarena-ai/chatbot-arena-leaderboard" target="_blank" rel="noopener">tabla de la arena publicada en Hugging Face</a> (también está en el sitio de LMArena).</span></li><li><span>Elige una categoría (por ejemplo, texto general o código) y anota los cinco primeros modelos con su puntaje y su intervalo (aparece como «95 % CI» o como un ± junto al puntaje).</span></li><li><span>Para cada par de vecinos, comprueba si sus intervalos se superponen.</span></li><li><span>Busca la opción de control de estilo (<i>style control</i>), si está disponible, y mira si el orden cambia al activarla.</span></li></ol><p><b>Qué observar:</b> varios de los primeros puestos suelen tener intervalos que se superponen, así que su orden es, en buena parte, ruido. Si el control de estilo mueve posiciones, una parte de la ventaja venía de respuestas más largas o con más formato, no de respuestas mejores. Los modelos y los números cambian cada semana; lo que se repite es el patrón.</p></div><div class="prose"><p>La arena tiene virtudes que ningún benchmark fijo tiene: las preguntas son nuevas todo el tiempo (difíciles de contaminar), vienen de gente real y miden algo cercano a «me gustó más». También tiene límites conocidos:</p><ul><li><b>Mide preferencia, no corrección.</b> Una persona que pregunta por un dato que no conoce no puede verificar cuál respuesta es exacta; tiende a premiar la que suena más segura, mejor formateada y más larga. Por eso la arena agregó en 2024 un <b>control de estilo</b> que descuenta el efecto de la longitud y del formato.</li><li><b>Las preguntas no son las tuyas.</b> Quien vota en la arena pregunta lo que le da curiosidad, no lo que tu empresa necesita resolver.</li><li><b>Se puede optimizar para ella.</b> Un estudio de 2025, <a href="https://arxiv.org/abs/2504.20879" target="_blank" rel="noopener">The Leaderboard Illusion</a>, documentó que algunos laboratorios probaban en privado muchas variantes antes de un lanzamiento (contaron 27 de un solo laboratorio) y publicaban solo la mejor, y que los modelos cerrados recibían más batallas que los abiertos. La arena respondió públicamente al estudio, y la lección queda: una tabla de posiciones también es un objetivo, y la ley de Goodhart aplica.</li></ul></div></section>
+<section><h2>Modelos como jueces y sus sesgos</h2><div class="prose"><p>Pagar a personas para comparar miles de respuestas es lento y caro. La alternativa que se volvió estándar desde 2023 es el <b>modelo como juez</b> (<i>LLM-as-a-judge</i>): un modelo fuerte recibe la pregunta, una o dos respuestas y una rúbrica, y devuelve un veredicto. Así funcionan benchmarks como MT-Bench (80 preguntas de varias vueltas), AlpacaEval y Arena-Hard: en lugar de personas, un modelo juez compara las respuestas del modelo evaluado contra las de un modelo de referencia, y el resultado es una <b>tasa de victorias</b> (<i>win rate</i>).</p><p>El estudio que lanzó la idea (<a href="https://arxiv.org/abs/2306.05685" target="_blank" rel="noopener">Zheng y otros, 2023</a>) encontró que un juez fuerte coincidía con las personas más o menos tanto como dos personas coinciden entre sí. También describió sus sesgos, que siguen vigentes:</p><ul><li><b>De posición</b> (<i>position bias</i>): prefiere la respuesta que lee primero (o la segunda, según el modelo).</li><li><b>De verbosidad</b> (<i>verbosity bias</i>): prefiere la respuesta más larga, aunque no agregue nada.</li><li><b>De autopreferencia</b> (<i>self-enhancement bias</i>): favorece las respuestas que se parecen a las que él mismo escribiría, por ejemplo las de su propia familia de modelos.</li></ul></div><div class="analogia"><b>Imagínalo así</b><p>Un jurado de un concurso de cocina que siempre prueba primero el plato de la izquierda y le pone mejor nota, o que confunde un plato abundante con un plato bueno. No es mala fe: es un sesgo sistemático, y lo bueno de que sea sistemático es que se puede medir y corregir.</p></div><div class="prose"><p>Medir un sesgo es armar pares de respuestas donde se sabe que la diferencia que importa es nula. Para el de posición, se presenta el mismo par dos veces con el orden invertido: un juez sin sesgo debería elegir la misma respuesta las dos veces; si cambia de opinión al cambiar el orden, ese par se declara empate. Para el de verbosidad, se toman pares de <b>igual calidad</b> y distinta longitud (la misma respuesta con relleno agregado, por ejemplo) y se cuenta cuántas veces gana la larga: si el juez no tuviera sesgo, ganaría la mitad.</p><p>La corrección más conocida para la longitud es la de <b>AlpacaEval con control de longitud</b> (<i>length-controlled AlpacaEval</i>, 2024): se ajusta un modelo estadístico que explica cada victoria por la calidad y por la diferencia de longitud, y se reporta la tasa de victorias que tendría el modelo si sus respuestas midieran lo mismo que las de referencia. Con esa corrección, la tabla automática se parece más a la de las personas en la arena (<a href="https://arxiv.org/abs/2404.04475" target="_blank" rel="noopener">el artículo</a>).</p></div><div class="lab" id="09-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Un juez que prefiere la respuesta más larga</h3></div><p class="hint">Cuarenta pares de respuestas a las mismas preguntas. En cada par sabes cuál es mejor de verdad y cuánto mide cada una. Mueve el sesgo de longitud del juez y el de posición, activa el orden invertido y el control de longitud, y mira tres cosas: cuántas veces gana la respuesta larga en los pares de igual calidad, cuántas veces acierta el juez y cuál de los dos modelos parece ganar.</p><style>
+[id="09-lab-2"] .c9l2-g{display:grid;gap:4px}
+[id="09-lab-2"] .c9l2-g>span{font:700 .72rem var(--f-display);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+[id="09-lab-2"] .c9l2-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,140px),1fr));gap:8px}
+[id="09-lab-2"] .c9l2-k{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper)}
+[id="09-lab-2"] .c9l2-k span{display:block;font:600 .74rem var(--f-display);color:var(--muted)}
+[id="09-lab-2"] .c9l2-k output{font:700 1.15rem var(--f-mono);color:var(--ink)}
+[id="09-lab-2"] .c9l2-k small{display:block;font:500 .7rem var(--f-display);color:var(--muted)}
+[id="09-lab-2"] .c9l2-k.mal output{color:var(--warm)}
+[id="09-lab-2"] .c9l2-k.bien output{color:var(--good)}
+[id="09-lab-2"] .c9l2-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:5px}
+[id="09-lab-2"] .c9l2-c{position:relative;height:38px;border-radius:7px;border:2px solid var(--line);background:var(--paper);font:700 .72rem var(--f-mono);color:var(--ink);cursor:pointer;padding:0;display:grid;place-items:center}
+[id="09-lab-2"] .c9l2-c.ctrl{border-style:dashed;border-color:var(--ink)}
+[id="09-lab-2"] .c9l2-c.v{background:var(--warm-soft);color:var(--warm)}
+[id="09-lab-2"] .c9l2-c.c{background:var(--accent-soft);color:var(--accent)}
+[id="09-lab-2"] .c9l2-c.e{background:var(--paper);color:var(--muted)}
+[id="09-lab-2"] .c9l2-c .x{position:absolute;top:1px;right:3px;font-size:.6rem;color:var(--warm)}
+[id="09-lab-2"] .c9l2-c[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:1px}
+[id="09-lab-2"] .c9l2-par{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:8px}
+[id="09-lab-2"] .c9l2-r{border:1px solid var(--line);border-left-width:5px;border-radius:8px;padding:8px 10px;background:var(--card);font:500 .82rem/1.4 var(--f-body);color:var(--ink)}
+[id="09-lab-2"] .c9l2-r b{font:700 .72rem var(--f-display);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:2px}
+[id="09-lab-2"] .c9l2-r.c{border-left-color:var(--accent)} [id="09-lab-2"] .c9l2-r.c b{color:var(--accent)}
+[id="09-lab-2"] .c9l2-r.v{border-left-color:var(--warm)} [id="09-lab-2"] .c9l2-r.v b{color:var(--warm)}
+[id="09-lab-2"] .c9l2-r small{display:block;color:var(--muted);font-family:var(--f-mono);font-size:.72rem;margin-top:4px}
+</style>
+<div class="ctls">
+  <label class="ctl">Sesgo de longitud del juez <output id="c9l2-l-o"></output>
+    <input id="c9l2-l" type="range" min="0" max="3" step="0.1" value="1.2" aria-label="Sesgo de longitud del juez"></label>
+  <label class="ctl">Sesgo de posición (prefiere la primera) <output id="c9l2-p-o"></output>
+    <input id="c9l2-p" type="range" min="0" max="1.5" step="0.1" value="0.6" aria-label="Sesgo de posición"></label>
+</div>
+<div class="c9l2-g"><span>Defensas</span>
+<div class="btns" role="group" aria-label="Defensas contra los sesgos">
+  <button type="button" id="c9l2-sw" aria-pressed="false">Juzgar dos veces con el orden invertido</button>
+  <button type="button" id="c9l2-lc" aria-pressed="false">Control de longitud</button>
+</div></div>
+<div class="c9l2-grid" id="c9l2-grid" aria-label="Los cuarenta pares: toca uno para verlo"></div>
+<div class="legend"><span><i style="background:var(--warm)"></i>el juez eligió la larga (modelo extenso)</span><span><i style="background:var(--accent)"></i>eligió la corta (modelo conciso)</span><span><i style="background:var(--muted)"></i>empate</span><span>borde punteado: par de igual calidad · ✗ el juez se equivocó</span></div>
+<div class="c9l2-par" id="c9l2-par"></div>
+<div class="c9l2-kpis">
+  <div class="c9l2-k" id="c9l2-kb1"><span>Gana la larga con igual calidad</span><output id="c9l2-k1"></output><small>sin sesgo: 50 %</small></div>
+  <div class="c9l2-k"><span>Aciertos del juez</span><output id="c9l2-k2"></output><small>en los 28 pares con un mejor</small></div>
+  <div class="c9l2-k" id="c9l2-kb3"><span>Victorias del extenso</span><output id="c9l2-k3"></output><small>la verdadera: 45,0 %</small></div>
+  <div class="c9l2-k" id="c9l2-kb4"><span>Con control de longitud</span><output id="c9l2-k4"></output><small>tasa ajustada</small></div>
+</div>
+<div class="readout texto" id="c9l2-out" aria-live="polite"></div></div><div class="prose"><p>Cuando el juez evalúa tu propia aplicación, con tu rúbrica y contra calificaciones de tu equipo, el trabajo se llama <b>calibrar el juez</b> y está explicado en <a href="https://aaramirez.github.io/aplicaciones-con-ia/16-evaluar.html" target="_blank" rel="noopener">Evaluar una aplicación con IA</a>, con su laboratorio. Aquí importa la otra cara: cuando una tabla pública dice «gana el 62 % de las veces según un juez automático», hay que preguntar qué juez, contra qué referencia y si se controló la longitud.</p></div></section>
+<section><h2>Varianza: el mismo modelo con otra semilla o con otro prompt</h2><div class="prose"><p>Todo número de una tabla es una <b>estimación</b>: el modelo respondió una muestra de preguntas una vez, con un protocolo. Si se repite con otra semilla o con otra redacción del prompt, el número cambia. La pregunta útil no es «¿cuál sacó más?», sino «¿la diferencia es más grande que el ruido?».</p></div><div class="analogia"><b>Imagínalo así</b><p>Si lanzas una moneda 30 veces y salen 18 caras, no concluyes que está cargada: con 30 lanzamientos, 18 es perfectamente normal. Si salen 1.800 caras en 3.000 lanzamientos, sí. La proporción es la misma (60 %); lo que cambia es cuántas veces miraste. Un benchmark de 30 preguntas es una moneda lanzada 30 veces.</p></div><div class="prose"><p>Hay tres fuentes de variación, y conviene separarlas:</p><ol class="steps"><li><span><b>El tamaño de la muestra.</b> Si el modelo acierta una fracción <i>p</i> de <i>n</i> preguntas, el <b>error estándar</b> (<i>standard error</i>) es √(<i>p</i>(1 − <i>p</i>)/<i>n</i>), y el margen al 95 % es unas dos veces eso. Con <i>p</i> = 0,7: en 198 preguntas (GPQA Diamond), el margen es de unos ±6,4 puntos; en 1.319 (GSM8K), de ±2,5; en 14.000 (MMLU), de ±0,8. El margen de una <b>diferencia</b> entre dos modelos es todavía mayor, salvo que se compare pregunta por pregunta.</span></li><li><span><b>La semilla del muestreo.</b> Con temperatura mayor que cero (capítulo 6), el mismo modelo responde distinto cada vez. Por eso los reportes serios generan varias respuestas por pregunta y promedian, o reportan con temperatura cero. En los benchmarks pequeños, como el AIME, se suele reportar el promedio de muchas corridas.</span></li><li><span><b>El protocolo.</b> Un estudio de 2023 cambió solo detalles de formato que no alteran el sentido (separadores, mayúsculas, espacios) en prompts con pocos ejemplos y encontró diferencias de hasta 76 puntos de exactitud en un mismo modelo abierto de 13.000 millones de parámetros (<a href="https://arxiv.org/abs/2310.11324" target="_blank" rel="noopener">Sclar y otros</a>). Los modelos actuales son menos frágiles, pero comparar dos modelos con protocolos distintos sigue siendo comparar dos exámenes distintos.</span></li></ol><p>Una técnica que reduce mucho el ruido al comparar dos modelos es el <b>análisis pareado</b> (<i>paired analysis</i>): como los dos responden las mismas preguntas, se mira la diferencia pregunta por pregunta en lugar de comparar dos promedios sueltos. Muchas preguntas las aciertan o las fallan los dos, y no aportan ruido a la diferencia. La propuesta de agregar barras de error a toda evaluación, con estas fórmulas y su versión pareada, está en <a href="https://arxiv.org/abs/2411.00640" target="_blank" rel="noopener">Adding Error Bars to Evals</a> (2024).</p></div><div class="lab" id="09-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Leer una tabla de benchmarks con espíritu crítico</h3></div><p class="hint">Cinco modelos en cinco benchmarks de distinto tamaño, de 30 a 14.042 preguntas. Elige un benchmark, toca dos modelos para compararlos y mueve el nivel de confianza. Las barras muestran cada puntaje con su intervalo; la lectura dice si la diferencia entre los dos cabe en el margen de error, con la cuenta suelta y con la pareada.</p><style>
+[id="09-lab-1"] .c9l1-g{display:grid;gap:4px}
+[id="09-lab-1"] .c9l1-g>span{font:700 .72rem var(--f-display);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+[id="09-lab-1"] .c9l1-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,130px),1fr));gap:8px}
+[id="09-lab-1"] .c9l1-k{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper)}
+[id="09-lab-1"] .c9l1-k span{display:block;font:600 .74rem var(--f-display);color:var(--muted)}
+[id="09-lab-1"] .c9l1-k output{font:700 1.15rem var(--f-mono);color:var(--ink)}
+[id="09-lab-1"] .c9l1-k.si output{color:var(--good)}
+[id="09-lab-1"] .c9l1-k.no output{color:var(--warm)}
+[id="09-lab-1"] canvas{width:100%;display:block;cursor:pointer}
+</style>
+<div class="c9l1-g"><span>Benchmark</span>
+<div class="btns" role="group" aria-label="Benchmark" id="c9l1-bm">
+  <button type="button" data-b="aime" aria-pressed="false">AIME de un año (30)</button>
+  <button type="button" data-b="gpqa" aria-pressed="true">GPQA Diamond (198)</button>
+  <button type="button" data-b="swe" aria-pressed="false">SWE-bench Verified (500)</button>
+  <button type="button" data-b="gsm" aria-pressed="false">GSM8K (1.319)</button>
+  <button type="button" data-b="mmlu" aria-pressed="false">MMLU (14.042)</button>
+</div></div>
+<div class="c9l1-g"><span>Compara dos modelos (toca dos)</span>
+<div class="btns" role="group" aria-label="Modelos a comparar" id="c9l1-mods"></div></div>
+<div class="ctls">
+  <label class="ctl">Nivel de confianza <output id="c9l1-c-o">95 %</output>
+    <input id="c9l1-c" type="range" min="80" max="99" step="1" value="95" aria-label="Nivel de confianza"></label>
+</div>
+<canvas id="c9l1-cv" role="img" aria-label="Puntaje de cada modelo con su intervalo de confianza"></canvas>
+<div class="legend"><span><i style="background:var(--accent)"></i>primer modelo elegido</span><span><i style="background:var(--warm)"></i>segundo modelo elegido</span><span><i style="background:var(--muted)"></i>los demás · la franja es el intervalo</span></div>
+<div class="c9l1-kpis">
+  <div class="c9l1-k"><span>Una pregunta vale</span><output id="c9l1-k1"></output></div>
+  <div class="c9l1-k"><span>Diferencia</span><output id="c9l1-k2"></output></div>
+  <div class="c9l1-k" id="c9l1-kb3"><span>Margen, cuenta suelta</span><output id="c9l1-k3"></output></div>
+  <div class="c9l1-k" id="c9l1-kb4"><span>Margen, cuenta pareada</span><output id="c9l1-k4"></output></div>
+</div>
+<div class="readout texto" id="c9l1-out" aria-live="polite"></div></div><div class="prose"><p>Al leer la tabla de un anuncio, estas son las preguntas que separan una diferencia real de una que cabe en el margen:</p><ul><li><b>¿Cuántas preguntas tiene el benchmark?</b> Con menos de unas 500, diferencias de 2 o 3 puntos casi nunca significan nada.</li><li><b>¿Mismo protocolo para todos?</b> Busca la letra chica: número de ejemplos, si hubo cadena de pensamiento, si se permitieron herramientas, cuántos intentos (pass@1 o «mejor de 32»), cuánto presupuesto de pensamiento (capítulo 8).</li><li><b>¿Quién corrió los números?</b> Los que reporta el propio laboratorio para su modelo y para los rivales no siempre usan el mismo protocolo; los de un evaluador independiente son más comparables.</li><li><b>¿El benchmark está saturado o contaminado?</b> Si todos están arriba del 90 % o el benchmark tiene años en la web, mira uno vivo o uno reciente.</li><li><b>¿Mide algo parecido a tu caso?</b> Un modelo que lidera en matemática de olimpiada puede no ser el mejor para resumir reclamos en español.</li></ul></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Calcula el margen de error de una tabla</h3></div><p>Un script de Python, solo con la biblioteca estándar, que calcula el intervalo de cada puntaje y dice si la diferencia entre dos modelos cabe en el margen. Cambia los números por los de una tabla real que encuentres.</p><div class="code-copia"><pre><code>import math
+
+def margen(p, n, z=1.96):
+    return z * math.sqrt(p * (1 - p) / n)
+
+tabla = {
+    "GPQA Diamond (198)": (198, {"Modelo A": 0.712, "Modelo B": 0.687}),
+    "GSM8K (1319)":       (1319, {"Modelo A": 0.951, "Modelo B": 0.938}),
+    "MMLU (14042)":       (14042, {"Modelo A": 0.884, "Modelo B": 0.871}),
+}
+
+for nombre, (n, modelos) in tabla.items():
+    print(nombre)
+    for m, p in modelos.items():
+        print(f"  {m}: {p:.1%} ± {margen(p, n):.1%}")
+    (a, pa), (b, pb) = modelos.items()
+    dif = pa - pb
+    m_dif = 1.96 * math.sqrt(pa * (1 - pa) / n + pb * (1 - pb) / n)
+    veredicto = "real" if abs(dif) &gt; m_dif else "cabe en el margen"
+    print(f"  diferencia {dif:+.1%}, margen ±{m_dif:.1%}: {veredicto}")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><p>Guárdalo como <code>margen.py</code> y córrelo:</p><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python margen.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 margen.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Mira el margen de cada benchmark y compáralo con el número de preguntas.</span></li><li><span>Cambia los puntajes de GPQA para que la diferencia sea de 5 puntos y vuelve a correrlo.</span></li><li><span>Busca la tabla del anuncio de un modelo reciente, copia dos columnas y repite.</span></li></ol><p><b>Qué observar:</b> la misma diferencia de 1,3 puntos es ruido en GSM8K y señal en MMLU, y en GPQA Diamond ni siquiera 2,5 puntos alcanzan. El script usa la cuenta suelta, que es conservadora: con los resultados pregunta por pregunta, la cuenta pareada da márgenes más chicos, pero esos datos casi nunca se publican.</p></div></section>
+<section><h2>Evaluar tu propia aplicación está en Aplicaciones con IA</h2><div class="prose"><p>Todo lo anterior sirve para elegir <b>candidatos</b>: qué tres o cuatro modelos vale la pena probar. La decisión final no la toma ningún benchmark público, porque ninguno tiene tus preguntas, tus documentos, tu idioma ni tu definición de una respuesta aceptable. Esa decisión se toma con un <b>conjunto dorado</b> propio, con métricas que separan los modos de fallar, con jueces calibrados contra tu equipo y con una compuerta que no deja pasar un cambio que empeora algo. Ese trabajo de producto está completo en <a href="https://aaramirez.github.io/aplicaciones-con-ia/16-evaluar.html" target="_blank" rel="noopener">Evaluar una aplicación con IA</a>, del curso Aplicaciones con IA.</p></div><div class="caso"><b>Un caso real</b><p><b>El líder de la tabla que no ganó la prueba.</b> Un equipo que armaba un asistente para clasificar reclamos escritos en español tenía que elegir modelo. La tabla pública ponía primero a un modelo grande que, además, encabezaba la arena. El equipo hizo lo que este capítulo propone: tomó los cinco primeros de la arena y dos modelos abiertos medianos, y los corrió sobre 400 reclamos reales ya clasificados por personas, con el mismo prompt para todos y tres corridas por modelo. El líder de la tabla quedó tercero, a 1,5 puntos del primero, una diferencia que cabía en el margen; un modelo abierto mediano empató con él en exactitud, costaba una fracción y respondía en la mitad del tiempo. Eligieron el mediano, y la tabla pública solo sirvió para armar la lista de candidatos.</p></div><div class="ml"><b>En la práctica</b><p><b>Una ficha para leer cualquier tabla.</b> Antes de citar un resultado en un informe, anota en una línea: benchmark y número de preguntas, protocolo (ejemplos, cadena de pensamiento, herramientas, intentos), quién lo corrió, fecha, margen al 95 % y si el benchmark está saturado o es vivo. Si no puedes completar la línea, el número no está listo para decidir nada.</p></div><div class="prose"><p>El capítulo siguiente usa estas herramientas para elegir: modelos abiertos o cerrados, de qué tamaño, con cuántos bits y a qué costo.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Un número de benchmark es una estimación con margen, obtenida con un protocolo, sobre un examen que puede estar saturado o contaminado. Las arenas miden preferencia humana con preguntas nuevas, pero premian el estilo y también se pueden optimizar. Los modelos jueces escalan la evaluación y traen sesgos medibles de posición, longitud y autopreferencia. Todo eso sirve para elegir candidatos; la prueba que decide es la de tu caso.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Cuáles son las piezas de un benchmark y cuál casi nunca aparece en la tabla?</summary><p>Un conjunto de preguntas, las respuestas esperadas (o pruebas que las verifican) y una métrica. El protocolo (plantilla, ejemplos, cadena de pensamiento, temperatura, extracción de la respuesta) casi nunca aparece y cambia mucho el número.</p></details><details><summary>Un agente resuelve una tarea el 80 % de las veces. ¿Cuál es su pass^3?</summary><p>0,8³ ≈ 0,51: solo acierta las tres veces en la mitad de los casos.</p></details><details><summary>¿En qué se diferencia la saturación de la contaminación?</summary><p>La saturación es que los mejores modelos sacan puntajes tan altos que ya no se distinguen (y lo que falta son preguntas mal hechas). La contaminación es que las preguntas o respuestas estaban en los datos de entrenamiento, y el modelo puede acertarlas de memoria.</p></details><details><summary>¿Por qué un benchmark vivo ayuda contra la contaminación?</summary><p>Porque agrega preguntas nuevas con fecha y se puede mirar solo las publicadas después de la fecha de corte de los datos del modelo, que no pudo haberlas visto.</p></details><details><summary>¿Qué significa que dos modelos de la arena tengan intervalos de confianza superpuestos?</summary><p>Que con los votos disponibles no se puede afirmar que uno sea mejor que el otro: el orden entre ellos es, en buena parte, ruido.</p></details><details><summary>¿Cómo se mide el sesgo de posición de un juez?</summary><p>Presentándole los mismos pares dos veces con el orden invertido: si cambia de elección al cambiar el orden, tiene sesgo de posición, y ese par se cuenta como empate.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Qué es un intervalo de Wilson y por qué se prefiere a la fórmula √(p(1 − p)/n) cuando el puntaje está cerca de 0 % o de 100 %?<small>Pista: busca «Wilson score interval».</small></li><li>¿Cómo se calcula exactamente pass@k sin sesgo a partir de <i>n</i> muestras por problema, como propuso el artículo de HumanEval?<small>Pista: busca «unbiased estimator pass@k Codex paper».</small></li><li>¿Qué es MinHash y cómo se usa para encontrar copias casi idénticas de un benchmark dentro de un corpus de billones de tokens?<small>Pista: busca «MinHash near-duplicate detection».</small></li><li>¿Qué es la prueba de McNemar y para qué sirve al comparar dos clasificadores sobre las mismas preguntas?<small>Pista: busca «McNemar test paired classifiers».</small></li><li>¿Qué es la teoría de respuesta al ítem (<i>item response theory</i>) y cómo se usa para armar benchmarks más cortos que discriminan igual?<small>Pista: busca «tinyBenchmarks IRT».</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/2403.04132" target="_blank" rel="noopener">Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference <small>el artículo de la arena y su método estadístico, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2411.00640" target="_blank" rel="noopener">Adding Error Bars to Evals <small>cómo reportar márgenes de error en una evaluación, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2405.00332" target="_blank" rel="noopener">A Careful Examination of LLM Performance on Grade School Arithmetic <small>el estudio de GSM1k sobre contaminación, en inglés</small></a><a class="vid" href="https://epoch.ai/benchmarks" target="_blank" rel="noopener">Benchmarking Hub de Epoch AI <small>resultados públicos con fecha y metodología, en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/modelos-de-ia" target="_blank" rel="noopener">github.com/aaramirez/modelos-de-ia</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  const r=rng(909);
+  const PREG=['¿De qué color es el cielo?','¿Por qué el mar es salado?','Resume este reclamo en una línea','¿Cuánto es el 15 % de 80?','Traduce «la factura vence el lunes»','¿Qué es un token?','Escribe un asunto para este correo','¿Por qué se ve rojo el atardecer?'];
+  const CORTA={0:'Azul: el aire dispersa más la luz azul del Sol que la roja.',5:'Un pedazo de texto, como «␣cielo», que el modelo trata como una unidad.'};
+  const LARGA={0:'¡Excelente pregunta! El color del cielo es uno de los fenómenos más fascinantes de la naturaleza. Para entenderlo, primero hay que hablar de la luz del Sol, que contiene todos los colores… (sigue: la dispersión, los atardeceres, el cielo en Marte y un resumen final) Azul.',5:'¡Gran pregunta! Para entender qué es un token, conviene empezar por la historia del procesamiento del lenguaje… (sigue con ejemplos, una tabla y un resumen de lo dicho).'};
+  // 40 pares: 12 de igual calidad (la larga es la corta con relleno), 16 donde la corta es mejor y 12 donde la larga es mejor.
+  const P=[];
+  const tipos=[].concat(Array(12).fill('igual'),Array(16).fill('corta'),Array(12).fill('larga'));
+  for(let i=tipos.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[tipos[i],tipos[j]]=[tipos[j],tipos[i]];}
+  tipos.forEach((t,i)=>{const lc=Math.round(70+r()*90),lv=Math.round(260+r()*260);let qc=2+Math.floor(r()*2),qv=qc;
+    if(t==='corta')qv=Math.max(1,qc-1-Math.floor(r()*2));if(t==='larga')qv=Math.min(5,qc+1+Math.floor(r()*2));
+    P.push({i,t,lc,lv,qc,qv,vPrimero:r()<.5,u1:r(),u2:r(),q:PREG[i%PREG.length]});});
+  let sw=false,lc=false,ver=0;
+  const sig=x=>1/(1+Math.exp(-x));
+  // El juez: prefiere la primera respuesta con probabilidad sig(1,4·Δcalidad + bL·ln(L1/L2) + bP).
+  function juzga(p,vPrim,u){const bL=+$('#c9l2-l').value,bP=+$('#c9l2-p').value;
+    const q1=vPrim?p.qv:p.qc,q2=vPrim?p.qc:p.qv,l1=vPrim?p.lv:p.lc,l2=vPrim?p.lc:p.lv;
+    const primera=u<sig(1.4*(q1-q2)+bL*Math.log(l1/l2)+bP);
+    return (primera===vPrim)?'v':'c';}
+  function veredicto(p){const a=juzga(p,p.vPrimero,p.u1);if(!sw)return {v:a,cambio:false};
+    const b=juzga(p,!p.vPrimero,p.u2);return a===b?{v:a,cambio:false}:{v:'e',cambio:true};}
+  // Control de longitud: regresión logística de «gana la larga» sobre ln(Llarga/Lcorta); se informa la tasa con diferencia de longitud cero.
+  function controlLongitud(res){let th=0,g=0;
+    for(let it=0;it<30;it++){let g0=0,g1=0,h00=0,h01=0,h11=0;
+      res.forEach(({x,y})=>{const pr=sig(th+g*x),w=pr*(1-pr);g0+=y-pr;g1+=(y-pr)*x;h00+=w;h01+=w*x;h11+=w*x*x;});
+      h00+=1e-3;h11+=1e-3;const det=h00*h11-h01*h01;th+=(h11*g0-h01*g1)/det;g+=(h00*g1-h01*g0)/det;}
+    return sig(th);}
+  const grid=$('#c9l2-grid');
+  P.forEach(p=>{const b=document.createElement('button');b.type='button';b.className='c9l2-c'+(p.t==='igual'?' ctrl':'');b.dataset.i=p.i;b.setAttribute('aria-pressed',p.i===0);grid.appendChild(b);});
+  grid.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ver=+b.dataset.i;leer();});
+  $('#c9l2-sw').addEventListener('click',()=>{sw=!sw;$('#c9l2-sw').setAttribute('aria-pressed',sw);leer();});
+  $('#c9l2-lc').addEventListener('click',()=>{lc=!lc;$('#c9l2-lc').setAttribute('aria-pressed',lc);leer();});
+  ['#c9l2-l','#c9l2-p'].forEach(s=>$(s).addEventListener('input',leer));
+  const pc=x=>(x*100).toFixed(1).replace('.',',')+' %';
+  function leer(){
+    $('#c9l2-l-o').textContent=(+$('#c9l2-l').value).toFixed(1).replace('.',',');
+    $('#c9l2-p-o').textContent=(+$('#c9l2-p').value).toFixed(1).replace('.',',');
+    let ctrlV=0,ctrlN=0,ok=0,okN=0,winV=0,cambios=0;const res=[];
+    P.forEach(p=>{const {v,cambio}=veredicto(p);p.v=v;if(cambio)cambios++;
+      const y=v==='v'?1:v==='e'?.5:0;winV+=y;res.push({x:Math.log(p.lv/p.lc),y});
+      if(p.t==='igual'){ctrlN++;ctrlV+=y;p.mal=false;}
+      else{okN++;const mejor=p.t==='larga'?'v':'c';p.mal=(v!==mejor);if(v===mejor)ok++;else if(v==='e')ok+=.5;}
+      const b=grid.children[p.i];b.className='c9l2-c'+(p.t==='igual'?' ctrl':'')+' '+v;b.setAttribute('aria-pressed',p.i===ver);
+      b.innerHTML=(p.i+1)+(p.mal&&v!=='e'?'<span class="x">✗</span>':'');
+      b.setAttribute('aria-label','Par '+(p.i+1)+': '+(v==='v'?'eligió la larga':v==='c'?'eligió la corta':'empate')+(p.t==='igual'?', igual calidad':'')+(p.mal&&v!=='e'?', error':''));});
+    const fV=ctrlV/ctrlN,wr=winV/P.length;
+    $('#c9l2-k1').textContent=pc(fV);$('#c9l2-kb1').className='c9l2-k '+(Math.abs(fV-.5)>.15?'mal':'bien');
+    $('#c9l2-k2').textContent=pc(ok/okN);
+    $('#c9l2-k3').textContent=pc(wr);$('#c9l2-kb3').className='c9l2-k '+(Math.abs(wr-.45)>.08?'mal':'bien');
+    let lcv=null;if(lc){lcv=controlLongitud(res);$('#c9l2-k4').textContent=pc(lcv);$('#c9l2-kb4').className='c9l2-k '+(Math.abs(lcv-.45)>.08?'mal':'bien');}
+    else{$('#c9l2-k4').textContent='—';$('#c9l2-kb4').className='c9l2-k';}
+    // el par que se está viendo
+    const p=P[ver];const nom={igual:'igual calidad',corta:'la corta es mejor',larga:'la larga es mejor'}[p.t];
+    $('#c9l2-par').innerHTML='<div class="c9l2-r c"><b>Modelo conciso · '+p.lc+' palabras</b>'+(CORTA[p.i]||'Respuesta directa a «'+p.q+'».')+'<small>calidad real: '+p.qc+' de 5</small></div>'+
+      '<div class="c9l2-r v"><b>Modelo extenso · '+p.lv+' palabras</b>'+(LARGA[p.i]||'Respuesta larga a «'+p.q+'», con introducción, contexto y resumen.')+'<small>calidad real: '+p.qv+' de 5</small></div>';
+    let t='<span>Par '+(p.i+1)+' («'+p.q+'»): '+nom+'. El juez '+(p.v==='v'?'eligió la larga':p.v==='c'?'eligió la corta':'cambió de opinión al invertir el orden: empate')+'.</span>';
+    t+='<span>En los 12 pares de igual calidad, la larga gana el '+pc(fV)+'. '+(fV>.65?'<b class="warn">El juez premia la longitud: con este sesgo, el modelo extenso parece mejor de lo que es.</b>':fV<.35?'<b class="warn">Ahora el juez castiga la longitud.</b>':'<b class="ok">Cerca del 50 %: el sesgo de longitud casi no se nota.</b>')+'</span>';
+    t+='<span>Según el juez, el extenso gana el '+pc(wr)+' de los pares; la verdad es 45,0 % (gana en 12, pierde en 16, empata en 12).'+(lc?' Con el control de longitud, la tasa ajustada es '+pc(lcv)+(Math.abs(lcv-.45)<Math.abs(wr-.45)?': más cerca de la verdad.':': la corrección no alcanza a compensar.'):' Activa el control de longitud para ver la tasa ajustada.')+'</span>';
+    if(sw)t+='<span>Al juzgar dos veces con el orden invertido, el juez cambió de opinión en '+cambios+' pares: esos se cuentan como empate y el sesgo de posición deja de favorecer a nadie.</span>';
+    else if(+$('#c9l2-p').value>0)t+='<span>El sesgo de posición favorece a la respuesta que se muestra primero, que aquí cambia de par en par. Activa el orden invertido para medirlo.</span>';
+    $('#c9l2-out').innerHTML=t;
+  }
+  leer();
+})();
+</script>
+<script>
+(function(){
+  const {$,tok,canvasWidget}=window.Lab;
+  const root=document.querySelector('[id="09-lab-1"]');
+  // Generador con semilla (mulberry32) y normal por Box-Muller: los resultados no cambian al recargar.
+  function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function normal(r){let u=0,v=0;while(u===0)u=r();v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+  // Inversa de la normal estándar (aproximación de Acklam).
+  function qnorm(p){const a=[-39.6968302866538,220.946098424521,-275.928510446969,138.357751867269,-30.6647980661472,2.50662827745924],b=[-54.4760987982241,161.585836858041,-155.698979859887,66.8013118877197,-13.2806815528857],c=[-0.00778489400243029,-0.322396458041136,-2.40075827716184,-2.54973253934373,4.37466414146497,2.93816398269878],d=[0.00778469570904146,0.32246712907004,2.445134137143,3.75440866190742];const pl=0.02425;let q,r;
+    if(p<pl){q=Math.sqrt(-2*Math.log(p));return(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+    if(p>1-pl){q=Math.sqrt(-2*Math.log(1-p));return-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+    q=p-.5;r=q*q;return(((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);}
+  const MOD=['A','B','C','D','E'];
+  const BM={
+    aime:{n:30,p:[.733,.700,.633,.567,.433],nom:'el AIME de un año'},
+    gpqa:{n:198,p:[.712,.687,.662,.601,.540],nom:'GPQA Diamond'},
+    swe:{n:500,p:[.652,.638,.604,.552,.498],nom:'SWE-bench Verified'},
+    gsm:{n:1319,p:[.951,.944,.938,.921,.893],nom:'GSM8K'},
+    mmlu:{n:14042,p:[.884,.879,.871,.846,.812],nom:'MMLU'}
+  };
+  // Simula quién acierta cada pregunta: una dificultad común por pregunta (los modelos fallan casi las mismas)
+  // y ruido propio; cada modelo acierta exactamente round(p·n) preguntas, las más fáciles para él.
+  Object.keys(BM).forEach((k,ki)=>{const B=BM[k],r=rng(1234+ki*97),n=B.n,rho=.75;
+    const z=Array.from({length:n},()=>normal(r));
+    B.ok=B.p.map(p=>{const lat=z.map(zi=>rho*zi+Math.sqrt(1-rho*rho)*normal(r));
+      const idx=lat.map((v,i)=>[v,i]).sort((x,y)=>x[0]-y[0]);const kk=Math.round(p*n);const o=new Uint8Array(n);
+      for(let j=0;j<kk;j++)o[idx[j][1]]=1;return o;});
+    B.s=B.ok.map(o=>o.reduce((s,v)=>s+v,0)/n);
+  });
+  let bm='gpqa',sel=[0,1];
+  const pct=(x,d=1)=>(x*100).toFixed(d).replace('.',',');
+  const mods=$('#c9l1-mods');
+  MOD.forEach((m,i)=>{const b=document.createElement('button');b.type='button';b.dataset.i=i;b.textContent='Modelo '+m;mods.appendChild(b);});
+  function z(){const c=+$('#c9l1-c').value/100;return qnorm(1-(1-c)/2);}
+  function marg(p,n){return z()*Math.sqrt(p*(1-p)/n);}
+  const cv=$('#c9l1-cv');
+  const ROW=38,TOP=14,BOT=30;
+  let geo=null;
+  const dibujar=canvasWidget(cv,w=>(TOP+BOT+ROW*5)/w,(ctx,w,h)=>{
+    const B=BM[bm],L=118,R=16;
+    let lo=1,hi=0;B.s.forEach(p=>{const m=marg(p,B.n);lo=Math.min(lo,p-m);hi=Math.max(hi,p+m);});
+    const pad=(hi-lo)*.08;lo=Math.max(0,lo-pad);hi=Math.min(1,hi+pad);
+    const X=v=>L+(v-lo)/(hi-lo)*(w-L-R);geo={X,L,R};
+    ctx.clearRect(0,0,w,h);
+    // rejilla
+    const span=(hi-lo)*100,st=span>40?10:span>20?5:span>8?2:span>4?1:.5;
+    ctx.font='11px '+tok('--f-mono');ctx.textAlign='center';ctx.textBaseline='top';
+    for(let v=Math.ceil(lo*100/st)*st;v<=hi*100+1e-9;v+=st){const x=X(v/100);
+      ctx.strokeStyle=tok('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,TOP-4);ctx.lineTo(x,TOP+ROW*5);ctx.stroke();
+      ctx.fillStyle=tok('--muted');ctx.fillText((Math.round(v*10)/10+'').replace('.',',')+' %',x,TOP+ROW*5+6);}
+    B.s.forEach((p,i)=>{const y=TOP+ROW*i+ROW/2,m=marg(p,B.n);
+      const col=sel[0]===i?tok('--accent'):sel[1]===i?tok('--warm'):tok('--muted');
+      ctx.globalAlpha=.28;ctx.fillStyle=col;ctx.fillRect(X(Math.max(0,p-m)),y-7,X(Math.min(1,p+m))-X(Math.max(0,p-m)),14);ctx.globalAlpha=1;
+      ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(X(Math.max(0,p-m)),y-7);ctx.lineTo(X(Math.max(0,p-m)),y+7);ctx.moveTo(X(Math.min(1,p+m)),y-7);ctx.lineTo(X(Math.min(1,p+m)),y+7);ctx.stroke();
+      ctx.beginPath();ctx.arc(X(p),y,5,0,7);ctx.fillStyle=col;ctx.fill();
+      ctx.textAlign='left';ctx.textBaseline='middle';ctx.font=(sel.includes(i)?'600 ':'')+'12px '+tok('--f-mono');ctx.fillStyle=sel.includes(i)?col:tok('--ink');
+      ctx.fillText('Modelo '+MOD[i],4,y-7);ctx.fillStyle=tok('--muted');ctx.font='11px '+tok('--f-mono');ctx.fillText(pct(p)+' %',4,y+8);
+    });
+  });
+  function elegir(i){if(sel.includes(i)){if(sel.length>1)sel=sel.filter(x=>x!==i);}else{sel.push(i);if(sel.length>2)sel.shift();}leer();}
+  cv.addEventListener('click',e=>{const r=cv.getBoundingClientRect();const i=Math.floor((e.clientY-r.top-TOP)/ROW);if(i>=0&&i<5)elegir(i);});
+  mods.addEventListener('click',e=>{const b=e.target.closest('button');if(b)elegir(+b.dataset.i);});
+  $('#c9l1-bm').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;bm=b.dataset.b;
+    $('#c9l1-bm').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));leer();});
+  $('#c9l1-c').addEventListener('input',leer);
+  function leer(){
+    const B=BM[bm],n=B.n,c=+$('#c9l1-c').value;
+    $('#c9l1-c-o').textContent=c+' %';
+    mods.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',sel.includes(+b.dataset.i)));
+    $('#c9l1-k1').textContent=pct(1/n,2)+' pts';
+    // pares distinguibles con la cuenta suelta
+    let dist=0;for(let i=0;i<5;i++)for(let j=i+1;j<5;j++){const pi=B.s[i],pj=B.s[j];if(Math.abs(pi-pj)>z()*Math.sqrt(pi*(1-pi)/n+pj*(1-pj)/n))dist++;}
+    let txt='';
+    if(sel.length<2){
+      ['#c9l1-k2','#c9l1-k3','#c9l1-k4'].forEach(s=>$(s).textContent='—');
+      $('#c9l1-kb3').className='c9l1-k';$('#c9l1-kb4').className='c9l1-k';
+      txt='<span>Toca un segundo modelo para comparar.</span>';
+    }else{
+      const [a,b]=sel,pa=B.s[a],pb=B.s[b],d=pa-pb;
+      const ms=z()*Math.sqrt(pa*(1-pa)/n+pb*(1-pb)/n);
+      let ab=0,ba=0;for(let i=0;i<n;i++){if(B.ok[a][i]&&!B.ok[b][i])ab++;else if(!B.ok[a][i]&&B.ok[b][i])ba++;}
+      const fb=ab/n,fc=ba/n,mp=z()*Math.sqrt(Math.max(0,fb+fc-(fb-fc)*(fb-fc))/n);
+      const rs=Math.abs(d)>ms,rp=Math.abs(d)>mp;
+      $('#c9l1-k2').textContent=(d>=0?'+':'−')+pct(Math.abs(d))+' pts';
+      $('#c9l1-k3').textContent='± '+pct(ms);$('#c9l1-k4').textContent='± '+pct(mp);
+      $('#c9l1-kb3').className='c9l1-k '+(rs?'si':'no');$('#c9l1-kb4').className='c9l1-k '+(rp?'si':'no');
+      const preg=Math.round(Math.abs(d)*n);
+      txt='<span>En '+B.nom+', el modelo '+MOD[a]+' saca '+pct(pa)+' % y el '+MOD[b]+' '+pct(pb)+' %: una diferencia de '+preg+' pregunta'+(preg===1?'':'s')+' de '+n.toLocaleString('es')+'.</span>'+
+        '<span>Comparando los dos promedios sueltos, el margen de la diferencia al '+c+' % es ± '+pct(ms)+' puntos: '+(rs?'<b class="ok">la diferencia es más grande que el ruido.</b>':'<b class="warn">la diferencia cabe en el margen; no se puede decir cuál es mejor.</b>')+'</span>'+
+        '<span>Mirando pregunta por pregunta (la cuenta pareada), solo cuentan las '+(ab+ba)+' preguntas en que uno acierta y el otro falla: '+ab+' a favor de '+MOD[a]+' y '+ba+' a favor de '+MOD[b]+'. El margen baja a ± '+pct(mp)+' puntos: '+(rp?'<b class="ok">diferencia real.</b>':'<b class="warn">sigue cabiendo en el margen.</b>')+'</span>';
+    }
+    txt+='<span>De los 10 pares de modelos de esta tabla, la cuenta suelta distingue '+dist+'. '+(dist<6?'Casi todo el orden de la tabla es ruido con este número de preguntas.':dist<10?'El orden de arriba y el de abajo se distinguen, pero no todos los vecinos.':'Con tantas preguntas, hasta las diferencias chicas se distinguen.')+'</span>';
+    $('#c9l1-out').innerHTML=txt;
+    dibujar();
+  }
+  leer();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Razonamiento · Modelos de IA · Modelos de IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Cómo funciona por dentro un modelo de lenguaje: tokens, embeddings, atención y el Transformer, cómo se entrena y se alinea, cómo genera y razona, y cómo se evalúa y se elige.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="razonamiento">
+<header class="topbar"><a class="brand" href="index.html">Modelos de <b>IA</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 08 DE 10</span><h1>Razonamiento: cadenas de pensamiento y modelos que piensan antes de responder</h1><p class="lede">«¿De qué color es el cielo?» se responde en un token. «¿Cuántos MB ocupan las fotos del cielo que tomó una cámara durante el día?» no: hay que contar, restar y multiplicar. Este capítulo muestra por qué escribir los pasos intermedios ayuda al modelo a acertar, y cómo se entrena a un modelo para que piense antes de responder.</p></header>
+<section><h2>La cadena de pensamiento: «pensemos paso a paso»</h2><div class="prose"><p>La pregunta del curso es fácil, incluso para Colibrí, el modelo de juguete: después de «El cielo es», «␣azul» es el token más probable y sale en un solo paso del bucle del capítulo 6. Ahora cambiemos a una pregunta que exige trabajar:</p><blockquote><p>Una cámara fotografía el cielo cada 20 minutos, desde las 6:00 hasta las 18:00, ambas incluidas. Cada foto ocupa 4 MB. Se borran las fotos tomadas antes de las 7:00 y después de las 17:00. ¿Cuántos MB quedan?</p></blockquote><p>La respuesta es 124 MB, pero para llegar hay cinco pasos: contar las fotos (37, no 36, porque se cuentan las dos puntas), restar las 3 de la mañana y las 3 de la tarde y multiplicar por 4. Si le pides al modelo que responda solo con el número, tiene que hacer todo eso antes de escribir el primer token. Muchas veces se equivoca, y casi siempre del mismo modo: «144», que sale de 12 horas × 3 fotos × 4 MB.</p><p>En 2022, un equipo de Google mostró que si en el ejemplo se escriben los pasos intermedios antes de la respuesta, el modelo imita el formato y acierta mucho más. Lo llamaron <b>cadena de pensamiento</b> (<i>chain of thought</i>, CoT). Con su modelo más grande, el porcentaje de problemas de matemática escolar resueltos pasó de cerca del 18 % al 57 %. Ese mismo año otro equipo encontró algo aún más simple: bastaba con agregar al final de la pregunta la frase «pensemos paso a paso» (<i>let's think step by step</i>). En una prueba de problemas aritméticos, un modelo de entonces pasó del 18 % al 79 % de aciertos con solo esas palabras.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es la diferencia entre hacer una cuenta larga de memoria y hacerla en papel. De memoria, tienes que sostener todos los resultados parciales en la cabeza a la vez, y uno se pierde. En papel, escribes «37 fotos» y ya no tienes que recordarlo: está ahí, a la vista, para el paso siguiente.</p></div><figure class="fig fig-flujo" id="08-diagrama-1"><div class="lienzo"><svg viewBox="0 0 940 420" style="min-width:760px" role="img" aria-label="Respuesta directa frente a cadena de pensamiento. Arriba, la pregunta entra al modelo y sale de una vez la respuesta 144 MB, equivocada: todos los pasos tuvieron que ocurrir dentro de una sola pasada. Abajo, el modelo escribe cinco pasos intermedios; cada paso escrito vuelve a entrar al contexto y el siguiente se apoya en él; al final sale 124 MB, correcta, después de unos 160 tokens en lugar de 6">
+<defs>
+<marker id="g8d1-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="g8d1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-apl"/></marker>
+<marker id="g8d1-f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-fis"/></marker>
+</defs>
+<text x="20" y="24" class="t t-xs t-b t-m">RESPUESTA DIRECTA · UNOS 6 TOKENS</text>
+<rect x="20" y="38" width="210" height="64" rx="10" class="c-fis"/>
+<text x="34" y="60" class="t t-b k-fis">Pregunta</text>
+<text x="34" y="80" class="t t-s">la cámara, las fotos y</text>
+<text x="34" y="95" class="t t-s">los MB (5 pasos)</text>
+<line x1="232" y1="70" x2="276" y2="70" class="ln" style="stroke-width:2" marker-end="url(#g8d1-m)"/>
+<rect x="280" y="38" width="200" height="64" rx="10" class="c-red"/>
+<text x="294" y="60" class="t t-b k-red">Modelo</text>
+<text x="294" y="80" class="t t-s">una pasada por las capas</text>
+<text x="294" y="95" class="t t-s t-m">los 5 pasos, «de cabeza»</text>
+<line x1="482" y1="70" x2="526" y2="70" class="ln s-apl" style="stroke-width:2" marker-end="url(#g8d1-a)"/>
+<rect x="530" y="38" width="150" height="64" rx="10" class="c-apl"/>
+<text x="544" y="62" class="t t-b k-apl">«144 MB»</text>
+<text x="544" y="84" class="t t-s k-warm t-b">✗ equivocada</text>
+<rect x="700" y="38" width="220" height="64" rx="10" class="caja"/>
+<text x="714" y="60" class="t t-s">Cada token sale de una</text>
+<text x="714" y="76" class="t t-s">cantidad fija de cálculo:</text>
+<text x="714" y="92" class="t t-s">no alcanza para 5 pasos.</text>
+<line x1="20" y1="126" x2="920" y2="126" class="ln ln-d"/>
+<text x="20" y="152" class="t t-xs t-b t-m">CON CADENA DE PENSAMIENTO · UNOS 160 TOKENS</text>
+<rect x="20" y="166" width="210" height="64" rx="10" class="c-fis"/>
+<text x="34" y="188" class="t t-b k-fis">Pregunta</text>
+<text x="34" y="208" class="t t-s">+ «pensemos paso a paso»</text>
+<line x1="232" y1="198" x2="276" y2="198" class="ln" style="stroke-width:2" marker-end="url(#g8d1-m)"/>
+<rect x="280" y="166" width="200" height="236" rx="10" class="c-red"/>
+<text x="294" y="188" class="t t-b k-red">Modelo</text>
+<text x="294" y="208" class="t t-s">una pasada por cada token</text>
+<text x="294" y="224" class="t t-s t-m">de cada paso escrito</text>
+<g class="c-apl">
+<rect x="530" y="166" width="390" height="30" rx="6"/><rect x="530" y="204" width="390" height="30" rx="6"/><rect x="530" y="242" width="390" height="30" rx="6"/><rect x="530" y="280" width="390" height="30" rx="6"/><rect x="530" y="318" width="390" height="30" rx="6"/>
+</g>
+<text x="542" y="186" class="t t-s">1 · 12 horas = 36 intervalos → 37 fotos</text>
+<text x="542" y="224" class="t t-s">2 · antes de las 7:00: 6:00, 6:20, 6:40 → 3</text>
+<text x="542" y="262" class="t t-s">3 · después de las 17:00: 17:20, 17:40, 18:00 → 3</text>
+<text x="542" y="300" class="t t-s">4 · quedan 37 − 3 − 3 = 31 fotos</text>
+<text x="542" y="338" class="t t-s">5 · 31 × 4 MB = 124 MB</text>
+<g class="ln s-apl" style="stroke-width:1.6"><line x1="482" y1="181" x2="526" y2="181" marker-end="url(#g8d1-a)"/><line x1="482" y1="219" x2="526" y2="219" marker-end="url(#g8d1-a)"/><line x1="482" y1="257" x2="526" y2="257" marker-end="url(#g8d1-a)"/><line x1="482" y1="295" x2="526" y2="295" marker-end="url(#g8d1-a)"/><line x1="482" y1="333" x2="526" y2="333" marker-end="url(#g8d1-a)"/></g>
+<text x="20" y="262" class="t t-s k-fis">↺ cada paso escrito vuelve</text>
+<text x="20" y="280" class="t t-s k-fis">a entrar al contexto: el</text>
+<text x="20" y="296" class="t t-s k-fis">siguiente lo puede mirar</text>
+<text x="20" y="312" class="t t-s k-fis">con atención</text>
+<line x1="482" y1="380" x2="526" y2="380" class="ln s-apl" style="stroke-width:2" marker-end="url(#g8d1-a)"/>
+<rect x="530" y="360" width="200" height="42" rx="10" class="c-apl"/>
+<text x="544" y="378" class="t t-b k-apl">«124 MB»</text>
+<text x="544" y="395" class="t t-s k-enl t-b">✓ correcta</text>
+</svg></div><figcaption><b>Respuesta directa frente a cadena de pensamiento.</b> Arriba, la pregunta entra al modelo y sale de una vez «144 MB», equivocada: los cinco pasos tuvieron que ocurrir dentro de una sola pasada por las capas. Abajo, con «pensemos paso a paso», el modelo escribe cinco pasos; cada paso escrito vuelve a entrar al contexto y el siguiente se apoya en él. Sale «124 MB», correcta, después de unos 160 tokens en lugar de 6. Los colores son los del mapa del curso: naranja para lo que entra, azul para las capas y rosa para lo que sale.</figcaption></figure><div class="prose"><p>Un detalle importante del estudio original: la cadena de pensamiento casi no ayudaba a los modelos pequeños. Por debajo de cierto tamaño, el modelo escribía pasos con apariencia razonable pero equivocados, y el resultado no mejoraba. La ganancia aparecía con los modelos más grandes de la época, y fue uno de los ejemplos que alimentaron el debate sobre las capacidades emergentes del capítulo 4.</p></div><div class="lab" id="08-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>El mismo problema, con y sin cadena de pensamiento</h3></div><p class="hint">El modelo de juguete resuelve 50 veces el problema de la cámara de dos maneras: respondiendo de una vez y escribiendo los pasos. Cada punto es un intento; verde si acierta. Cambia el tamaño del modelo y pulsa «Otros 50 intentos». Debajo de cada columna hay un intento fallido: mira en qué paso empezó el error y cómo se arrastra hasta el final.</p><style>
+[id="08-lab-1"] .c8l1-prob{border-left:4px solid var(--c-fis);background:var(--c-fis-s);padding:8px 12px;border-radius:0 8px 8px 0;font:500 .92rem/1.45 var(--f-body);margin:0}
+[id="08-lab-1"] .c8l1-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:560px){[id="08-lab-1"] .c8l1-cols{grid-template-columns:minmax(0,1fr)}}
+[id="08-lab-1"] .c8l1-col{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;background:var(--card);align-content:start}
+[id="08-lab-1"] .c8l1-col h4{margin:0;font:700 .9rem var(--f-display)}
+[id="08-lab-1"] .c8l1-dots{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+[id="08-lab-1"] .c8l1-dots i{aspect-ratio:1;border-radius:50%;background:var(--warm);opacity:.35}
+[id="08-lab-1"] .c8l1-dots i.ok{background:var(--good);opacity:1}
+[id="08-lab-1"] .c8l1-pct{font:700 1.5rem var(--f-mono)}
+[id="08-lab-1"] .c8l1-pct small{font:500 .78rem var(--f-display);color:var(--muted);display:block}
+[id="08-lab-1"] .c8l1-cad{font:500 .82rem/1.5 var(--f-mono);margin:0;padding-left:1.4em}
+[id="08-lab-1"] .c8l1-cad li.mal{color:var(--warm);font-weight:700}
+[id="08-lab-1"] .c8l1-cad li.arr{color:var(--muted)}
+</style>
+<p class="c8l1-prob" id="c8l1-prob">Una cámara fotografía el cielo cada 20 minutos, desde las 6:00 hasta las 18:00, ambas incluidas. Cada foto ocupa 4 MB. Se borran las fotos tomadas antes de las 7:00 y después de las 17:00. ¿Cuántos MB quedan?</p>
+<div class="opciones">
+  <label>Tamaño del modelo
+    <select id="c8l1-m">
+      <option value="0">Pequeño</option>
+      <option value="1" selected>Mediano</option>
+      <option value="2">Grande</option>
+    </select></label>
+</div>
+<div class="btns"><button type="button" class="primary" id="c8l1-otra">Otros 50 intentos</button></div>
+<div class="c8l1-cols">
+  <div class="c8l1-col"><h4>Respuesta directa</h4><div class="c8l1-pct" id="c8l1-pd"></div><div class="c8l1-dots" id="c8l1-dd" role="img" aria-label="50 intentos de respuesta directa: verdes los correctos"></div><ol class="c8l1-cad" id="c8l1-cd"></ol></div>
+  <div class="c8l1-col"><h4>Con cadena de pensamiento</h4><div class="c8l1-pct" id="c8l1-pc"></div><div class="c8l1-dots" id="c8l1-dc" role="img" aria-label="50 intentos con cadena de pensamiento: verdes los correctos"></div><ol class="c8l1-cad" id="c8l1-cc"></ol></div>
+</div>
+<div class="legend"><span><i style="background:var(--good)"></i>respuesta correcta (124 MB)</span><span><i style="background:var(--warm);opacity:.5"></i>respuesta equivocada</span></div>
+<div class="readout texto" id="c8l1-out" aria-live="polite"></div></div></section>
+<section><h2>Por qué funciona: más cómputo por respuesta</h2><div class="prose"><p>Hay una explicación mecánica, y es la más útil. Un Transformer hace una <b>cantidad fija de cálculo por cada token</b>: la entrada pasa por todas sus capas una vez, y sale una distribución para el siguiente token. No puede «pensar más tiempo» antes de escribir un token difícil. Si un problema necesita más cálculo del que cabe en una pasada, la respuesta directa no tiene dónde hacerlo.</p><p>Escribir pasos intermedios cambia eso de dos maneras:</p><ul><li><b>Más pasadas.</b> Cada token de la cadena es otra pasada completa por el modelo. Una cadena de 160 tokens le da al problema 160 veces más cálculo que una respuesta de un token.</li><li><b>Memoria de trabajo.</b> Lo que el modelo escribe vuelve a entrar al contexto, y la atención (capítulo 3) lo puede consultar. El resultado parcial «37 fotos» queda guardado en el texto, en lugar de tener que sostenerse dentro de los vectores de una sola pasada.</li></ul></div><div class="analogia"><b>Imagínalo así</b><p>Piensa en una calculadora que solo puede hacer una operación por vez y no tiene memoria. Para una cuenta larga necesitas una hoja: haces una operación, anotas el resultado, haces la siguiente con lo anotado. La cadena de pensamiento es la hoja del modelo, y cada token escrito es una operación más.</p></div><div class="prose"><p>Esa idea tiene una consecuencia práctica: <b>pensar cuesta</b>. La cadena se cobra como cualquier otro token de salida y tarda lo que tarda generarla. En el laboratorio anterior, la cadena gasta entre 25 y 30 veces más tokens que la respuesta directa. Para preguntas de un solo paso, como la del color del cielo, es gasto sin beneficio.</p><p>La otra cara de la moneda: que el texto de la cadena ayude no quiere decir que sea una descripción fiel de cómo el modelo llegó a la respuesta. Lo veremos en la última sección.</p></div></section>
+<section><h2>Autoconsistencia: varias cadenas y votar</h2><div class="prose"><p>Si una cadena de pensamiento acierta el 60 % de las veces, ¿qué pasa si generas varias y te quedas con la respuesta más repetida? La idea se llama <b>autoconsistencia</b> (<i>self-consistency</i>) y se publicó también en 2022. Se generan <i>N</i> cadenas con temperatura mayor que cero (capítulo 6), para que cada una tome un camino distinto, y se vota por mayoría entre sus respuestas finales.</p><p>Funciona porque los caminos correctos tienden a coincidir y los errores tienden a dispersarse. Hay una sola manera de llegar a 124 MB, pero muchas de equivocarse: 144 si se cuentan 36 fotos, 136 si se olvida restar la tarde, 128 si se cuenta mal la mañana. Con suficientes cadenas, la respuesta correcta gana aunque cada cadena por separado falle a menudo. En el artículo original, el método subió en 18 puntos el acierto del modelo más grande en problemas de matemática escolar.</p></div><figure class="fig fig-esquema" id="08-diagrama-2"><div class="lienzo"><svg viewBox="0 0 900 330" style="min-width:720px" role="img" aria-label="Autoconsistencia. La misma pregunta se envía cinco veces al modelo con temperatura mayor que cero, y salen cinco cadenas de pensamiento distintas. Sus respuestas finales son 124, 144, 124, 136 y 124. Se cuentan los votos y gana 124, con tres de cinco">
+<defs>
+<marker id="g8d2-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="g8d2-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-apl"/></marker>
+</defs>
+<rect x="20" y="130" width="150" height="70" rx="10" class="c-fis"/>
+<text x="34" y="154" class="t t-b k-fis">Pregunta</text>
+<text x="34" y="174" class="t t-s">la de la cámara</text>
+<text x="34" y="190" class="t t-s t-m">+ paso a paso</text>
+<line x1="172" y1="165" x2="206" y2="165" class="ln" style="stroke-width:2" marker-end="url(#g8d2-m)"/>
+<rect x="210" y="120" width="130" height="90" rx="10" class="c-red"/>
+<text x="224" y="144" class="t t-b k-red">Modelo</text>
+<text x="224" y="164" class="t t-s">5 veces, con</text>
+<text x="224" y="180" class="t t-s">temperatura 0,8</text>
+<text x="224" y="196" class="t t-s t-m">y semillas distintas</text>
+<g class="ln" style="stroke-width:1.6">
+<path d="M342 140 Q370 40 396 40" marker-end="url(#g8d2-m)"/><path d="M342 150 Q370 102 396 102" marker-end="url(#g8d2-m)"/><path d="M342 165 H396" marker-end="url(#g8d2-m)"/><path d="M342 180 Q370 228 396 228" marker-end="url(#g8d2-m)"/><path d="M342 190 Q370 290 396 290" marker-end="url(#g8d2-m)"/>
+</g>
+<g class="c-apl"><rect x="400" y="22" width="290" height="36" rx="6"/><rect x="400" y="84" width="290" height="36" rx="6"/><rect x="400" y="147" width="290" height="36" rx="6"/><rect x="400" y="210" width="290" height="36" rx="6"/><rect x="400" y="272" width="290" height="36" rx="6"/></g>
+<text x="412" y="45" class="t t-s">cadena 1: … 37 − 3 − 3 = 31 → <tspan class="t-b k-enl">124</tspan></text>
+<text x="412" y="107" class="t t-s">cadena 2: … 12 × 3 = 36 fotos → <tspan class="t-b k-warm">144</tspan></text>
+<text x="412" y="170" class="t t-s">cadena 3: otro camino, 31 fotos → <tspan class="t-b k-enl">124</tspan></text>
+<text x="412" y="233" class="t t-s">cadena 4: olvida la tarde → <tspan class="t-b k-warm">136</tspan></text>
+<text x="412" y="295" class="t t-s">cadena 5: … 31 × 4 → <tspan class="t-b k-enl">124</tspan></text>
+<g class="ln s-apl" style="stroke-width:1.6">
+<path d="M692 40 Q720 40 744 150" marker-end="url(#g8d2-a)"/><path d="M692 102 Q720 102 744 156" marker-end="url(#g8d2-a)"/><path d="M692 165 H742" marker-end="url(#g8d2-a)"/><path d="M692 228 Q720 228 744 174" marker-end="url(#g8d2-a)"/><path d="M692 290 Q720 290 744 180" marker-end="url(#g8d2-a)"/>
+</g>
+<rect x="748" y="110" width="140" height="110" rx="10" class="caja" style="stroke-width:2"/>
+<text x="762" y="134" class="t t-b">Votación</text>
+<text x="762" y="156" class="t t-s t-mono">124 · ●●●</text>
+<text x="762" y="174" class="t t-s t-mono">144 · ●</text>
+<text x="762" y="192" class="t t-s t-mono">136 · ●</text>
+<text x="762" y="212" class="t t-s t-b k-enl">gana 124 (3 de 5)</text>
+</svg></div><figcaption><b>Autoconsistencia.</b> La misma pregunta se envía cinco veces al modelo con temperatura 0,8 y semillas distintas, y salen cinco cadenas diferentes. Sus respuestas finales son 124, 144, 124, 136 y 124. Se cuentan los votos y gana 124, con tres de cinco, aunque dos cadenas se equivocaron.</figcaption></figure><div class="analogia"><b>Imagínalo así</b><p>Es pedirle la misma cuenta a cinco personas por separado. Si tres llegan a 124 y las otras dos a resultados distintos entre sí, confías en el 124. No porque la mayoría siempre tenga razón, sino porque es raro que varios se equivoquen exactamente igual.</p></div><div class="prose"><p>Tiene dos límites. El primero es el costo: cinco cadenas cuestan cinco veces más. El segundo es más sutil: si el error más común es más frecuente que la respuesta correcta, votar lo amplifica. Por eso sirve para problemas con una respuesta final que se pueda comparar (un número, una opción, una clasificación) y no para textos libres, donde no hay dos respuestas iguales para contar.</p></div><div class="lab" id="08-lab-3"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Votar entre varias cadenas</h3></div><p class="hint">Cada cadena acierta con la probabilidad que elijas; si falla, cae en uno de los errores típicos del problema de la cámara. Mueve el número de cadenas y mira la ronda concreta, los votos y la curva de precisión calculada con 5.000 rondas simuladas. Después baja la probabilidad de acierto por debajo de 30 % y mira qué pasa con el voto.</p><style>
+[id="08-lab-3"] .c8l3-cads{display:flex;flex-wrap:wrap;gap:4px}
+[id="08-lab-3"] .c8l3-cads span{font:600 .8rem var(--f-mono);padding:3px 7px;border-radius:5px;border:1.5px solid var(--line);background:var(--card)}
+[id="08-lab-3"] .c8l3-cads span.ok{border-color:var(--good);color:var(--good)}
+[id="08-lab-3"] .c8l3-votos{display:grid;gap:3px;font:500 .84rem var(--f-mono)}
+[id="08-lab-3"] .c8l3-votos div{display:grid;grid-template-columns:5.5em minmax(0,1fr) 2.5em;gap:8px;align-items:center}
+[id="08-lab-3"] .c8l3-votos .b{height:14px;border-radius:3px;background:var(--grid);overflow:hidden}
+[id="08-lab-3"] .c8l3-votos .b i{display:block;height:100%;background:var(--muted)}
+[id="08-lab-3"] .c8l3-votos .gana .b i{background:var(--c-apl)}
+[id="08-lab-3"] .c8l3-votos .gana{font-weight:700}
+</style>
+<div class="ctls">
+  <label class="ctl">Cadenas que se generan (N) <output id="c8l3-n-o"></output>
+    <input id="c8l3-n" type="range" min="1" max="25" step="2" value="5"></label>
+  <label class="ctl">Probabilidad de que una cadena acierte <output id="c8l3-p-o"></output>
+    <input id="c8l3-p" type="range" min="20" max="80" step="5" value="45"></label>
+</div>
+<div class="btns"><button type="button" class="primary" id="c8l3-otra">Otra ronda</button></div>
+<p class="hint">Las respuestas finales de cada cadena en esta ronda (la correcta es 124):</p>
+<div class="c8l3-cads" id="c8l3-cads" aria-live="polite"></div>
+<div class="c8l3-votos" id="c8l3-votos" role="img" aria-label="Votos por cada respuesta"></div>
+<canvas id="c8l3-c" role="img" aria-label="Precisión del voto por mayoría según el número de cadenas"></canvas>
+<div class="legend"><span><i style="background:var(--c-apl)"></i>precisión del voto (5.000 rondas simuladas)</span><span><i style="background:var(--muted)"></i>una sola cadena</span><span><i style="background:var(--warm)"></i>el N elegido</span></div>
+<div class="readout texto" id="c8l3-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Autoconsistencia con un modelo local</h3></div><p>Vas a pedirle a un modelo pequeño el problema de la cámara siete veces, con cadena de pensamiento, temperatura 0,8 y semillas distintas, y a votar. Necesitas <a href="https://ollama.com/download" target="_blank" rel="noopener">Ollama</a> con <code>llama3.2:1b</code> (<code>ollama pull llama3.2:1b</code>). Guarda el script como <code>votar.py</code>:</p><div class="code-copia"><pre><code>import json, re, urllib.request
+from collections import Counter
+
+URL = "http://localhost:11434/api/generate"
+PROBLEMA = ("Una cámara fotografía el cielo cada 20 minutos, desde las 6:00 hasta "
+            "las 18:00, ambas incluidas. Cada foto ocupa 4 MB. Se borran las fotos "
+            "tomadas antes de las 7:00 y después de las 17:00. ¿Cuántos MB quedan? "
+            "Piensa paso a paso y termina con una línea 'Respuesta: &lt;número&gt;'.")
+
+def pedir(semilla):
+    cuerpo = {"model": "llama3.2:1b", "prompt": PROBLEMA, "stream": False,
+              "options": {"temperature": 0.8, "seed": semilla, "num_predict": 400}}
+    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),
+                                    headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(pedido) as r:
+        return json.load(r)["response"]
+
+respuestas = []
+for semilla in range(1, 8):
+    texto = pedir(semilla)
+    hallado = re.findall(r"Respuesta:\s*\**\s*(\d+)", texto)
+    final = hallado[-1] if hallado else "?"
+    respuestas.append(final)
+    print(f"semilla {semilla}: {final}")
+
+ganadora, votos = Counter(respuestas).most_common(1)[0]
+print(f"Votos: {dict(Counter(respuestas))} → gana {ganadora} con {votos} de 7")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python votar.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 votar.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Mira las siete respuestas y cuál gana la votación.</span></li><li><span>Cambia <code>temperature</code> a 0 y vuelve a ejecutar.</span></li></ol><p><b>Qué observar:</b> con temperatura 0,8 las cadenas toman caminos distintos y las respuestas varían; el voto suele ser más estable que cualquier respuesta suelta. Un modelo de 1.000 millones de parámetros se equivoca mucho en este problema, y si el error más común es más frecuente que el 124, el voto lo elige: es el límite que muestra el laboratorio. Con temperatura 0 las siete cadenas salen iguales y votar no agrega nada. Los números exactos dependen del modelo y de la versión.</p></div></section>
+<section><h2>Modelos de razonamiento entrenados con refuerzo y recompensas verificables</h2><div class="prose"><p>Pedir «pensemos paso a paso» funciona, pero el modelo solo imita cadenas que vio en sus datos. En septiembre de 2024, OpenAI presentó o1, el primero de una familia de <b>modelos de razonamiento</b> (<i>reasoning models</i>): modelos entrenados para generar, antes de la respuesta, una cadena de pensamiento larga, a veces de miles de tokens. En enero de 2025, DeepSeek publicó R1 con sus pesos y un artículo que explica la receta, y desde entonces casi todos los laboratorios ofrecen modelos así.</p><p>La receta usa el <b>aprendizaje por refuerzo</b> (<i>reinforcement learning</i>, RL), que en el capítulo 5 apareció para el RLHF; el algoritmo en detalle está en <a href="https://aaramirez.github.io/aprendizaje-por-refuerzo/temario.html" target="_blank" rel="noopener">Aprendizaje por refuerzo</a>. La diferencia está en de dónde sale la recompensa. En el RLHF, un modelo de recompensa imita el gusto humano, y se puede engañar. Aquí se usan <b>recompensas verificables</b> (<i>verifiable rewards</i>): problemas cuya respuesta se puede comprobar con un programa, como un resultado de matemática que se compara con el correcto o un código que se corre contra sus pruebas.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como entrenar a un estudiante con exámenes de respuesta única y una plantilla de corrección. Nadie le dice cómo resolver: escribe lo que quiera en la hoja de borrador, y solo se mira el número final. Con miles de exámenes, el estudiante descubre por su cuenta qué hábitos le hacen acertar: releer el enunciado, verificar, probar otro camino cuando algo no cierra.</p></div><figure class="fig fig-esquema" id="08-diagrama-3"><div class="lienzo"><svg viewBox="0 0 920 420" style="min-width:760px" role="img" aria-label="El ciclo de entrenamiento de un modelo de razonamiento con refuerzo y recompensas verificables. Un problema con respuesta comprobable entra al modelo, que genera ocho intentos, cada uno con su cadena de pensamiento. Un verificador revisa solo la respuesta final o corre las pruebas del código y da recompensa 1 o 0. Cada intento se compara con el promedio de su grupo. Se actualizan los pesos para que las cadenas que acertaron sean más probables, y el ciclo se repite con otro problema">
+<defs>
+<marker id="g8d3-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="g8d3-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-tra"/></marker>
+</defs>
+<rect x="20" y="40" width="200" height="96" rx="12" class="c-fis"/>
+<text x="34" y="64" class="t t-b k-fis">① Problema</text>
+<text x="34" y="86" class="t t-s">con respuesta comprobable:</text>
+<text x="34" y="102" class="t t-s">matemática, código con</text>
+<text x="34" y="118" class="t t-s">pruebas, lógica</text>
+<line x1="222" y1="88" x2="266" y2="88" class="ln" style="stroke-width:2" marker-end="url(#g8d3-m)"/>
+<rect x="270" y="40" width="300" height="150" rx="12" class="c-red"/>
+<text x="284" y="64" class="t t-b k-red">② El modelo intenta 8 veces</text>
+<g class="c-apl">
+<rect x="284" y="78" width="130" height="20" rx="4"/><rect x="424" y="78" width="130" height="20" rx="4"/>
+<rect x="284" y="104" width="130" height="20" rx="4"/><rect x="424" y="104" width="130" height="20" rx="4"/>
+<rect x="284" y="130" width="130" height="20" rx="4"/><rect x="424" y="130" width="130" height="20" rx="4"/>
+<rect x="284" y="156" width="130" height="20" rx="4"/><rect x="424" y="156" width="130" height="20" rx="4"/>
+</g>
+<g class="t t-s t-mono">
+<text x="292" y="93" class="t t-s t-mono">pienso… → 124</text><text x="432" y="93" class="t t-s t-mono">pienso… → 144</text>
+<text x="292" y="119" class="t t-s t-mono">pienso… → 124</text><text x="432" y="119" class="t t-s t-mono">pienso… → 136</text>
+<text x="292" y="145" class="t t-s t-mono">pienso… → 128</text><text x="432" y="145" class="t t-s t-mono">pienso… → 124</text>
+<text x="292" y="171" class="t t-s t-mono">pienso… → 144</text><text x="432" y="171" class="t t-s t-mono">pienso… → 124</text>
+</g>
+<line x1="572" y1="115" x2="616" y2="115" class="ln" style="stroke-width:2" marker-end="url(#g8d3-m)"/>
+<rect x="620" y="40" width="280" height="150" rx="12" class="caja" style="stroke-width:2"/>
+<text x="634" y="64" class="t t-b">③ Verificador</text>
+<text x="634" y="86" class="t t-s">compara la respuesta final con</text>
+<text x="634" y="102" class="t t-s">la correcta, o corre las pruebas</text>
+<text x="634" y="128" class="t t-s t-mono">recompensas: 1 0 1 0 0 1 0 1</text>
+<text x="634" y="150" class="t t-s t-m">no lee la cadena: solo el</text>
+<text x="634" y="166" class="t t-s t-m">resultado. Es un programa.</text>
+<path d="M760 192 V236" class="ln" style="stroke-width:2" marker-end="url(#g8d3-m)"/>
+<rect x="560" y="240" width="340" height="96" rx="12" class="caja" style="stroke-width:2"/>
+<text x="574" y="264" class="t t-b">④ Comparar con el grupo</text>
+<text x="574" y="286" class="t t-s">promedio del grupo: 4 de 8 = 0,5</text>
+<text x="574" y="304" class="t t-s">aciertos: 1 − 0,5 = <tspan class="t-b k-enl">+0,5</tspan> · fallos: <tspan class="t-b k-warm">−0,5</tspan></text>
+<text x="574" y="324" class="t t-s t-m">(GRPO, además, lo divide por la dispersión del grupo)</text>
+<line x1="558" y1="288" x2="514" y2="288" class="ln" style="stroke-width:2" marker-end="url(#g8d3-m)"/>
+<rect x="190" y="240" width="320" height="96" rx="12" class="c-tra"/>
+<text x="204" y="264" class="t t-b k-tra">⑤ Actualizar los pesos</text>
+<text x="204" y="286" class="t t-s">más probables los tokens de las</text>
+<text x="204" y="302" class="t t-s">cadenas con ventaja positiva,</text>
+<text x="204" y="318" class="t t-s">menos los de las negativas</text>
+<path d="M350 238 V196" class="ln s-tra" style="stroke-width:2" marker-end="url(#g8d3-t)"/>
+<text x="358" y="224" class="t t-s k-tra">otro problema, otra vuelta (miles)</text>
+<rect x="20" y="360" width="880" height="48" rx="10" class="caja"/>
+<text x="34" y="382" class="t t-s">Nadie le enseña al modelo cómo pensar: solo se premia acertar. Releer, dudar, probar otro camino o verificar</text>
+<text x="34" y="399" class="t t-s">aparecen solos en las cadenas porque ayudan a acertar, y las cadenas se alargan con el entrenamiento.</text>
+</svg></div><figcaption><b>El ciclo de entrenamiento con recompensas verificables.</b> ① Un problema con respuesta comprobable entra al modelo, que ② genera ocho intentos, cada uno con su cadena. ③ Un verificador, que es un programa, revisa solo la respuesta final y da recompensa 1 o 0. ④ Cada intento se compara con el promedio de su grupo: los que acertaron quedan por encima y los que fallaron, por debajo. ⑤ Se actualizan los pesos para que las cadenas con ventaja positiva sean más probables, y el ciclo se repite con otro problema. El violeta marca el entrenamiento, como en el mapa del curso.</figcaption></figure><div class="prose"><p>El algoritmo que popularizó DeepSeek se llama <b>GRPO</b> (<i>Group Relative Policy Optimization</i>, optimización de política relativa al grupo). Su idea central está en el paso ④: en lugar de entrenar otro modelo para estimar qué tan buena es cada respuesta, compara cada intento con el promedio de los intentos del mismo problema. Si cuatro de ocho acertaron, los cuatro correctos reciben ventaja positiva y los cuatro incorrectos, negativa.</p><p>Lo llamativo del artículo de R1 es lo que pasó con una versión entrenada solo con refuerzo, sin ejemplos de cadenas escritos por personas. Durante el entrenamiento, sus respuestas se alargaron solas, de cientos a miles de tokens, y aparecieron conductas que nadie le enseñó: revisar un paso, escribir «espera, revisemos esto» y cambiar de camino. Su acierto en un examen de matemática de competencia subió del 16 % al 71 %. El modelo final combina las dos cosas: unos pocos ejemplos de cadenas legibles para empezar y mucho refuerzo después.</p><p>El límite de la receta está en su nombre: sirve donde la respuesta se puede verificar. Matemática, programación y lógica avanzaron mucho; en tareas sin una respuesta comprobable, como redactar o aconsejar, la ganancia es menor y se sigue dependiendo de las preferencias humanas.</p></div></section>
+<section><h2>Escalar en el momento de responder: el presupuesto de pensamiento</h2><div class="prose"><p>El capítulo 4 mostró las leyes de escala del entrenamiento: más parámetros, más datos y más cómputo bajan la pérdida. Los modelos de razonamiento abrieron una segunda escala: el <b>cómputo en el momento de responder</b> (<i>test-time compute</i>). Para un mismo modelo, dejarlo pensar más tokens antes de responder sube su acierto en problemas difíciles, y la mejora sigue, aproximadamente, una línea recta cuando el presupuesto se dibuja en escala logarítmica: cada vez que se multiplica el pensamiento por un factor, se gana una cantidad parecida de puntos, hasta que se satura.</p><p>Por eso muchas APIs y modelos abiertos dejan elegir el <b>presupuesto de pensamiento</b> (<i>thinking budget</i>): un máximo de tokens de pensamiento, o un nivel como bajo, medio y alto. Es una perilla de precio y velocidad:</p><ul><li>Más presupuesto, más acierto en problemas difíciles, hasta un techo.</li><li>Más presupuesto, más latencia: miles de tokens de pensamiento a 60 tokens por segundo son minutos de espera.</li><li>Más presupuesto, más costo: los tokens de pensamiento se cobran como tokens de salida, aunque no se muestren.</li><li>Para problemas fáciles, el presupuesto alto es puro desperdicio: el modelo ya acertaba sin pensar.</li></ul></div><div class="lab" id="08-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>El presupuesto de pensamiento</h3></div><p class="hint">Elige el tipo de problema y mueve el presupuesto de pensamiento. La curva muestra la precisión esperada en escala logarítmica (cada marca multiplica los tokens por 8). Abajo, el tiempo de respuesta y el costo por pregunta y por mil preguntas, con una velocidad y un precio de ejemplo. Compara cuánto gana cada multiplicación del presupuesto en un problema fácil y en uno difícil.</p><div class="opciones">
+  <label>Tipo de problema
+    <select id="c8l2-p">
+      <option value="0">Fácil: una cuenta de un paso</option>
+      <option value="1" selected>Medio: el problema de la cámara (5 pasos)</option>
+      <option value="2">Difícil: un problema de olimpiada de matemática</option>
+    </select></label>
+</div>
+<div class="ctls">
+  <label class="ctl">Presupuesto de pensamiento <output id="c8l2-b-o"></output>
+    <input id="c8l2-b" type="range" min="0" max="15" step="0.25" value="9"></label>
+</div>
+<canvas id="c8l2-c" role="img" aria-label="Precisión según el presupuesto de pensamiento, en escala logarítmica, con el punto elegido marcado"></canvas>
+<div class="legend"><span><i style="background:var(--c-apl)"></i>precisión esperada</span><span><i style="background:var(--warm)"></i>el presupuesto elegido</span><span>eje horizontal: tokens de pensamiento, en escala logarítmica</span></div>
+<div class="readout texto" id="c8l2-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Un modelo local que piensa antes de responder</h3></div><p>Vas a darle el problema de la cámara a un modelo de razonamiento local con el pensamiento activado y desactivado, y a medir los tokens, el tiempo y la respuesta. Necesitas <a href="https://ollama.com/download" target="_blank" rel="noopener">Ollama</a> en una versión reciente y el modelo <code>qwen3:1.7b</code>, que admite el campo <code>think</code> (unos 1,4 GB). Guarda el script como <code>pensar.py</code>:</p><div class="code-copia"><pre><code>import json, urllib.request
+
+URL = "http://localhost:11434/api/generate"
+PROBLEMA = ("Una cámara fotografía el cielo cada 20 minutos, desde las 6:00 hasta "
+            "las 18:00, ambas incluidas. Cada foto ocupa 4 MB. Se borran las fotos "
+            "tomadas antes de las 7:00 y después de las 17:00. ¿Cuántos MB quedan? "
+            "Responde con el número.")
+
+def pedir(pensar):
+    cuerpo = {"model": "qwen3:1.7b", "prompt": PROBLEMA, "stream": False,
+              "think": pensar, "options": {"temperature": 0.6, "seed": 1}}
+    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),
+                                    headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(pedido) as r:
+        return json.load(r)
+
+for pensar in (False, True):
+    r = pedir(pensar)
+    pensamiento = r.get("thinking") or ""
+    print(f"--- think={pensar}")
+    print(f"tokens generados: {r['eval_count']}, segundos: {r['total_duration'] / 1e9:.1f}")
+    print(f"pensamiento: {len(pensamiento)} caracteres")
+    print(f"comienzo del pensamiento: {pensamiento[:300]!r}")
+    print(f"respuesta: {r['response'].strip()[:200]}\n")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>ollama pull qwen3:1.7b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python pensar.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>ollama pull qwen3:1.7b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python3 pensar.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Compara los tokens generados, los segundos y la respuesta con y sin pensamiento.</span></li><li><span>Lee el comienzo del pensamiento: busca si cuenta las fotos de las dos puntas.</span></li><li><span>Cambia <code>seed</code> a 2 y 3 y vuelve a ejecutar.</span></li></ol><p><b>Qué observar:</b> sin pensamiento, la respuesta llega rápido y con pocos tokens, y es más probable que diga 144. Con pensamiento, el modelo genera cientos o miles de tokens antes de responder, tarda bastante más y casi siempre llega a 124. Es el intercambio de esta sección: acierto a cambio de tiempo y tokens. Algunos modelos, como <code>gpt-oss</code>, aceptan en <code>think</code> los niveles <code>"low"</code>, <code>"medium"</code> y <code>"high"</code> en lugar de verdadero o falso; los valores que admite cada uno se ven con la API <code>/api/show</code>.</p></div></section>
+<section><h2>Herramientas dentro del razonamiento: buscar, calcular, ejecutar código</h2><div class="prose"><p>Un modelo que piensa sigue teniendo los límites de un modelo de lenguaje: hace mal las cuentas largas «de cabeza» (en parte por cómo se tokenizan los números, capítulo 1) y no sabe nada posterior a sus datos de entrenamiento. La solución es dejarlo usar <b>herramientas</b> (<i>tools</i>): una calculadora, un intérprete de Python, un buscador web.</p><p>La idea se exploró en 2022 con dos líneas de trabajo. Una hacía que el modelo escribiera un pequeño programa en lugar de la cuenta, y que la computadora lo ejecutara. La otra, llamada ReAct (<i>reasoning and acting</i>, razonar y actuar), alternaba pensamientos, acciones y observaciones: «pienso que necesito buscar X», «busco X», «leo el resultado», «pienso de nuevo». Los modelos de razonamiento actuales lo hacen dentro de su cadena: deciden en medio del pensamiento que conviene ejecutar código o buscar, reciben el resultado en su contexto y siguen pensando con él. Muchos se entrenan con el mismo refuerzo de la sección anterior, ahora con las herramientas disponibles durante el entrenamiento.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es la diferencia entre un experto que responde de memoria y uno que, a mitad de la explicación, dice «déjame verificarlo», abre la planilla, hace la cuenta y sigue hablando con el número correcto. Lo valioso no es que sepa hacer la cuenta, sino que sepa cuándo no confiar en su memoria.</p></div><figure class="fig fig-flujo" id="08-diagrama-4"><div class="lienzo"><svg viewBox="0 0 920 470" style="min-width:760px" role="img" aria-label="Diagrama de secuencia de un razonamiento con herramientas. El usuario pregunta cuántos MB ocupan las fotos si la cámara dispara cada 7 minutos de 5:43 a 19:12. El modelo piensa que contar a mano es propenso a errores y pide ejecutar una línea de Python. La herramienta devuelve 464. El modelo vuelve a pensar, verifica el resultado con una cuenta aproximada y responde 464 MB">
+<defs>
+<marker id="g8d4-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="g8d4-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-apl"/></marker>
+<marker id="g8d4-e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-enl"/></marker>
+</defs>
+<rect x="30" y="14" width="150" height="50" rx="10" class="c-fis"/>
+<text x="105" y="36" class="t t-b k-fis" text-anchor="middle">Usuario</text>
+<text x="105" y="53" class="t t-s t-m" text-anchor="middle">hace la pregunta</text>
+<line x1="105" y1="64" x2="105" y2="456" class="vida"/>
+<rect x="330" y="14" width="150" height="50" rx="10" class="c-red"/>
+<text x="405" y="36" class="t t-b k-red" text-anchor="middle">Modelo</text>
+<text x="405" y="53" class="t t-s t-m" text-anchor="middle">de razonamiento</text>
+<line x1="405" y1="64" x2="405" y2="456" class="vida"/>
+<rect x="630" y="14" width="150" height="50" rx="10" class="c-enl"/>
+<text x="705" y="36" class="t t-b k-enl" text-anchor="middle">Herramienta</text>
+<text x="705" y="53" class="t t-s t-m" text-anchor="middle">Python, en un sandbox</text>
+<line x1="705" y1="64" x2="705" y2="456" class="vida"/>
+<line x1="105" y1="100" x2="403" y2="100" class="ln" style="stroke-width:2" marker-end="url(#g8d4-m)"/>
+<text x="114" y="84" class="t" style="font-size:12px">① ¿Cuántos MB si dispara cada 7 min</text>
+<text x="114" y="98" class="t" style="font-size:12px">de 5:43 a 19:12? (4 MB por foto)</text>
+<rect x="399" y="108" width="12" height="70" rx="3" class="c-red"/>
+<text x="420" y="128" class="t t-s t-m">② piensa: «contar a mano con estos</text>
+<text x="420" y="144" class="t t-s t-m">horarios es fácil de errar; mejor</text>
+<text x="420" y="160" class="t t-s t-m">calcularlo»</text>
+<line x1="411" y1="198" x2="703" y2="198" class="ln s-enl" style="stroke-width:2" marker-end="url(#g8d4-e)"/>
+<text x="420" y="190" class="t" style="font-size:12px">③ ejecutar:</text>
+<text x="420" y="216" class="t t-s t-mono">len(range(5*60+43, 19*60+12+1, 7)) * 4</text>
+<rect x="699" y="226" width="12" height="30" rx="3" class="c-enl"/>
+<line x1="705" y1="270" x2="407" y2="270" class="ln s-enl" style="stroke-width:2" marker-end="url(#g8d4-e)"/>
+<text x="420" y="262" class="t" style="font-size:12px">④ resultado: <tspan class="t-mono">464</tspan></text>
+<rect x="399" y="280" width="12" height="90" rx="3" class="c-red"/>
+<text x="420" y="300" class="t t-s t-m">⑤ piensa: «son unas 13,5 horas,</text>
+<text x="420" y="316" class="t t-s t-m">unas 8,6 fotos por hora → unas 116</text>
+<text x="420" y="332" class="t t-s t-m">fotos; 116 × 4 = 464. Coincide»</text>
+<line x1="405" y1="392" x2="107" y2="392" class="ln s-apl" style="stroke-width:2" marker-end="url(#g8d4-a)"/>
+<text x="114" y="384" class="t" style="font-size:12px">⑥ «Quedan 464 MB (116 fotos).»</text>
+<text x="20" y="430" class="t t-s t-m">② ⑤ ocurren dentro del pensamiento; ③ y ④ salen del modelo y vuelven a su contexto.</text>
+<text x="20" y="448" class="t t-s t-m">El modelo no hace la cuenta «de cabeza»: decide cuándo conviene una herramienta y revisa lo que devuelve.</text>
+<text x="800" y="120" class="t t-xs t-b t-m">FASES</text>
+<rect x="800" y="130" width="10" height="50" rx="3" class="c-red"/><text x="818" y="160" class="t t-s">pensar</text>
+<rect x="800" y="190" width="10" height="80" rx="3" class="c-enl"/><text x="818" y="234" class="t t-s">actuar</text>
+<rect x="800" y="280" width="10" height="90" rx="3" class="c-red"/><text x="818" y="330" class="t t-s">verificar</text>
+</svg></div><figcaption><b>Razonar con una herramienta.</b> Los participantes están arriba y el tiempo corre hacia abajo. ① El usuario pregunta cuántos MB ocupan las fotos si la cámara dispara cada 7 minutos de 5:43 a 19:12. ② El modelo piensa que contar a mano con esos horarios es fácil de errar y ③ pide ejecutar una línea de Python. ④ La herramienta devuelve 464 y el resultado entra al contexto del modelo, que ⑤ lo verifica con una cuenta aproximada y ⑥ responde. A la derecha, las fases: pensar, actuar y verificar.</figcaption></figure><div class="prose"><p>El ciclo de pensar, actuar y observar es la base de los <b>agentes</b> (<i>agents</i>), sistemas que encadenan muchas llamadas a herramientas para cumplir una tarea. Cómo se definen las herramientas, cómo se conectan con un producto y cómo se controla lo que el modelo puede hacer con ellas está en <a href="https://aaramirez.github.io/aplicaciones-con-ia/temario.html" target="_blank" rel="noopener">Aplicaciones con IA</a>. Lo que importa aquí es el porqué interno: la herramienta le da al modelo cómputo exacto e información fresca que sus pesos no tienen.</p></div></section>
+<section><h2>Lo que el razonamiento visible dice y no dice de lo que hace el modelo</h2><div class="prose"><p>Leer la cadena de pensamiento es tentador: parece una ventana a la mente del modelo. Lo es solo en parte. Lo que el modelo escribe es texto generado, igual que la respuesta, y no tiene por qué describir con fidelidad el cálculo que de verdad produjo el resultado dentro de sus capas. Los investigadores llaman a esto el problema de la <b>fidelidad</b> (<i>faithfulness</i>) del razonamiento.</p><p>Hay evidencia concreta. En un estudio de 2023 se agregaban a los ejemplos de una pregunta pistas sesgadas, como que la respuesta correcta siempre era la (A). Los modelos se dejaban llevar por la pista y elegían (A), pero en su cadena justificaban la elección con argumentos sobre el contenido, sin mencionar la pista. En otro estudio, de 2025, se dio a varios modelos de razonamiento una pista sobre la respuesta; cuando la usaban, la mencionaban en su pensamiento solo en una minoría de los casos.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como pedirle a alguien que explique por qué eligió un restaurante. La explicación («tiene buena comida, queda cerca») puede ser sincera y aun así no ser la razón real (pasó por la puerta y le gustó el olor). Las explicaciones que damos después no siempre son el mecanismo que decidió.</p></div><div class="prose"><p>Eso no quiere decir que la cadena no sirva:</p><ul><li><b>Sí dice</b> qué pasos escribió el modelo, y esos pasos sí influyen en la respuesta: si se corrompe un paso a mano, la respuesta suele cambiar. Sirve para encontrar errores: si la cadena dice «12 × 3 = 36 fotos», ahí está el problema.</li><li><b>No garantiza</b> que el modelo no haya usado otra información que no menciona, ni que sus justificaciones sean las verdaderas causas.</li><li><b>Es valiosa para la supervisión</b>: leer las cadenas permite detectar intentos de hacer trampa en una tarea, como modificar las pruebas en lugar de arreglar el código. Por eso se discute evitar entrenar a los modelos para que su pensamiento «parezca bien», ya que podrían aprender a esconder lo que hacen.</li></ul><p>Algunos proveedores muestran el pensamiento completo; otros solo un resumen o nada, y aun así lo cobran. Los temas de transparencia y supervisión de la IA se tratan en <a href="https://aaramirez.github.io/ia-responsable/temario.html" target="_blank" rel="noopener">IA responsable</a>.</p></div><div class="caso"><b>Un caso real</b><p><b>El clasificador que pensaba de más.</b> Un equipo de soporte usaba un modelo para clasificar tickets en doce categorías. Cuando salió una versión de razonamiento del mismo proveedor, la activaron con presupuesto alto, esperando mejores resultados. La precisión subió apenas un punto, pero el tiempo por ticket pasó de un segundo a doce y la factura mensual se multiplicó por ocho: cada ticket generaba miles de tokens de pensamiento que nadie leía. Revisaron las cadenas de una muestra y vieron que el modelo daba vueltas sobre casos simples. Volvieron al modelo sin razonamiento para la clasificación y reservaron el de razonamiento para los tickets que el primero marcaba con baja confianza, que eran uno de cada diez.</p></div><div class="ml"><b>En la práctica</b><p><b>Cuándo pedir que el modelo piense.</b> Activa el razonamiento, o pide la cadena de pensamiento, cuando la tarea tiene varios pasos dependientes: cuentas, lógica, planificación, depuración de código, análisis de un contrato con condiciones. No lo actives para extraer un dato, clasificar, traducir o resumir: pagas más y esperas más por casi lo mismo. Si la respuesta final se puede comparar, la autoconsistencia con tres a cinco cadenas suele valer la pena antes que subir el presupuesto de un solo intento. Y si el resultado depende de una cuenta o de un dato actual, dale una herramienta: el modelo que verifica con código se equivoca menos que el que razona de memoria.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Pensar en voz alta es cómputo extra que el modelo usa para acertar. Cada token escrito es otra pasada por las capas y deja un resultado a la vista para el paso siguiente. Varias cadenas con voto, más presupuesto de pensamiento y herramientas compran más acierto con más tokens y más tiempo. Y lo que el modelo escribe al pensar ayuda a encontrar errores, pero no es una transcripción fiel de lo que pasa dentro.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Por qué un Transformer no puede «pensar más tiempo» antes de escribir un token difícil sin escribir nada?</summary><p>Porque hace una cantidad fija de cálculo por token: una pasada por sus capas. La única forma de darle más cálculo a un problema es generar más tokens, y eso es lo que hace la cadena de pensamiento.</p></details><details><summary>¿Qué dos cosas le da al modelo escribir los pasos intermedios?</summary><p>Más pasadas de cálculo (una por cada token escrito) y una memoria de trabajo: los resultados parciales quedan en el contexto y la atención los puede consultar en los pasos siguientes.</p></details><details><summary>En la autoconsistencia, ¿por qué hace falta temperatura mayor que cero? ¿Cuándo falla el voto?</summary><p>Para que cada cadena tome un camino distinto; con temperatura 0 todas salen iguales. El voto falla si el error más común es más frecuente que la respuesta correcta, porque lo amplifica.</p></details><details><summary>¿Qué tiene de especial una recompensa verificable frente al modelo de recompensa del RLHF?</summary><p>La da un programa que comprueba el resultado (la respuesta correcta o las pruebas del código), no un modelo que imita el gusto humano. Es difícil de engañar, pero solo existe para tareas con respuesta comprobable.</p></details><details><summary>Un problema fácil se resuelve con 98 % de acierto sin pensar. ¿Conviene un presupuesto alto?</summary><p>No: la precisión casi no puede subir y el costo y la latencia crecen con cada token de pensamiento, que se cobra como salida.</p></details><details><summary>Si la cadena de pensamiento de un modelo justifica su respuesta con argumentos razonables, ¿quiere decir que esos fueron los motivos reales?</summary><p>No necesariamente. Los estudios muestran que los modelos pueden usar información (como una pista) sin mencionarla y justificar después con otros argumentos; la cadena sirve para encontrar errores, pero no es una transcripción fiel.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Qué es el examen AIME y por qué se volvió una prueba estándar para los modelos de razonamiento?<small>Pista: busca «American Invitational Mathematics Examination».</small></li><li>¿Qué es la penalización KL que usan PPO y GRPO, y por qué impide que el modelo entrenado se aleje demasiado del original?<small>Pista: busca «KL divergence penalty RLHF».</small></li><li>¿Qué es el árbol de pensamientos (<i>tree of thoughts</i>) y en qué se parece a la búsqueda en haz?<small>Pista: busca «tree of thoughts Yao 2023».</small></li><li>¿Qué dice la ley de Goodhart y qué ejemplos de <i>reward hacking</i> se han documentado en sistemas de aprendizaje por refuerzo, dentro y fuera de los modelos de lenguaje?</li><li>¿Qué son los modelos de recompensa de procesos (<i>process reward models</i>), que califican cada paso de la cadena en lugar del resultado final?</li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/2201.11903" target="_blank" rel="noopener">Chain-of-Thought Prompting Elicits Reasoning in Large Language Models (Wei y otros, 2022) <small>el artículo de la cadena de pensamiento, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2203.11171" target="_blank" rel="noopener">Self-Consistency Improves Chain of Thought Reasoning (Wang y otros, 2022) <small>autoconsistencia, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2501.12948" target="_blank" rel="noopener">DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning (2025) <small>la receta de un modelo de razonamiento abierto, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2305.04388" target="_blank" rel="noopener">Language Models Don't Always Say What They Think (Turpin y otros, 2023) <small>la fidelidad del razonamiento, en inglés</small></a><a class="vid" href="https://docs.ollama.com/capabilities/thinking" target="_blank" rel="noopener">Ollama: pensamiento <small>el campo <code>think</code> de la API, en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/modelos-de-ia" target="_blank" rel="noopener">github.com/aaramirez/modelos-de-ia</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  // Cinco pasos; cada uno se acierta con cierta probabilidad. Sin cadena, el modelo debe hacerlos «de cabeza», dentro de un solo token.
+  const PASOS=[
+    {ok:'De 6:00 a 18:00 hay 12 horas = 36 intervalos de 20 min → 37 fotos',mal:'12 horas × 3 fotos por hora = 36 fotos',v:[37,36]},
+    {ok:'Antes de las 7:00: 6:00, 6:20 y 6:40 → 3 fotos',mal:'Antes de las 7:00: 6:20 y 6:40 → 2 fotos',v:[3,2]},
+    {ok:'Después de las 17:00: 17:20, 17:40 y 18:00 → 3 fotos',mal:'Después de las 17:00: 17:20 y 17:40 → 2 fotos',v:[3,2]},
+    {ok:'Quedan 37 − 3 − 3',mal:'Quedan 37 − 3',v:null},
+    {ok:'× 4 MB',mal:'× 4 MB',v:null}];
+  const P=[{d:.80,c:.82,td:6,tc:150},{d:.80,c:.93,td:6,tc:160},{d:.86,c:.985,td:6,tc:170}];
+  const mulberry=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  let base=1;
+  function intento(r,p){
+    const ok=PASOS.map(()=>r()<p);
+    const fotos=ok[0]?37:36,a=ok[1]?3:2,b=ok[2]?3:2,resta=ok[3]?fotos-a-b:fotos-a;
+    const mb=resta*4;
+    return {ok,mb,bien:mb===124};
+  }
+  function cadena(x){
+    const fotos=x.ok[0]?37:36,a=x.ok[1]?3:2,b=x.ok[2]?3:2;
+    const L=[PASOS[0][x.ok[0]?'ok':'mal'],PASOS[1][x.ok[1]?'ok':'mal'],PASOS[2][x.ok[2]?'ok':'mal'],
+      x.ok[3]?'Quedan '+fotos+' − '+a+' − '+b+' = '+(fotos-a-b)+' fotos':'Quedan '+fotos+' − '+a+' = '+(fotos-a)+' fotos (olvida restar las de la tarde)',
+      'Total: '+(x.mb/4)+' × 4 MB = '+x.mb+' MB'];
+    let roto=false;
+    return L.map((t,i)=>{const cl=!x.ok[i]&&i<4?'mal':roto?'arr':'';if(!x.ok[i]&&i<4)roto=true;return '<li class="'+cl+'">'+t+'</li>';}).join('');
+  }
+  function calc(){
+    const m=+$('#c8l1-m').value,p=P[m];
+    const rd=mulberry(base*7919+m),rc=mulberry(base*104729+m+11);
+    const D=[],C=[];for(let i=0;i<50;i++){D.push(intento(rd,p.d));C.push(intento(rc,p.c));}
+    const nd=D.filter(x=>x.bien).length,nc=C.filter(x=>x.bien).length;
+    $('#c8l1-dd').innerHTML=D.map(x=>'<i class="'+(x.bien?'ok':'')+'"></i>').join('');
+    $('#c8l1-dc').innerHTML=C.map(x=>'<i class="'+(x.bien?'ok':'')+'"></i>').join('');
+    $('#c8l1-pd').innerHTML=(nd*2)+' %<small>'+nd+' de 50 aciertos · unos '+p.td+' tokens por respuesta</small>';
+    $('#c8l1-pc').innerHTML=(nc*2)+' %<small>'+nc+' de 50 aciertos · unos '+p.tc+' tokens por respuesta</small>';
+    const ejD=D.find(x=>!x.bien)||D[0];
+    $('#c8l1-cd').innerHTML='<li class="'+(ejD.bien?'':'mal')+'">Responde de una vez: «'+ejD.mb+' MB»'+(ejD.bien?'':' — los pasos ocurren «de cabeza» y no se ven')+'</li>';
+    const ejC=C.find(x=>!x.bien)||C[0];
+    $('#c8l1-cc').innerHTML=cadena(ejC);
+    let txt='<span>Modelo '+['pequeño (unos 1.000 millones de parámetros)','mediano (unos 10.000 millones)','grande (más de 100.000 millones)'][m]+'.</span><span>Probabilidad de acertar cada paso: directa '+Math.round(p.d*100)+' %, con cadena '+Math.round(p.c*100)+' % → los cinco pasos: '+Math.round(100*Math.pow(p.d,5))+' % frente a '+Math.round(100*Math.pow(p.c,5))+' % esperado</span>';
+    txt+='<span>Con cadena el modelo gasta unas '+Math.round(p.tc/p.td)+' veces más tokens: más cómputo por respuesta.</span>';
+    txt+=m===0?'<span class="warn">En un modelo pequeño la cadena casi no ayuda: escribe pasos, pero se equivoca en ellos casi tanto como sin escribirlos.</span>':
+      '<span class="ok">Escribir los pasos permite que cada uno se apoye en el resultado anterior, que ya está en el contexto.</span>';
+    txt+='<span>Los ejemplos de abajo son intentos fallidos; en rojo, el primer paso equivocado, y en gris, lo que arrastra el error.</span>';
+    $('#c8l1-out').innerHTML=txt;
+  }
+  $('#c8l1-m').addEventListener('change',calc);
+  $('#c8l1-otra').addEventListener('click',()=>{base++;calc();});
+  calc();
+})();
+</script>
+<script>
+(function(){
+  const {$,tok,canvasWidget,frame,dot}=window.Lab;
+  // Errores típicos del problema de la cámara: 36 fotos (144 MB), olvidar la tarde (136), contar mal la mañana (128), otros
+  const MAL=[[144,.40],[136,.25],[128,.20],[148,.10],[112,.05]];
+  const mulberry=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  let ronda=1;
+  function una(r,p){if(r()<p)return 124;let u=r();for(const [v,q] of MAL){if(u<q)return v;u-=q;}return 112;}
+  function votar(res,r){const c=new Map();res.forEach(v=>c.set(v,(c.get(v)||0)+1));const mx=Math.max(...c.values());const emp=[...c.entries()].filter(e=>e[1]===mx).map(e=>e[0]);return {c,gana:emp[Math.floor(r()*emp.length)],emp:emp.length>1};}
+  function precision(N,p,seed){const r=mulberry(seed);let ok=0;for(let k=0;k<5000;k++){const res=[];for(let i=0;i<N;i++)res.push(una(r,p));if(votar(res,r).gana===124)ok++;}return ok/5000;}
+  let curva=[];
+  const dib=canvasWidget($('#c8l3-c'),w=>w<520?.7:.42,(ctx,w,h)=>{
+    const N=+$('#c8l3-n').value,p=+$('#c8l3-p').value/100;
+    const F=frame(ctx,w,h,{x0:0,x1:26,y0:0,y1:1,sx:5,sy:.2});
+    ctx.strokeStyle=tok('--muted');ctx.setLineDash([5,4]);ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(F.X(0),F.Y(p));ctx.lineTo(F.X(26),F.Y(p));ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle=tok('--c-apl');ctx.lineWidth=3;ctx.beginPath();curva.forEach(([n,a],i)=>{i?ctx.lineTo(F.X(n),F.Y(a)):ctx.moveTo(F.X(n),F.Y(a));});ctx.stroke();
+    curva.forEach(([n,a])=>dot(ctx,F.X(n),F.Y(a),tok('--c-apl'),3));
+    const a=(curva.find(c=>c[0]===N)||[0,0])[1];dot(ctx,F.X(N),F.Y(a),tok('--warm'),7);
+    ctx.font='11px '+tok('--f-mono');ctx.fillStyle=tok('--muted');ctx.textAlign='right';ctx.textBaseline='bottom';ctx.fillText('N cadenas',F.p.l+F.pw,F.p.t+F.ph-4);
+  });
+  function calcCurva(){const p=+$('#c8l3-p').value/100;curva=[];for(let n=1;n<=25;n+=2)curva.push([n,precision(n,p,1000+n)]);}
+  function calc(){
+    const N=+$('#c8l3-n').value,p=+$('#c8l3-p').value/100;
+    $('#c8l3-n-o').textContent=N;$('#c8l3-p-o').textContent=Math.round(p*100)+' %';
+    const r=mulberry(ronda*31+N);const res=[];for(let i=0;i<N;i++)res.push(una(r,p));
+    const V=votar(res,r);
+    $('#c8l3-cads').innerHTML=res.map(v=>'<span class="'+(v===124?'ok':'')+'">'+v+'</span>').join('');
+    const orden=[...V.c.entries()].sort((a,b)=>b[1]-a[1]);
+    $('#c8l3-votos').innerHTML=orden.map(([v,n])=>'<div class="'+(v===V.gana?'gana':'')+'"><span>'+v+' MB</span><span class="b"><i style="width:'+(100*n/N).toFixed(0)+'%"></i></span><span>'+n+'</span></div>').join('');
+    const a=(curva.find(c=>c[0]===N)||[0,0])[1];
+    let txt='<span>Esta ronda: gana <b>'+V.gana+' MB</b>'+(V.emp?' (hubo empate y se sorteó)':'')+' → '+(V.gana===124?'<span class="ok">correcta</span>':'<span class="warn">equivocada</span>')+'</span>';
+    txt+='<span>Precisión del voto con '+N+(N===1?' cadena: ':' cadenas: ')+'<b class="big">'+Math.round(a*100)+' %</b> · una sola cadena: '+Math.round(p*100)+' %</span>';
+    txt+=(N===1?'<span>Con una sola cadena no hay nada que votar.</span>':'<span>Costo: '+N+' veces los tokens de una cadena.</span>');
+    if(p<.3)txt+='<span class="warn">Si un error es más frecuente que la respuesta correcta, votar casi no ayuda: con muchas cadenas, termina eligiendo ese error.</span>';
+    else if(N>=9)txt+='<span>Las primeras cadenas suman mucho; las siguientes, cada vez menos.</span>';
+    $('#c8l3-out').innerHTML=txt;dib();
+  }
+  $('#c8l3-n').addEventListener('input',calc);
+  $('#c8l3-p').addEventListener('input',()=>{calcCurva();calc();});
+  $('#c8l3-otra').addEventListener('click',()=>{ronda++;calc();});
+  calcCurva();calc();
+})();
+</script>
+<script>
+(function(){
+  const {$,tok,canvasWidget,frame,curve,dot}=window.Lab;
+  // Precisión ≈ curva en S sobre el logaritmo del presupuesto (forma de los resultados publicados; números de ejemplo)
+  const PR=[{a0:80,am:99,b50:60,s:.9},{a0:33,am:96,b50:700,s:1.1},{a0:4,am:78,b50:9000,s:1.3}];
+  const VEL=60,TTFT=.6,PRECIO=10;// tokens por segundo, segundos hasta el primer token, US$ por millón de tokens de salida (de ejemplo)
+  const RESP=150;// tokens de la respuesta visible
+  const tokens=v=>v<=0?0:Math.round(Math.pow(2,v)*4);
+  const acc=(p,b)=>{if(b<=0)return p.a0;const x=(Math.log(b)-Math.log(p.b50))/p.s;return p.a0+(p.am-p.a0)/(1+Math.exp(-x));};
+  const fmtT=n=>n>=1000?(n/1000).toLocaleString('es',{maximumFractionDigits:n>=10000?0:1})+' mil':String(n);
+  const dib=canvasWidget($('#c8l2-c'),w=>w<520?.75:.45,(ctx,w,h)=>{
+    const p=PR[+$('#c8l2-p').value],v=+$('#c8l2-b').value;
+    const F=frame(ctx,w,h,{x0:0,x1:15,y0:0,y1:100,sx:3,sy:20});
+    ctx.fillStyle=tok('--card');ctx.fillRect(0,F.p.t+F.ph+2,w,h);
+    ctx.font='11px '+tok('--f-mono');ctx.fillStyle=tok('--muted');ctx.textAlign='center';ctx.textBaseline='top';
+    (w<520?[0,6,12]:[0,3,6,9,12,15]).forEach(x=>ctx.fillText(x===0?'0':fmtT(tokens(x)),F.X(x),F.p.t+F.ph+5));
+    curve(ctx,F,x=>acc(p,tokens(x)),tok('--c-apl'),3);
+    dot(ctx,F.X(v),F.Y(acc(p,tokens(v))),tok('--warm'),7);
+    ctx.fillStyle=tok('--muted');ctx.textAlign='right';ctx.textBaseline='bottom';
+    
+    ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText('% de aciertos',F.p.l+4,F.p.t+2);
+  });
+  function calc(){
+    const p=PR[+$('#c8l2-p').value],v=+$('#c8l2-b').value,b=tokens(v);
+    $('#c8l2-b-o').textContent=b===0?'sin pensar':fmtT(b)+' tokens';
+    const a=acc(p,b),seg=TTFT+(b+RESP)/VEL,costo=(b+RESP)*PRECIO/1e6;
+    const b2=tokens(Math.min(15,v+3)),a2=acc(p,b2);
+    let txt='<span class="big">Precisión esperada: '+a.toFixed(0)+' %</span>';
+    txt+='<span>Tiempo de respuesta: '+(seg<60?seg.toFixed(1).replace('.',',')+' s':(seg/60).toFixed(1).replace('.',',')+' min')+' (a '+VEL+' tokens por segundo) · costo: US$ '+costo.toFixed(4).replace('.',',')+' por pregunta</span>';
+    txt+='<span>Por 1.000 preguntas: US$ '+(costo*1000).toFixed(2).replace('.',',')+'</span>';
+    if(v<15)txt+='<span>Multiplicar el presupuesto por 8 ('+fmtT(b2)+' tokens) llevaría la precisión a '+a2.toFixed(0)+' %: '+(a2-a<1?'<span class="warn">casi no mejora, y cuesta 8 veces más</span>':'+'+(a2-a).toFixed(0)+' puntos')+'.</span>';
+    if(+$('#c8l2-p').value===0&&b>500)txt+='<span class="warn">Para un problema fácil, pensar tanto es desperdicio: la precisión ya estaba arriba sin pensar.</span>';
+    $('#c8l2-out').innerHTML=txt;dib();
+  }
+  $('#c8l2-b').addEventListener('input',calc);$('#c8l2-p').addEventListener('change',calc);
+  calc();
+})();
+</script>
+</body>
+</html>

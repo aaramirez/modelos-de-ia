@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Embeddings · Modelos de IA · Modelos de IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Cómo funciona por dentro un modelo de lenguaje: tokens, embeddings, atención y el Transformer, cómo se entrena y se alinea, cómo genera y razona, y cómo se evalúa y se elige.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="embeddings">
+<header class="topbar"><a class="brand" href="index.html">Modelos de <b>IA</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 02 DE 10</span><h1>Embeddings y espacios semánticos</h1><p class="lede">La pregunta del curso ya es una lista de 8 números enteros, pero un número de lista no dice nada: el 16 no se parece al 17. En este capítulo cada token se convierte en un punto de un espacio donde lo parecido queda cerca, y buscar se vuelve medir distancias.</p></header>
+<section><h2>Un vector por token: la tabla de embeddings</h2><div class="prose"><p>Al final del capítulo 1, «¿De qué color es el cielo?» quedó convertida en la lista <code>[4, 8, 10, 11, 12, 13, 16, 5]</code>. Esos números son etiquetas, como el número de una butaca en el cine: la butaca 16 no se parece más a la 17 que a la 3. Si el modelo hiciera cuentas con las etiquetas, concluiría que «␣cielo» (16) está «cerca» de «␣mar» (17) solo porque alguien los numeró seguidos. Hace falta otra representación, una que guarde el significado.</p></div><div class="analogia"><b>Imagínalo así</b><p>Piensa en una ficha de cata de vinos. En vez de darle a cada vino un número de catálogo, el catador le pone una nota del 0 al 1 en varias columnas: dulzor, acidez, cuerpo, notas frutales. Dos vinos con fichas parecidas se parecen al tomarlos, aunque sus números de catálogo no tengan nada que ver. Un <b>embedding</b> es la ficha de cata de un token: una lista de números donde cada columna mide algo.</p></div><div class="prose"><p>Un <b>embedding</b> (<i>embedding</i>, incrustación o representación vectorial) es un <b>vector</b> (<i>vector</i>), una lista ordenada de números, que representa a un token. El modelo guarda todos en una <b>tabla de embeddings</b> (<i>embedding table</i> o <i>embedding matrix</i>): una fila por cada token del vocabulario y tantas columnas como la <b>dimensión</b> (<i>dimension</i>) elegida. Convertir los identificadores en vectores es solo buscar filas: el token 16 trae la fila 16. No hay cálculo, es una consulta.</p><p>En Colibrí, el modelo de juguete del curso, la tabla tiene 32 filas (su vocabulario) y 4 columnas. Para que se pueda leer, elegimos a mano qué mide cada columna: d1, cuánto tiene que ver con el color; d2, con el cielo y la naturaleza; d3, si es una palabra gramatical, como un artículo; d4, si marca una pregunta. Estas son las 8 filas de la pregunta del curso:</p><div class="tbl"><table><thead><tr><th>Token</th><th>id</th><th>d1 color</th><th>d2 cielo</th><th>d3 gramatical</th><th>d4 pregunta</th></tr></thead><tbody><tr><td>¿</td><td>4</td><td>0,0</td><td>0,0</td><td>0,2</td><td>0,9</td></tr><tr><td>De</td><td>8</td><td>0,0</td><td>0,1</td><td>0,8</td><td>0,3</td></tr><tr><td>␣qué</td><td>10</td><td>0,3</td><td>0,0</td><td>0,3</td><td>0,8</td></tr><tr><td>␣color</td><td>11</td><td>0,9</td><td>0,2</td><td>0,0</td><td>0,3</td></tr><tr><td>␣es</td><td>12</td><td>0,1</td><td>0,1</td><td>0,7</td><td>0,0</td></tr><tr><td>␣el</td><td>13</td><td>0,0</td><td>0,1</td><td>0,9</td><td>0,0</td></tr><tr><td>␣cielo</td><td>16</td><td>0,3</td><td>0,9</td><td>0,0</td><td>0,0</td></tr><tr><td>?</td><td>5</td><td>0,0</td><td>0,0</td><td>0,1</td><td>1,0</td></tr></tbody></table></div><p>Y estas, cuatro de la respuesta que aparecerá en el capítulo 6: «El» (9) = [0,0; 0,1; 0,9; −0,2], «␣azul» (21) = [1,0; 0,4; 0,0; 0,0], «␣gris» (22) = [0,8; 0,4; 0,0; 0,0] y «.» (6) = [0,0; 0,0; 0,3; −0,7]. La pregunta, entonces, entra al modelo como una matriz de 8 filas por 4 columnas. Esa matriz es lo que reciben las capas de atención del capítulo 3.</p></div><figure class="fig fig-esquema" id="02-diagrama-1"><div class="lienzo"><svg viewBox="0 0 960 430" style="min-width:760px" role="img" aria-label="La tabla de embeddings de Colibrí tiene 32 filas, una por token, y 4 columnas. Los 8 identificadores de la pregunta eligen 8 filas, y el resultado es una matriz de 8 por 4 números: la pregunta lista para entrar a las capas del modelo.">
+<defs><marker id="m2d1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-enl"/></marker></defs>
+<text x="16" y="34" class="t t-xs t-b t-m">IDS DE LA PREGUNTA</text>
+<text x="230" y="34" class="t t-xs t-b t-m">TABLA DE EMBEDDINGS · 32 × 4</text>
+<text x="560" y="34" class="t t-xs t-b t-m">LA PREGUNTA COMO MATRIZ · 8 × 4</text>
+<rect x="250" y="52.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="62.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="73.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="83.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="94.0" width="150" height="9.0" rx="2" class="c-enl"/>
+<text x="244" y="102.0" class="t t-s t-mono k-enl" text-anchor="end" style="font-size:10px">4</text>
+<rect x="250" y="104.5" width="150" height="9.0" rx="2" class="c-enl"/>
+<text x="244" y="112.5" class="t t-s t-mono k-enl" text-anchor="end" style="font-size:10px">5</text>
+<rect x="250" y="115.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="125.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="136.0" width="150" height="9.0" rx="2" class="c-enl"/>
+<text x="244" y="144.0" class="t t-s t-mono k-enl" text-anchor="end" style="font-size:10px">8</text>
+<rect x="250" y="146.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="157.0" width="150" height="9.0" rx="2" class="c-enl"/>
+<text x="244" y="165.0" class="t t-s t-mono k-enl" text-anchor="end" style="font-size:10px">10</text>
+<rect x="250" y="167.5" width="150" height="9.0" rx="2" class="c-enl"/>
+<text x="244" y="175.5" class="t t-s t-mono k-enl" text-anchor="end" style="font-size:10px">11</text>
+<rect x="250" y="178.0" width="150" height="9.0" rx="2" class="c-enl"/>
+<text x="244" y="186.0" class="t t-s t-mono k-enl" text-anchor="end" style="font-size:10px">12</text>
+<rect x="250" y="188.5" width="150" height="9.0" rx="2" class="c-enl"/>
+<text x="244" y="196.5" class="t t-s t-mono k-enl" text-anchor="end" style="font-size:10px">13</text>
+<rect x="250" y="199.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="209.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="220.0" width="150" height="9.0" rx="2" class="c-enl"/>
+<text x="244" y="228.0" class="t t-s t-mono k-enl" text-anchor="end" style="font-size:10px">16</text>
+<rect x="250" y="230.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="241.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="251.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="262.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="272.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="283.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="293.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="304.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="314.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="325.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="335.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="346.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="356.5" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="367.0" width="150" height="9.0" rx="2" class="caja"/>
+<rect x="250" y="377.5" width="150" height="9.0" rx="2" class="caja"/>
+<text x="410" y="60" class="t t-s t-m">fila 0</text>
+<text x="410" y="386" class="t t-s t-m">fila 31</text>
+<text x="250" y="408" class="t t-s t-m">una fila de 4 números</text>
+<text x="250" y="423" class="t t-s t-m">por cada token del vocabulario</text>
+<rect x="16" y="60" width="120" height="30" rx="6" class="c-fis"/>
+<text x="28" y="80" class="t t-mono t-b" style="font-size:12px">4</text>
+<text x="60" y="80" class="t t-mono" style="font-size:12px">¿</text>
+<path d="M136 75 C 180 75, 200 98.5, 222 98.5" class="ln s-enl" style="stroke-width:1.3" marker-end="url(#m2d1-a)"/>
+<rect x="16" y="102" width="120" height="30" rx="6" class="c-fis"/>
+<text x="28" y="122" class="t t-mono t-b" style="font-size:12px">8</text>
+<text x="60" y="122" class="t t-mono" style="font-size:12px">De</text>
+<path d="M136 117 C 180 117, 200 140.5, 222 140.5" class="ln s-enl" style="stroke-width:1.3" marker-end="url(#m2d1-a)"/>
+<rect x="16" y="144" width="120" height="30" rx="6" class="c-fis"/>
+<text x="28" y="164" class="t t-mono t-b" style="font-size:12px">10</text>
+<text x="60" y="164" class="t t-mono" style="font-size:12px">␣qué</text>
+<path d="M136 159 C 180 159, 200 161.5, 222 161.5" class="ln s-enl" style="stroke-width:1.3" marker-end="url(#m2d1-a)"/>
+<rect x="16" y="186" width="120" height="30" rx="6" class="c-fis"/>
+<text x="28" y="206" class="t t-mono t-b" style="font-size:12px">11</text>
+<text x="60" y="206" class="t t-mono" style="font-size:12px">␣color</text>
+<path d="M136 201 C 180 201, 200 172.0, 222 172.0" class="ln s-enl" style="stroke-width:1.3" marker-end="url(#m2d1-a)"/>
+<rect x="16" y="228" width="120" height="30" rx="6" class="c-fis"/>
+<text x="28" y="248" class="t t-mono t-b" style="font-size:12px">12</text>
+<text x="60" y="248" class="t t-mono" style="font-size:12px">␣es</text>
+<path d="M136 243 C 180 243, 200 182.5, 222 182.5" class="ln s-enl" style="stroke-width:1.3" marker-end="url(#m2d1-a)"/>
+<rect x="16" y="270" width="120" height="30" rx="6" class="c-fis"/>
+<text x="28" y="290" class="t t-mono t-b" style="font-size:12px">13</text>
+<text x="60" y="290" class="t t-mono" style="font-size:12px">␣el</text>
+<path d="M136 285 C 180 285, 200 193.0, 222 193.0" class="ln s-enl" style="stroke-width:1.3" marker-end="url(#m2d1-a)"/>
+<rect x="16" y="312" width="120" height="30" rx="6" class="c-fis"/>
+<text x="28" y="332" class="t t-mono t-b" style="font-size:12px">16</text>
+<text x="60" y="332" class="t t-mono" style="font-size:12px">␣cielo</text>
+<path d="M136 327 C 180 327, 200 224.5, 222 224.5" class="ln s-enl" style="stroke-width:1.3" marker-end="url(#m2d1-a)"/>
+<rect x="16" y="354" width="120" height="30" rx="6" class="c-fis"/>
+<text x="28" y="374" class="t t-mono t-b" style="font-size:12px">5</text>
+<text x="60" y="374" class="t t-mono" style="font-size:12px">?</text>
+<path d="M136 369 C 180 369, 200 109.0, 222 109.0" class="ln s-enl" style="stroke-width:1.3" marker-end="url(#m2d1-a)"/>
+<text x="670" y="58" class="t t-s t-m t-mono" text-anchor="middle">d1</text>
+<text x="742" y="58" class="t t-s t-m t-mono" text-anchor="middle">d2</text>
+<text x="814" y="58" class="t t-s t-m t-mono" text-anchor="middle">d3</text>
+<text x="886" y="58" class="t t-s t-m t-mono" text-anchor="middle">d4</text>
+<text x="622" y="87" class="t t-mono" style="font-size:12px" text-anchor="end">¿</text>
+<rect x="638" y="68" width="64" height="28" rx="5" class="caja"/>
+<text x="670" y="87" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<rect x="710" y="68" width="64" height="28" rx="5" class="caja"/>
+<text x="742" y="87" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<rect x="782" y="68" width="64" height="28" rx="5" class="caja"/>
+<text x="814" y="87" class="t t-mono" style="font-size:12px" text-anchor="middle">0,2</text>
+<rect x="854" y="68" width="64" height="28" rx="5" class="c-enl"/>
+<text x="886" y="87" class="t t-mono" style="font-size:12px" text-anchor="middle">0,9</text>
+<text x="622" y="123" class="t t-mono" style="font-size:12px" text-anchor="end">De</text>
+<rect x="638" y="104" width="64" height="28" rx="5" class="caja"/>
+<text x="670" y="123" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<rect x="710" y="104" width="64" height="28" rx="5" class="caja"/>
+<text x="742" y="123" class="t t-mono" style="font-size:12px" text-anchor="middle">0,1</text>
+<rect x="782" y="104" width="64" height="28" rx="5" class="c-enl"/>
+<text x="814" y="123" class="t t-mono" style="font-size:12px" text-anchor="middle">0,8</text>
+<rect x="854" y="104" width="64" height="28" rx="5" class="caja"/>
+<text x="886" y="123" class="t t-mono" style="font-size:12px" text-anchor="middle">0,3</text>
+<text x="622" y="159" class="t t-mono" style="font-size:12px" text-anchor="end">␣qué</text>
+<rect x="638" y="140" width="64" height="28" rx="5" class="caja"/>
+<text x="670" y="159" class="t t-mono" style="font-size:12px" text-anchor="middle">0,3</text>
+<rect x="710" y="140" width="64" height="28" rx="5" class="caja"/>
+<text x="742" y="159" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<rect x="782" y="140" width="64" height="28" rx="5" class="caja"/>
+<text x="814" y="159" class="t t-mono" style="font-size:12px" text-anchor="middle">0,3</text>
+<rect x="854" y="140" width="64" height="28" rx="5" class="c-enl"/>
+<text x="886" y="159" class="t t-mono" style="font-size:12px" text-anchor="middle">0,8</text>
+<text x="622" y="195" class="t t-mono" style="font-size:12px" text-anchor="end">␣color</text>
+<rect x="638" y="176" width="64" height="28" rx="5" class="c-enl"/>
+<text x="670" y="195" class="t t-mono" style="font-size:12px" text-anchor="middle">0,9</text>
+<rect x="710" y="176" width="64" height="28" rx="5" class="caja"/>
+<text x="742" y="195" class="t t-mono" style="font-size:12px" text-anchor="middle">0,2</text>
+<rect x="782" y="176" width="64" height="28" rx="5" class="caja"/>
+<text x="814" y="195" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<rect x="854" y="176" width="64" height="28" rx="5" class="caja"/>
+<text x="886" y="195" class="t t-mono" style="font-size:12px" text-anchor="middle">0,3</text>
+<text x="622" y="231" class="t t-mono" style="font-size:12px" text-anchor="end">␣es</text>
+<rect x="638" y="212" width="64" height="28" rx="5" class="caja"/>
+<text x="670" y="231" class="t t-mono" style="font-size:12px" text-anchor="middle">0,1</text>
+<rect x="710" y="212" width="64" height="28" rx="5" class="caja"/>
+<text x="742" y="231" class="t t-mono" style="font-size:12px" text-anchor="middle">0,1</text>
+<rect x="782" y="212" width="64" height="28" rx="5" class="c-enl"/>
+<text x="814" y="231" class="t t-mono" style="font-size:12px" text-anchor="middle">0,7</text>
+<rect x="854" y="212" width="64" height="28" rx="5" class="caja"/>
+<text x="886" y="231" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<text x="622" y="267" class="t t-mono" style="font-size:12px" text-anchor="end">␣el</text>
+<rect x="638" y="248" width="64" height="28" rx="5" class="caja"/>
+<text x="670" y="267" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<rect x="710" y="248" width="64" height="28" rx="5" class="caja"/>
+<text x="742" y="267" class="t t-mono" style="font-size:12px" text-anchor="middle">0,1</text>
+<rect x="782" y="248" width="64" height="28" rx="5" class="c-enl"/>
+<text x="814" y="267" class="t t-mono" style="font-size:12px" text-anchor="middle">0,9</text>
+<rect x="854" y="248" width="64" height="28" rx="5" class="caja"/>
+<text x="886" y="267" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<text x="622" y="303" class="t t-mono" style="font-size:12px" text-anchor="end">␣cielo</text>
+<rect x="638" y="284" width="64" height="28" rx="5" class="caja"/>
+<text x="670" y="303" class="t t-mono" style="font-size:12px" text-anchor="middle">0,3</text>
+<rect x="710" y="284" width="64" height="28" rx="5" class="c-enl"/>
+<text x="742" y="303" class="t t-mono" style="font-size:12px" text-anchor="middle">0,9</text>
+<rect x="782" y="284" width="64" height="28" rx="5" class="caja"/>
+<text x="814" y="303" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<rect x="854" y="284" width="64" height="28" rx="5" class="caja"/>
+<text x="886" y="303" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<text x="622" y="339" class="t t-mono" style="font-size:12px" text-anchor="end">?</text>
+<rect x="638" y="320" width="64" height="28" rx="5" class="caja"/>
+<text x="670" y="339" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<rect x="710" y="320" width="64" height="28" rx="5" class="caja"/>
+<text x="742" y="339" class="t t-mono" style="font-size:12px" text-anchor="middle">0,0</text>
+<rect x="782" y="320" width="64" height="28" rx="5" class="caja"/>
+<text x="814" y="339" class="t t-mono" style="font-size:12px" text-anchor="middle">0,1</text>
+<rect x="854" y="320" width="64" height="28" rx="5" class="c-enl"/>
+<text x="886" y="339" class="t t-mono" style="font-size:12px" text-anchor="middle">1,0</text>
+<path d="M420 220 H 540" class="ln s-enl" style="stroke-width:2" marker-end="url(#m2d1-a)"/>
+<text x="480" y="210" class="t t-s k-enl" text-anchor="middle">copiar filas</text>
+<text x="560" y="370" class="t t-s t-m">Columnas elegidas a mano para que se puedan leer:</text>
+<text x="560" y="386" class="t t-s t-m">d1 color · d2 cielo y naturaleza · d3 palabra gramatical · d4 pregunta.</text>
+<text x="560" y="402" class="t t-s t-m">En un modelo real las columnas se aprenden y no tienen nombre.</text>
+</svg></div><figcaption><b>De identificadores a una matriz.</b> A la izquierda, los 8 identificadores de la pregunta. En el centro, la tabla de embeddings de Colibrí: 32 filas finas, una por token, con las 8 filas elegidas en verde. A la derecha, el resultado: la pregunta como una matriz de 8 × 4, con los números de cada fila; las celdas de 0,5 o más están resaltadas. Fíjate que «␣color» y «␣cielo» se destacan en las primeras dos columnas, y «¿» y «?» en la última.</figcaption></figure><div class="prose"><p>En un modelo real nadie elige las columnas. La tabla empieza con números al azar y el entrenamiento la ajusta, junto con el resto del modelo, para que prediga bien el siguiente token (capítulo 4). Las columnas que salen no tienen un nombre claro, y son muchas: 768 en GPT-2 pequeño, 4.096 en un modelo de 8.000 millones de parámetros como Llama 3 8B. Con un vocabulario de unos 128.000 tokens, esa tabla sola tiene más de 500 millones de números. Por eso el tamaño del vocabulario del capítulo 1 pesa.</p></div><div class="ml"><b>En la práctica</b><p>Puedes ver la dimensión de los embeddings de cualquier modelo abierto. Con Ollama, <code>ollama show llama3.2:1b</code> muestra, entre otros datos, <code>embedding length</code> (largo del embedding), <code>context length</code> (largo del contexto) y la <b>cuantización</b> (<i>quantization</i>), que se explica en el capítulo 10. En los repositorios de Hugging Face, el mismo dato aparece como <code>hidden_size</code> en el archivo <code>config.json</code>. Si no tienes nada instalado, busca ese archivo en la página de cualquier modelo abierto.</p></div></section>
+<section><h2>Word2vec (2013) y la hipótesis distribucional</h2><div class="prose"><p>Si nadie le dice al modelo qué significa cada palabra, ¿de dónde saca el significado? De una idea de la lingüística de los años cincuenta, la <b>hipótesis distribucional</b> (<i>distributional hypothesis</i>): las palabras que aparecen en contextos parecidos tienen significados parecidos. El lingüista J. R. Firth lo resumió en 1957 con una frase muy citada: «conocerás una palabra por la compañía que tiene».</p></div><div class="analogia"><b>Imagínalo así</b><p>Si en una fiesta ves a alguien que siempre está junto a la mesa de los quesos, conversa con los que hablan de vinos y se va cuando se acaba el tinto, puedes adivinar mucho de esa persona sin haber cruzado una palabra. Con las palabras pasa igual: «cielo» anda siempre con «azul», «nube», «sol» y «gris», y eso basta para ubicarla.</p></div><div class="prose"><p>En 2013, Tomas Mikolov y su equipo en Google publicaron <b>word2vec</b> (de <i>word to vector</i>, palabra a vector), una forma barata de convertir esa idea en vectores a partir de miles de millones de palabras. La versión más conocida, <b>skip-gram</b> (salto de palabras), funciona así: se desliza una ventana por el texto; la palabra del centro intenta predecir a sus vecinas; cada acierto acerca un poco los vectores de las palabras que andan juntas y cada error los corrige. Para que no todo termine junto, se agregan <b>ejemplos negativos</b> (<i>negative sampling</i>): palabras al azar que no son vecinas, cuyos vectores se alejan.</p></div><figure class="fig fig-flujo" id="02-diagrama-2"><div class="lienzo"><svg viewBox="0 0 960 380" style="min-width:760px" role="img" aria-label="Cómo aprende word2vec. Una ventana se desliza por el texto; la palabra del centro, cielo, debe predecir a sus vecinas el, es y azul. Cada acierto o error ajusta los vectores. Después de millones de ventanas, las palabras que aparecen rodeadas de las mismas vecinas, como cielo y mar, terminan con vectores parecidos.">
+<defs>
+<marker id="m2d2-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-enl"/></marker>
+<marker id="m2d2-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+</defs>
+<text x="16" y="28" class="t t-xs t-b t-m">① UNA VENTANA SE DESLIZA POR EL TEXTO</text>
+<rect x="92" y="44" width="372" height="56" rx="12" class="caja" style="stroke-dasharray:5 4;stroke-width:1.6"/>
+<g class="t t-mono" style="font-size:14px">
+<rect x="20" y="56" width="62" height="32" rx="7" class="caja"/><text x="51" y="77" text-anchor="middle" class="t-m">hoy</text>
+<rect x="102" y="56" width="62" height="32" rx="7" class="caja"/><text x="133" y="77" text-anchor="middle">el</text>
+<rect x="174" y="56" width="92" height="32" rx="7" class="c-enl" style="stroke-width:2"/><text x="220" y="77" text-anchor="middle" class="t-b">cielo</text>
+<rect x="276" y="56" width="62" height="32" rx="7" class="caja"/><text x="307" y="77" text-anchor="middle">es</text>
+<rect x="348" y="56" width="104" height="32" rx="7" class="caja"/><text x="400" y="77" text-anchor="middle">azul</text>
+<rect x="474" y="56" width="62" height="32" rx="7" class="caja"/><text x="505" y="77" text-anchor="middle" class="t-m">de</text>
+<rect x="546" y="56" width="62" height="32" rx="7" class="caja"/><text x="577" y="77" text-anchor="middle" class="t-m">día</text>
+</g>
+<text x="626" y="68" class="t t-s t-m">ventana de ±2 palabras</text>
+<text x="626" y="84" class="t t-s t-m">alrededor de la palabra central</text>
+<text x="16" y="138" class="t t-xs t-b t-m">② LA PALABRA CENTRAL INTENTA PREDECIR A SUS VECINAS</text>
+<rect x="16" y="156" width="200" height="74" rx="12" class="c-enl"/>
+<text x="30" y="180" class="t t-b">vector de «cielo»</text>
+<text x="30" y="200" class="t t-s">una fila de la tabla:</text>
+<text x="30" y="217" class="t t-s t-mono">[0,3 · 0,9 · 0 · 0 …]</text>
+<line x1="216" y1="180" x2="330" y2="162" class="ln s-enl" style="stroke-width:2" marker-end="url(#m2d2-a)"/>
+<line x1="216" y1="193" x2="330" y2="194" class="ln s-enl" style="stroke-width:2" marker-end="url(#m2d2-a)"/>
+<line x1="216" y1="206" x2="330" y2="226" class="ln s-enl" style="stroke-width:2" marker-end="url(#m2d2-a)"/>
+<g class="t t-s">
+<rect x="334" y="148" width="200" height="26" rx="6" class="caja"/><text x="346" y="166">¿«el» está cerca? <tspan class="k-enl t-b">sí</tspan></text>
+<rect x="334" y="180" width="200" height="26" rx="6" class="caja"/><text x="346" y="198">¿«es» está cerca? <tspan class="k-enl t-b">sí</tspan></text>
+<rect x="334" y="212" width="200" height="26" rx="6" class="caja"/><text x="346" y="230">¿«azul» está cerca? <tspan class="k-enl t-b">sí</tspan></text>
+<rect x="334" y="244" width="200" height="26" rx="6" class="caja" style="stroke-dasharray:4 3"/><text x="346" y="262" class="t-m">¿«préstamo»? <tspan class="k-warm t-b">no</tspan> (al azar)</text>
+</g>
+<line x1="216" y1="219" x2="330" y2="256" class="ln ln-d" marker-end="url(#m2d2-g)"/>
+<path d="M534 210 H580" class="ln" style="stroke-width:2" marker-end="url(#m2d2-g)"/>
+<rect x="584" y="160" width="360" height="92" rx="12" class="c-tra"/>
+<text x="598" y="184" class="t t-b k-tra">Ajuste de los vectores</text>
+<text x="598" y="204" class="t t-s">si acertó, se acercan un poco «cielo» y sus vecinas;</text>
+<text x="598" y="220" class="t t-s">la palabra al azar se aleja. Se repite con</text>
+<text x="598" y="236" class="t t-s">millones de ventanas (descenso de gradiente).</text>
+<text x="16" y="306" class="t t-xs t-b t-m">③ EL RESULTADO</text>
+<rect x="16" y="318" width="928" height="46" rx="12" class="caja" style="stroke-width:1.6"/>
+<text x="30" y="346" class="t">«cielo» y «mar» aparecen con las mismas vecinas (<tspan class="t-mono">el, es, azul, gris</tspan>), así que terminan con vectores parecidos, sin que nadie lo diga.</text>
+</svg></div><figcaption><b>Cómo aprende word2vec.</b> Sigue los pasos de arriba hacia abajo. ① Una ventana de dos palabras a cada lado se desliza por el texto. ② La palabra central, «cielo», intenta predecir que «el», «es» y «azul» están cerca, y que una palabra al azar como «préstamo» no lo está. ③ El ajuste acerca o aleja vectores y se repite millones de veces. El resultado, abajo: palabras con las mismas vecinas, como «cielo» y «mar», terminan con vectores parecidos. El ajuste usa el descenso de gradiente, que se explica en Aprendizaje profundo.</figcaption></figure><div class="prose"><p>Word2vec no fue el único: GloVe (2014, Stanford) llegó a vectores parecidos contando cuántas veces aparece cada par de palabras en todo el corpus. Hoy los modelos de lenguaje no usan word2vec: su tabla de embeddings se aprende junto con todo lo demás. Pero la idea de fondo es la misma, y es la que explica que un modelo «sepa» que el cielo y el mar se parecen sin que nadie se lo haya dicho. La red neuronal y el descenso de gradiente que hacen el ajuste se explican en <a href="https://aaramirez.github.io/aprendizaje-profundo/temario.html" target="_blank" rel="noopener">Aprendizaje profundo</a>.</p><p>Para los laboratorios de este capítulo calculamos vectores de verdad con un corpus de juguete: 4.430 frases cortas en español sobre reyes, familias, animales, el cielo, el agua y el dinero. Contamos qué palabras aparecen a menos de tres posiciones de cada otra, transformamos esas cuentas con un método clásico equivalente en espíritu a word2vec (<b>PPMI</b>, <i>positive pointwise mutual information</i>, información mutua puntual positiva, seguida de una descomposición en valores singulares) y quedamos con 12 números por palabra. Nadie le dijo al método qué es un rey ni qué es un perro.</p></div><div class="lab" id="02-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Un mapa de palabras y frases</h3></div><p class="hint">Escribe palabras o frases separadas por comas y mira dónde caen en el mapa. Cada punto de color es una palabra del corpus de juguete, agrupada por tema solo para que la veas; el método no conoce los grupos. Los términos que escribas aparecen en naranja, unidos con sus tres vecinos más parecidos. Prueba «Sinónimos»: «rey» y «monarca» caen uno encima del otro, y «perro» y «can» también, porque en el corpus aparecen en las mismas frases. Prueba «Una palabra que no conoce» para ver el límite de una tabla fija de palabras.</p><style>
+[id="02-lab-1"] .c2l1-in{width:100%;box-sizing:border-box;font:500 .92rem var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+[id="02-lab-1"] .c2l1-res{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:8px}
+[id="02-lab-1"] .c2l1-r{border:1px solid var(--line);border-left:4px solid var(--warm);border-radius:8px;padding:7px 9px;background:var(--paper);font:500 .82rem/1.45 var(--f-display);min-width:0}
+[id="02-lab-1"] .c2l1-r b{display:block;font:700 .9rem var(--f-mono);color:var(--ink);overflow-wrap:anywhere}
+[id="02-lab-1"] .c2l1-r span{display:block;color:var(--muted);font-family:var(--f-mono);font-size:.78rem}
+</style>
+<label class="hint" for="c2l1-q">Palabras o frases, separadas por comas:</label>
+<input id="c2l1-q" class="c2l1-in" spellcheck="false" value="cielo, rey, el banco presta dinero, peces">
+<div class="btns" role="group" aria-label="Ejemplos">
+  <button type="button" data-q="cielo, rey, el banco presta dinero, peces">Mezcla</button>
+  <button type="button" data-q="rey, monarca, perro, can">Sinónimos</button>
+  <button type="button" data-q="banco, préstamo, peces">Las dos caras de «banco»</button>
+  <button type="button" data-q="el perro ladra, el can ladra, el gato duerme, el cielo es azul">Frases</button>
+  <button type="button" data-q="computadora, cielo">Una palabra que no conoce</button>
+</div>
+<canvas id="c2l1-c" role="img" aria-label="Mapa en dos dimensiones de las palabras del corpus de juguete, agrupadas por tema, con los términos escritos marcados"></canvas>
+<div class="legend" id="c2l1-ley"></div>
+<div class="c2l1-res" id="c2l1-res" aria-live="polite"></div>
+<div class="readout texto" id="c2l1-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En el navegador</span><h3>Explora un espacio de embeddings real</h3></div><p>Vas a navegar por los vectores de word2vec de 10.000 palabras en inglés con el <b>Embedding Projector</b> de TensorFlow, que corre en el navegador y no pide registro. Abre <a href="https://projector.tensorflow.org/" target="_blank" rel="noopener">projector.tensorflow.org</a>.</p><ol class="steps"><li><span>A la izquierda, deja el conjunto que viene cargado («Word2Vec 10K»). Espera a que aparezca la nube de puntos.</span></li><li><span>En el buscador de la derecha («Search»), escribe <code>sky</code>. Haz clic en la palabra y mira la lista de vecinos más cercanos con su distancia.</span></li><li><span>Repite con <code>blue</code>, <code>king</code> y <code>bank</code>.</span></li><li><span>Cambia la proyección de abajo a la izquierda entre «PCA», «t-SNE» y «UMAP», y mira cómo cambia la forma de la nube.</span></li></ol><p><b>Qué observar:</b> los vecinos de <code>sky</code> suelen ser palabras del clima y del paisaje, y los de <code>king</code>, otros títulos y nombres de la realeza. Los de <code>bank</code> son casi todos de finanzas, aunque en inglés la palabra también significa orilla (<i>river bank</i>): un vector por palabra queda dominado por su sentido más frecuente y mezcla los demás, igual que «banco» en el laboratorio 1. Las tres proyecciones dibujan nubes distintas porque aplastan 200 dimensiones en 3 de formas diferentes; la lista de vecinos, en cambio, se calcula en el espacio completo y no cambia.</p></div></section>
+<section><h2>Aritmética de significados: rey − hombre + mujer</h2><div class="prose"><p>Word2vec se hizo famoso por un efecto que nadie había pedido. Si al vector de «rey» se le resta el de «hombre» y se le suma el de «mujer», el vector que resulta queda muy cerca del de «reina». Las diferencias entre vectores capturan relaciones: la flecha que va de «hombre» a «mujer» es parecida a la que va de «rey» a «reina», y a la que va de «padre» a «madre».</p></div><div class="analogia"><b>Imagínalo así</b><p>Imagina un mapa de una ciudad donde cada barrio tiene su versión de cada negocio. Si caminas desde la panadería del barrio norte hasta la panadería del barrio sur, haces un recorrido. Si haces el mismo recorrido partiendo desde la farmacia del norte, llegas cerca de la farmacia del sur. En el espacio de los embeddings, «de masculino a femenino» o «de país a capital» son recorridos así: la misma flecha sirve desde distintos puntos de partida.</p></div><div class="prose"><p>Hay dos detalles que las demostraciones suelen callar. El primero: el resultado casi nunca cae exactamente sobre «reina», sino cerca; se busca el vecino más próximo. El segundo: se excluyen de la búsqueda las tres palabras de la cuenta, porque si no, el vecino más cercano de «rey − hombre + mujer» suele ser el propio «rey». Las analogías funcionan bien para relaciones muy regulares (género, plural, país y capital) y mucho peor para otras.</p></div><div class="lab" id="02-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Aritmética de vectores</h3></div><p class="hint">Elige una analogía o arma la tuya con los tres selectores. Cada fila de colores muestra los 12 números de un vector: verde para positivo, rojo para negativo, más intenso cuanto más grande. La última fila es el resultado de la cuenta, y abajo están las cinco palabras más cercanas con su similitud coseno. Prueba «padre − hombre + mujer» para ver una analogía que falla por poco, y «piloto − él + ella» para ver algo que el corpus enseñó sin querer.</p><style>
+[id="02-lab-2"] .c2l2-eq{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;align-items:end}
+[id="02-lab-2"] .c2l2-eq label{display:grid;gap:4px;font:600 .82rem var(--f-display);color:var(--muted)}
+[id="02-lab-2"] .c2l2-tab{display:grid;gap:3px;font:500 .78rem var(--f-mono)}
+[id="02-lab-2"] .c2l2-fila{display:grid;grid-template-columns:96px repeat(12,minmax(0,1fr));gap:2px;align-items:center}
+[id="02-lab-2"] .c2l2-fila>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:600}
+[id="02-lab-2"] .c2l2-fila i{display:block;height:18px;border-radius:3px}
+[id="02-lab-2"] .c2l2-top{display:grid;gap:4px}
+[id="02-lab-2"] .c2l2-v{display:grid;grid-template-columns:110px 1fr 46px;gap:8px;align-items:center;font:600 .84rem var(--f-display)}
+[id="02-lab-2"] .c2l2-v .tr{height:14px;border-radius:4px;background:var(--grid);overflow:hidden}
+[id="02-lab-2"] .c2l2-v .tr i{display:block;height:100%;background:var(--c-enl)}
+[id="02-lab-2"] .c2l2-v.uno .tr i{background:var(--warm)}
+[id="02-lab-2"] .c2l2-v b{font-family:var(--f-mono);text-align:right}
+</style>
+<div class="btns" role="group" aria-label="Analogías de ejemplo">
+  <button type="button" data-a="rey|hombre|mujer">rey − hombre + mujer</button>
+  <button type="button" data-a="príncipe|niño|niña">príncipe − niño + niña</button>
+  <button type="button" data-a="reina|princesa|príncipe">reina − princesa + príncipe</button>
+  <button type="button" data-a="padre|hombre|mujer">padre − hombre + mujer</button>
+  <button type="button" data-a="piloto|él|ella">piloto − él + ella</button>
+</div>
+<div class="c2l2-eq">
+  <label>Parto de <select id="c2l2-a"></select></label>
+  <label>le resto <select id="c2l2-b"></select></label>
+  <label>le sumo <select id="c2l2-c"></select></label>
+</div>
+<div class="c2l2-tab" id="c2l2-tab" aria-label="Los 12 números de cada vector"></div>
+<div class="legend"><span><i style="background:var(--c-enl)"></i>número positivo</span><span><i style="background:var(--warm)"></i>número negativo</span><span>la intensidad es el tamaño del número</span></div>
+<div class="c2l2-top" id="c2l2-top" aria-label="Vecinos más cercanos del resultado"></div>
+<div class="readout texto" id="c2l2-out" aria-live="polite"></div></div><div class="prose"><p>Con los vectores de juguete, «rey − hombre + mujer» da «reina» con un coseno de 0,98, y «príncipe − niño + niña» da «princesa». Nada de eso se programó: salió de contar con qué palabras aparece cada palabra.</p></div></section>
+<section><h2>Similitud coseno</h2><div class="prose"><p>Para hablar de «cerca» hace falta una medida. La más usada con embeddings es la <b>similitud coseno</b> (<i>cosine similarity</i>): el coseno del ángulo entre dos vectores. Si apuntan en la misma dirección, el coseno vale 1; si son perpendiculares, 0; si apuntan en direcciones opuestas, −1. Se calcula con el <b>producto punto</b> (<i>dot product</i>), que multiplica los vectores número a número y suma, dividido por el largo de cada uno:</p><div class="math-display">\cos(\mathbf{a},\mathbf{b}) = \frac{\mathbf{a}\cdot\mathbf{b}}{\lVert\mathbf{a}\rVert\,\lVert\mathbf{b}\rVert} = \frac{\sum_i a_i b_i}{\sqrt{\sum_i a_i^2}\,\sqrt{\sum_i b_i^2}}</div><p>¿Por qué el ángulo y no la distancia en línea recta? Porque el largo de un vector suele reflejar cosas como la frecuencia de la palabra, no su significado. El coseno ignora el largo y solo mira hacia dónde apunta el vector. Si los vectores ya están <b>normalizados</b> (<i>normalized</i>), es decir, con largo 1, el coseno es simplemente el producto punto, y por eso muchas bases de datos de vectores normalizan todo al guardarlo. Si los vectores, el producto punto o el largo de un vector son nuevos para ti, están explicados en <a href="https://aaramirez.github.io/mate/" target="_blank" rel="noopener">Mate para ML</a>.</p></div><figure class="fig fig-esquema" id="02-diagrama-3"><div class="lienzo"><svg viewBox="0 0 960 400" style="min-width:760px" role="img" aria-label="Seis vectores de Colibrí en el plano de sus dos primeras columnas, color y cielo. El ángulo entre azul y gris es casi cero, coseno 0,997; entre cielo y azul es mediano, coseno 0,65; entre azul y noche es casi recto, coseno 0,02. A la derecha, la fórmula del coseno y la cuenta para cielo y azul.">
+<defs>
+<marker id="m2d3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-enl"/></marker>
+</defs>
+<line x1="110" y1="330" x2="560" y2="330" class="ln"/>
+<line x1="260" y1="372" x2="260" y2="60" class="ln"/>
+<text x="556" y="320" class="t t-s t-m" text-anchor="end">d1 · color →</text>
+<text x="268" y="70" class="t t-s t-m">↑ d2 · cielo y naturaleza</text>
+<text x="252" y="346" class="t t-s t-m" text-anchor="end">0</text>
+<text x="510" y="346" class="t t-s t-m" text-anchor="middle">1</text>
+<line x1="510" y1="326" x2="510" y2="334" class="ln"/>
+<text x="250" y="84" class="t t-s t-m" text-anchor="end">1</text>
+<line x1="256" y1="80" x2="264" y2="80" class="ln"/>
+<g class="s-enl" style="stroke-width:2.2">
+<line x1="260" y1="330" x2="335" y2="105" class="ln s-enl" marker-end="url(#m2d3-a)"/>
+<line x1="260" y1="330" x2="360" y2="130" class="ln s-enl" marker-end="url(#m2d3-a)"/>
+<line x1="260" y1="330" x2="185" y2="130" class="ln s-enl" marker-end="url(#m2d3-a)"/>
+<line x1="260" y1="330" x2="510" y2="230" class="ln s-enl" marker-end="url(#m2d3-a)"/>
+<line x1="260" y1="330" x2="460" y2="230" class="ln s-enl" marker-end="url(#m2d3-a)"/>
+<line x1="260" y1="330" x2="485" y2="355" class="ln s-enl" marker-end="url(#m2d3-a)"/>
+</g>
+<g class="t t-mono t-b" style="font-size:12px">
+<text x="322" y="98">␣cielo</text>
+<text x="364" y="128">␣mar</text>
+<text x="132" y="126">␣noche</text>
+<text x="516" y="228">␣azul</text>
+<text x="420" y="220">␣gris</text>
+<text x="492" y="362">␣rojo</text>
+</g>
+<path d="M282.1 263.6 A70 70 0 0 1 325 304" class="ln s-warm" style="stroke-width:2"/>
+<text x="300" y="258" class="t t-s t-b k-warm">0,65</text>
+<path d="M246 292.6 A40 40 0 0 1 297.1 315.2" class="ln s-warm" style="stroke-width:2;stroke-dasharray:3 3"/>
+<text x="214" y="290" class="t t-s t-b k-warm">0,02</text>
+<path d="M438.9 240.6 A200 200 0 0 1 445.7 255.7" class="ln s-warm" style="stroke-width:3"/>
+<text x="452" y="262" class="t t-s t-b k-warm">0,997</text>
+<rect x="600" y="40" width="344" height="328" rx="12" class="caja"/>
+<text x="616" y="64" class="t t-xs t-b t-m">SIMILITUD COSENO</text>
+<text x="616" y="92" class="t t-mono" style="font-size:13px">cos = (a · b) / (|a| × |b|)</text>
+<text x="616" y="114" class="t t-s t-m">mide el ángulo; no le importa el largo</text>
+<text x="616" y="146" class="t t-xs t-b t-m">CIELO Y AZUL, A MANO</text>
+<text x="616" y="168" class="t t-s t-mono">a · b = 0,3×1,0 + 0,9×0,4 = 0,66</text>
+<text x="616" y="188" class="t t-s t-mono">|a| = 0,95   |b| = 1,08</text>
+<text x="616" y="208" class="t t-s t-mono">cos = 0,66 / (0,95 × 1,08) = 0,65</text>
+<text x="616" y="240" class="t t-xs t-b t-m">CÓMO SE LEE</text>
+<text x="616" y="262" class="t t-s"><tspan class="t-b">1</tspan>: misma dirección (azul y gris, 0,997)</text>
+<text x="616" y="282" class="t t-s"><tspan class="t-b">0</tspan>: perpendiculares, sin relación</text>
+<text x="616" y="302" class="t t-s">   (azul y noche, 0,02)</text>
+<text x="616" y="322" class="t t-s"><tspan class="t-b">−1</tspan>: direcciones opuestas</text>
+<text x="616" y="340" class="t t-s t-m">Estos seis tokens tienen d3 = d4 = 0,</text>
+<text x="616" y="354" class="t t-s t-m">así que el plano muestra el ángulo exacto.</text>
+</svg></div><figcaption><b>El coseno es un ángulo.</b> A la izquierda, seis tokens de Colibrí dibujados en el plano de sus dos primeras columnas: color (horizontal) y cielo (vertical). Como sus otras dos columnas valen 0, el dibujo muestra el ángulo exacto. Los arcos rojos marcan tres pares: «␣azul» y «␣gris» casi no forman ángulo (0,997); «␣cielo» y «␣azul» forman un ángulo mediano (0,65); «␣azul» y «␣noche» quedan casi perpendiculares (0,02). A la derecha, la fórmula y la cuenta completa para «␣cielo» y «␣azul».</figcaption></figure><div class="prose"><p>Esta misma operación, el producto punto entre vectores, es el corazón de la atención del capítulo 3: allí cada token calcula productos punto con todos los demás para decidir a cuáles mirar.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Calcula cosenos con los vectores de Colibrí</h3></div><p>Vas a calcular con Python, solo con la biblioteca estándar, los vecinos más cercanos de algunos tokens de Colibrí. Guarda este programa como <code>coseno_colibri.py</code>:</p><div class="code-copia"><pre><code>import math
+
+# Algunas filas de la tabla de embeddings de Colibrí (4 números por token)
+tabla = {
+    "␣cielo": [0.3, 0.9, 0.0, 0.0], "␣mar":   [0.4, 0.8, 0.0, 0.0],
+    "␣noche": [-0.3, 0.8, 0.1, 0.0], "␣azul":  [1.0, 0.4, 0.0, 0.0],
+    "␣gris":  [0.8, 0.4, 0.0, 0.0], "␣rojo":  [0.9, -0.1, 0.0, 0.0],
+    "␣color": [0.9, 0.2, 0.0, 0.3], "␣el":    [0.0, 0.1, 0.9, 0.0],
+    "¿":      [0.0, 0.0, 0.2, 0.9], "?":      [0.0, 0.0, 0.1, 1.0],
+}
+
+def coseno(a, b):
+    punto = sum(x * y for x, y in zip(a, b))
+    return punto / (math.hypot(*a) * math.hypot(*b))
+
+for palabra in ["␣cielo", "␣azul", "?"]:
+    otras = [(coseno(tabla[palabra], v), p) for p, v in tabla.items() if p != palabra]
+    otras.sort(reverse=True)
+    print(palabra, "-&gt;", ", ".join(f"{p} {c:.2f}" for c, p in otras[:3]))
+
+print("cielo y azul:", round(coseno(tabla["␣cielo"], tabla["␣azul"]), 3))</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python coseno_colibri.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 coseno_colibri.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Ejecuta el programa y compara el coseno de «␣cielo» y «␣azul» con la cuenta a mano del diagrama.</span></li><li><span>Cambia el vector de «␣noche» por <code>[-0.9, 0.0, 0.0, 0.0]</code> y vuelve a correrlo: ¿qué le pasa a su coseno con «␣azul»?</span></li><li><span>Multiplica por 10 todos los números de «␣mar» y confirma que sus cosenos no cambian.</span></li></ol><p><b>Qué observar:</b> los vecinos de «␣cielo» son «␣mar» (0,99), «␣noche» (0,77) y «␣gris» (0,71); los de «?», «¿» (0,99). El paso 2 da un coseno negativo, cercano a −0,9: vectores que apuntan en direcciones opuestas. El paso 3 muestra que el coseno ignora el largo: un vector diez veces más largo apunta igual.</p></div></section>
+<section><h2>Embeddings de frases y documentos</h2><div class="prose"><p>Un vector por token sirve para el modelo por dentro. Pero muchas aplicaciones necesitan un vector por <b>frase</b> o por <b>documento</b>: para buscar textos por significado, agrupar reclamos parecidos o detectar duplicados. La forma más simple es promediar los vectores de las palabras. Funciona sorprendentemente bien para textos cortos, pero pierde el orden: «el perro muerde al hombre» y «el hombre muerde al perro» dan el mismo promedio.</p><p>Los <b>modelos de embeddings</b> (<i>embedding models</i>) actuales hacen algo mejor: pasan el texto completo por un Transformer como los del capítulo 3 y lo resumen en un solo vector, de unos cientos a unos pocos miles de números. Se entrenan con pares de textos que deberían quedar cerca (una pregunta y su respuesta, una frase y su traducción) y pares que deberían quedar lejos. El trabajo que popularizó esta idea fue Sentence-BERT (2019). Como se entrenan con traducciones, muchos de estos modelos son <b>multilingües</b> (<i>multilingual</i>): «¿De qué color es el cielo?» y «What color is the sky?» quedan casi en el mismo punto.</p></div><div class="lab" id="02-lab-3"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Buscador semántico</h3></div><p class="hint">Escribe una búsqueda y compara dos buscadores sobre los mismos 12 documentos. El de la izquierda cuenta palabras exactas en común. El de la derecha convierte la búsqueda y cada documento en vectores (el promedio de los vectores de sus palabras) y los ordena por similitud coseno. Prueba «monarca» o «can»: ningún documento tiene esas palabras, pero el buscador semántico encuentra los del rey y el perro. Prueba «banco» y luego «banco peces».</p><style>
+[id="02-lab-3"] .c2l3-in{width:100%;box-sizing:border-box;font:500 .95rem var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+[id="02-lab-3"] .c2l3-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+[id="02-lab-3"] .c2l3-col{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--paper);display:grid;gap:5px;align-content:start;min-width:0}
+[id="02-lab-3"] .c2l3-col h4{margin:0 0 2px;font:700 .72rem var(--f-display);letter-spacing:.08em;text-transform:uppercase}
+[id="02-lab-3"] .c2l3-d{display:grid;grid-template-columns:1fr 44px;gap:2px 8px;font:500 .84rem/1.3 var(--f-display);padding:4px 6px;border-radius:6px}
+[id="02-lab-3"] .c2l3-d .tr{grid-column:1/-1;height:5px;border-radius:3px;background:var(--grid);overflow:hidden}
+[id="02-lab-3"] .c2l3-d .tr i{display:block;height:100%}
+[id="02-lab-3"] .c2l3-d b{font:600 .8rem var(--f-mono);text-align:right;color:var(--muted)}
+[id="02-lab-3"] .c2l3-d mark{background:var(--c-fis-s);color:var(--ink);border-radius:3px;padding:0 2px}
+[id="02-lab-3"] .c2l3-d.cero{opacity:.45}
+</style>
+<label class="hint" for="c2l3-q">Lo que buscas:</label>
+<input id="c2l3-q" class="c2l3-in" spellcheck="false" value="monarca">
+<div class="btns" role="group" aria-label="Búsquedas de ejemplo">
+  <button type="button" data-q="monarca">monarca</button>
+  <button type="button" data-q="can">can</button>
+  <button type="button" data-q="pido dinero">pido dinero</button>
+  <button type="button" data-q="peces">peces</button>
+  <button type="button" data-q="banco">banco</button>
+</div>
+<div class="c2l3-cols">
+  <div class="c2l3-col"><h4 style="color:var(--c-fis)">Por palabras exactas</h4><div id="c2l3-lex"></div></div>
+  <div class="c2l3-col"><h4 style="color:var(--c-enl)">Por significado (coseno)</h4><div id="c2l3-sem"></div></div>
+</div>
+<div class="readout texto" id="c2l3-out" aria-live="polite"></div></div><div class="prose"><p>Esta es la base de la <b>búsqueda semántica</b> (<i>semantic search</i>) y de la recuperación de documentos que usan los asistentes que responden con información de una empresa, conocida como <b>RAG</b> (<i>Retrieval-Augmented Generation</i>, generación aumentada con recuperación). Cómo se arma un RAG con una base de datos de vectores está en Aplicaciones con IA; aquí importa el porqué: buscar se vuelve medir ángulos.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Embeddings de frases con un modelo local</h3></div><p>Vas a convertir cinco frases en vectores con un modelo de embeddings que corre en tu computadora y medir cuánto se parecen. Necesitas <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> y el modelo <code>embeddinggemma</code> (unos 620 MB; cualquier modelo de embeddings sirve, por ejemplo <code>nomic-embed-text</code>):</p><div class="cmds"><div class="cmd-panel" data-so="win mac linux"><div class="cmd-l"><code>ollama pull embeddinggemma</code><button type="button" class="copiar">Copiar</button></div></div></div><p>Guarda este programa como <code>embeddings_ollama.py</code> (solo biblioteca estándar):</p><div class="code-copia"><pre><code>import json, math, urllib.request
+
+FRASES = [
+    "¿De qué color es el cielo?",
+    "What color is the sky?",
+    "¿Por qué el cielo se ve azul de día?",
+    "El banco me prestó dinero para la casa.",
+    "Un banco de peces nadaba cerca del arrecife.",
+]
+
+cuerpo = {"model": "embeddinggemma", "input": FRASES}
+pedido = urllib.request.Request("http://localhost:11434/api/embed",
+                                data=json.dumps(cuerpo).encode("utf-8"),
+                                headers={"Content-Type": "application/json"})
+with urllib.request.urlopen(pedido) as r:
+    vectores = json.load(r)["embeddings"]
+
+def coseno(a, b):
+    punto = sum(x * y for x, y in zip(a, b))
+    return punto / (math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b)))
+
+print("dimensiones de cada vector:", len(vectores[0]))
+for i, f in enumerate(FRASES[1:], start=1):
+    print(f"{coseno(vectores[0], vectores[i]):.2f}  {f}")
+print(f"{coseno(vectores[3], vectores[4]):.2f}  los dos «banco» entre sí")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python embeddings_ollama.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 embeddings_ollama.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Ejecuta el programa y anota cuántas dimensiones tiene cada vector.</span></li><li><span>Ordena las cuatro frases de mayor a menor parecido con la pregunta del curso.</span></li><li><span>Agrega una frase tuya que diga lo mismo que la pregunta con otras palabras y vuelve a correrlo.</span></li></ol><p><b>Qué observar:</b> el vector tiene cientos de números (768 con <code>embeddinggemma</code>). La traducción al inglés y la pregunta sobre por qué el cielo es azul quedan más cerca de la pregunta del curso que las frases sobre bancos, aunque compartan pocas palabras. Los dos «banco» quedan bastante lejos entre sí: el modelo leyó la frase completa y separó los dos sentidos. Las cifras exactas cambian de un modelo a otro.</p></div></section>
+<section><h2>Embeddings contextuales: «banco» de peces y «banco» de dinero</h2><div class="prose"><p>La tabla de embeddings tiene un problema de fondo: da <b>un solo vector por token</b>. «Banco» tiene la misma fila en «el banco presta dinero» y en «un banco de peces». Ese vector es un promedio de todos sus sentidos y queda a mitad de camino, como viste en el laboratorio 1.</p></div><div class="analogia"><b>Imagínalo así</b><p>Una palabra suelta es como una foto carné: sirve para identificar a alguien, pero no dice qué está haciendo. La misma persona en una foto en la playa y en otra en una oficina cuenta dos historias distintas. Los embeddings contextuales son la foto con el fondo: el mismo token, ubicado según lo que lo rodea.</p></div><div class="prose"><p>La solución, que llegó con ELMo y BERT en 2018 y hoy está en todos los modelos de lenguaje, es que el vector de cada token <b>cambie según su contexto</b>. El vector de la tabla es solo el punto de partida. Después, capa tras capa, cada token mira a los demás tokens de la frase y mezcla en su vector algo de lo que ve. Al salir de las capas, el «banco» que estaba junto a «presta dinero» quedó cerca de los préstamos, y el que estaba junto a «de peces», cerca del agua. A estos vectores que dependen de la frase se los llama <b>embeddings contextuales</b> (<i>contextual embeddings</i>).</p></div><figure class="fig fig-esquema" id="02-diagrama-4"><div class="lienzo"><svg viewBox="0 0 960 360" style="min-width:760px" role="img" aria-label="Embeddings fijos y contextuales. En las frases el banco presta dinero y un banco de peces nada en el mar, la tabla da el mismo vector a banco, que queda entre el dinero y los peces. Después de las capas de atención, cada banco tiene su propio vector: uno junto a préstamo y dinero, el otro junto a peces y mar.">
+<defs>
+<marker id="m2d4-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="m2d4-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-red"/></marker>
+</defs>
+<text x="16" y="28" class="t t-xs t-b t-m">DOS FRASES</text>
+<rect x="16" y="42" width="300" height="40" rx="10" class="caja"/>
+<text x="30" y="67" class="t t-mono" style="font-size:13px">el <tspan class="t-b k-enl">banco</tspan> presta dinero</text>
+<rect x="16" y="94" width="300" height="40" rx="10" class="caja"/>
+<text x="30" y="119" class="t t-mono" style="font-size:13px">un <tspan class="t-b k-enl">banco</tspan> de peces nada</text>
+<text x="16" y="172" class="t t-xs t-b t-m">① TABLA (FIJO)</text>
+<rect x="16" y="186" width="140" height="58" rx="10" class="c-enl"/>
+<text x="30" y="210" class="t t-s">«banco» → su fila</text>
+<text x="30" y="230" class="t t-s">el mismo vector</text>
+<line x1="156" y1="215" x2="190" y2="215" class="ln" style="stroke-width:2" marker-end="url(#m2d4-a)"/>
+<text x="196" y="172" class="t t-xs t-b t-m">② CAPAS DE ATENCIÓN</text>
+<rect x="196" y="186" width="160" height="58" rx="10" class="c-red"/>
+<text x="210" y="210" class="t t-s">«banco» mira a sus</text>
+<text x="210" y="230" class="t t-s">vecinas y se mezcla</text>
+<line x1="356" y1="215" x2="392" y2="215" class="ln" style="stroke-width:2" marker-end="url(#m2d4-a)"/>
+<text x="16" y="290" class="t t-s t-m">La tabla es la misma en las dos frases. Lo que cambia</text>
+<text x="16" y="306" class="t t-s t-m">es lo que hacen las capas con el contexto (capítulo 3).</text>
+<rect x="400" y="20" width="544" height="320" rx="12" class="caja"/>
+<text x="416" y="44" class="t t-xs t-b t-m">③ EL ESPACIO DE SIGNIFICADOS</text>
+<ellipse cx="530" cy="120" rx="92" ry="52" class="c-tra" style="opacity:.5"/>
+<text x="456" y="108" class="t t-s">préstamo</text><text x="470" y="130" class="t t-s">dinero</text><text x="482" y="152" class="t t-s">cajero</text>
+<text x="452" y="84" class="t t-xs t-b t-m">DINERO</text>
+<ellipse cx="820" cy="262" rx="98" ry="52" class="d-casa" style="opacity:.5"/>
+<text x="780" y="284" class="t t-s">peces</text><text x="850" y="262" class="t t-s">mar</text><text x="836" y="302" class="t t-s">río</text>
+<text x="872" y="226" class="t t-xs t-b t-m">AGUA</text>
+<circle cx="672" cy="190" r="8" class="fl-muted"/>
+<text x="686" y="186" class="t t-s t-b">«banco» de la tabla</text>
+<text x="686" y="202" class="t t-s t-m">a mitad de camino</text>
+<line x1="666" y1="182" x2="590" y2="132" class="ln s-red" style="stroke-width:2.2" marker-end="url(#m2d4-r)"/>
+<circle cx="584" cy="128" r="7" class="k-red"/>
+<text x="590" y="102" class="t t-s t-b k-red">«banco» con «presta dinero»</text>
+<line x1="676" y1="198" x2="752" y2="250" class="ln s-red" style="stroke-width:2.2" marker-end="url(#m2d4-r)"/>
+<circle cx="758" cy="254" r="7" class="k-red"/>
+<text x="540" y="300" class="t t-s t-b k-red">«banco» con «de peces»</text>
+</svg></div><figcaption><b>Embeddings fijos y contextuales.</b> Arriba a la izquierda, dos frases con «banco». ① La tabla le da el mismo vector a «banco» en las dos. ② Las capas de atención dejan que cada «banco» mire a sus vecinas. ③ En el espacio de la derecha, el punto gris es el «banco» de la tabla, a mitad de camino entre el dinero y el agua; las flechas azules muestran a dónde lo llevan las capas en cada frase. Es un dibujo esquemático: muestra la idea, no vectores calculados.</figcaption></figure><div class="prose"><p>Cómo hace exactamente cada token para «mirar» a los demás es el tema del capítulo 3, la atención. Por ahora quédate con esto: la tabla de embeddings es el diccionario; las capas son la lectura de la frase.</p></div></section>
+<section><h2>Sesgos que viven en el espacio</h2><div class="prose"><p>Si el significado sale de contar con qué palabras aparece cada palabra, el espacio aprende todo lo que esté en los textos, incluidos los prejuicios. En 2016, Tolga Bolukbasi y sus colegas mostraron que los vectores de word2vec entrenados con noticias resolvían «hombre es a programador como mujer es a…» con «ama de casa». Nadie lo programó: estaba en la frecuencia con que esas palabras aparecían juntas en millones de artículos.</p><p>El laboratorio 2 reproduce el efecto a escala de juguete. En el corpus, «piloto» y «recepcionista» no tienen género en español, pero aparecen con artículos desparejos: «el piloto» 9 de cada 10 veces, «la recepcionista» más de 8 de cada 10. Resultado: «piloto − él + ella» da «recepcionista». Y si medimos cada oficio sobre la dirección que va de «él» a «ella», «piloto» queda en −0,17, en el lado de «él», y «recepcionista» en +0,25, en el lado de «ella».</p></div><div class="caso"><b>Un caso real</b><p>Un equipo usó embeddings para ordenar hojas de vida según su parecido con la descripción de un puesto técnico. En las pruebas notaron que dos hojas de vida idénticas, salvo por actividades o palabras asociadas a un género, quedaban en posiciones distintas. El modelo no tenía ninguna regla sobre género: la asociación venía de los textos con que se entrenó. La corrección combinó tres cosas: quitar del texto los datos que no debían pesar, medir el sesgo con pares de hojas de vida que solo difieren en ese aspecto antes de cada cambio de modelo, y dejar la decisión final en manos de una persona.</p></div><div class="prose"><p>Se han propuesto métodos para «quitar» el sesgo, como proyectar los vectores para borrar la dirección del género, pero los estudios posteriores mostraron que el sesgo suele quedar escondido en otras direcciones. La lección práctica es medir antes de confiar, con pruebas hechas para el caso. Cómo se audita un sistema de IA y qué responsabilidades legales y éticas implica está en <a href="https://aaramirez.github.io/ia-responsable/temario.html" target="_blank" rel="noopener">IA responsable</a>.</p></div></section>
+<section><h2>Lo que está en otros cursos</h2><div class="prose"><p>Antes de los embeddings, la forma clásica de convertir un texto en números era la <b>bolsa de palabras</b> (<i>bag of words</i>), que cuenta cuántas veces aparece cada palabra, y su versión ponderada <b>TF-IDF</b> (<i>term frequency–inverse document frequency</i>), que premia las palabras raras. Siguen siendo útiles y están en <a href="https://aaramirez.github.io/ciencia-de-datos/temario.html" target="_blank" rel="noopener">Ciencia de datos</a>. Cómo se usan los embeddings en un producto, con una base de datos de vectores, fragmentos de documentos y citas, está en <a href="https://aaramirez.github.io/aplicaciones-con-ia/temario.html" target="_blank" rel="noopener">Aplicaciones con IA</a>.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>El significado como geometría: lo parecido está cerca y la búsqueda se vuelve medir distancias. Cada token se convierte en una fila de la tabla de embeddings; el entrenamiento acomoda esas filas para que las palabras que aparecen en contextos parecidos queden cerca; la similitud coseno mide qué tan cerca; y las capas del modelo mueven cada vector según su frase. La pregunta del curso ya es una matriz de 8 × 4. En el capítulo 3, cada una de esas 8 filas va a mirar a las otras 7.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Por qué el modelo no puede trabajar directamente con los identificadores de los tokens?</summary><p>Porque son etiquetas arbitrarias: que «␣cielo» sea el 16 y «␣mar» el 17 no dice nada de su parecido. Hace falta un vector cuyos números guarden el significado.</p></details><details><summary>¿Qué hace la capa de embeddings con el identificador 16?</summary><p>Busca la fila 16 de la tabla de embeddings y la devuelve. Es una consulta, no un cálculo.</p></details><details><summary>¿Qué dice la hipótesis distribucional y cómo la usa word2vec?</summary><p>Que las palabras que aparecen en contextos parecidos tienen significados parecidos. Word2vec ajusta los vectores para que cada palabra prediga a sus vecinas en una ventana de texto, y así las palabras con vecinas parecidas terminan con vectores parecidos.</p></details><details><summary>Dos vectores tienen similitud coseno 0. ¿Qué significa?</summary><p>Que son perpendiculares: no comparten dirección, así que según esa medida no tienen relación. Con 1 apuntan igual y con −1, en direcciones opuestas.</p></details><details><summary>¿Por qué un embedding de tabla no distingue el «banco» de dinero del «banco» de peces, y cómo lo resuelven los modelos actuales?</summary><p>Porque la tabla da una sola fila por token, que mezcla todos los sentidos. Los modelos actuales usan embeddings contextuales: las capas de atención modifican el vector de cada token según las palabras que lo rodean.</p></details><details><summary>¿De dónde salen los sesgos de un espacio de embeddings?</summary><p>De los textos de entrenamiento: si ciertas palabras aparecen juntas con frecuencia, el método las acerca, aunque esa asociación sea un prejuicio y nadie la haya programado.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Qué es la «maldición de la dimensionalidad» y cómo afecta a la búsqueda de vecinos cercanos en espacios de cientos de dimensiones?<small>Pista: busca «curse of dimensionality nearest neighbor».</small></li><li>¿Cómo encuentran las bases de datos de vectores a los vecinos más cercanos entre millones de vectores sin compararlos todos?<small>Pista: busca «approximate nearest neighbor HNSW».</small></li><li>¿Qué hacen t-SNE y UMAP para dibujar en 2D un espacio de cientos de dimensiones, y por qué las distancias grandes en sus dibujos no son confiables?</li><li>¿Qué son los embeddings «Matryoshka» y por qué permiten recortar un vector a menos dimensiones sin volver a calcularlo?<small>Pista: busca «Matryoshka representation learning».</small></li><li>¿Qué es la descomposición en valores singulares (SVD) y por qué sirve para resumir una tabla de coocurrencias en pocos números por palabra?</li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/1301.3781" target="_blank" rel="noopener">Efficient Estimation of Word Representations in Vector Space <small>el artículo de word2vec (Mikolov y otros, 2013), en inglés</small></a><a class="vid" href="https://jalammar.github.io/illustrated-word2vec/" target="_blank" rel="noopener">The Illustrated Word2vec <small>explicación ilustrada de Jay Alammar, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/1607.06520" target="_blank" rel="noopener">Man is to Computer Programmer as Woman is to Homemaker? <small>el estudio de los sesgos en word2vec (Bolukbasi y otros, 2016), en inglés</small></a><a class="vid" href="https://arxiv.org/abs/1908.10084" target="_blank" rel="noopener">Sentence-BERT <small>embeddings de frases con un Transformer (Reimers y Gurevych, 2019), en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/modelos-de-ia" target="_blank" rel="noopener">github.com/aaramirez/modelos-de-ia</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const {$,tok,canvasWidget}=window.Lab;
+  // Vectores de 12 dimensiones calculados para este curso: 4.430 frases de un corpus de juguete,
+  // coocurrencias en una ventana de ±3 palabras, PPMI y SVD (normalizados a largo 1).
+  // xy: posición en 2D que intenta conservar las distancias (escalamiento multidimensional).
+  const D={"V":["la","madre","cocina","para","familia","él","es","el","hermano","pez","vive","en","agua","camina","por","parque","cantante","alta","can","ladra","piloto","gana","dinero","cielo","está","oscuro","de","noche","trabaja","mucho","monarca","palacio","princesa","joven","príncipe","niño","cansado","del","mar","azul","perro","duerme","casa","niña","va","a","escuela","alto","come","pan","contenta","mujer","padre","hoy","deposito","banco","ella","lleva","corona","gato","gerente","viejo","sol","sale","día","peces","nada","reina","estudiante","gobierna","reino","recepcionista","rey","cuida","su","se","sienta","trono","nube","gris","cuenta","tiene","hombre","lee","un","libro","presta","cubre","brilla","contento","juega","cansada","sabia","hermana","sabio","vieja","abro","una","cajero","pago","préstamo","al","carne","con","río","luna","caballo","pasto","pescado","efectivo","cobra","intereses","corre","campo","caza","ratones","tarjeta","tienda","los","nadan","lluvia","cae","paga","ahorro","cada","mes","pido"],"E":[[0.583,-0.425,0.112,0.24,-0.365,0.152,-0.375,0.285,-0.089,0.019,-0.128,0.078],[0.359,-0.209,0.223,0.266,-0.649,0.175,-0.265,-0.143,0.132,-0.174,0.105,0.325],[0.327,-0.291,0.201,0.359,-0.214,0.003,-0.573,-0.14,0.283,-0.281,0.212,-0.202],[0.327,-0.291,0.201,0.359,-0.214,0.003,-0.573,-0.14,0.283,-0.281,0.212,-0.202],[0.177,-0.168,0.177,0.26,-0.487,0.095,-0.437,-0.147,0.26,-0.333,0.311,0.328],[0.557,-0.426,-0.107,0.053,0.541,-0.242,0.218,-0.218,0.046,-0.049,0.205,-0.023],[0.638,-0.438,-0.083,-0.163,-0.186,0.242,0.459,0.056,-0.073,-0.177,0.045,0.147],[0.594,0.183,0.191,0.026,-0.076,-0.649,0.252,0.039,-0.122,0.126,0.234,-0.005],[0.39,-0.091,0.227,0.191,-0.607,0.036,0.014,-0.352,0.182,-0.191,0.326,0.287],[0.419,0.521,0.009,-0.081,0.006,-0.439,0.1,0.391,-0.048,-0.404,0.094,-0.128],[0.428,0.237,0.137,-0.018,0.052,-0.567,0.015,0.443,-0.275,0.177,0.306,-0.143],[0.423,0.516,0.014,-0.087,0.023,-0.474,-0.034,0.242,0.015,-0.222,0.067,0.456],[0.376,0.27,0.161,-0.187,0.101,-0.28,0.291,0.366,0.042,-0.472,0.44,0.007],[0.625,-0.163,0.262,0.288,-0.01,-0.482,-0.031,-0.13,-0.016,0.233,0.15,-0.322],[0.625,-0.163,0.262,0.288,-0.01,-0.482,-0.031,-0.13,-0.016,0.233,0.15,-0.322],[0.472,0.327,0.186,-0.06,-0.337,-0.621,0.211,-0.003,-0.057,0.006,0.075,0.282],[0.422,-0.219,-0.338,-0.311,-0.511,0.328,0.391,0.058,-0.107,-0.055,-0.088,-0.125],[0.557,-0.597,-0.048,0.184,0.383,0.014,-0.236,0.118,-0.036,-0.1,-0.199,-0.173],[0.314,0.289,0.182,-0.071,-0.196,-0.645,0.179,-0.314,0.18,-0.061,-0.398,0.02],[0.383,0.367,0.149,-0.107,-0.093,-0.731,0.14,-0.12,0.107,-0.076,-0.269,-0.139],[0.413,-0.165,-0.353,-0.35,-0.418,0.236,0.529,-0.036,-0.076,-0.061,0.033,-0.182],[0.537,-0.315,-0.522,-0.2,0.469,-0.016,-0.115,-0.097,0.125,0.049,-0.141,0.139],[0.367,0.067,-0.5,-0.174,0.283,0.017,-0.268,-0.168,0.154,0.12,0.042,0.6],[0.398,0.228,0.529,-0.332,0.278,0.259,0.203,0.1,0.25,-0.091,0.219,-0.292],[0.287,0.202,0.582,-0.28,0.196,0.375,0.134,0.141,0.38,0.077,0.194,0.235],[0.325,0.272,0.633,-0.271,0.142,0.41,0.112,-0.112,0.227,0.112,0.165,0.205],[0.437,0.44,0.461,-0.108,0.161,0.404,-0.143,-0.358,-0.217,-0.033,-0.078,0.011],[0.411,0.037,0.545,0.054,0.199,0.147,-0.221,-0.369,0.024,0.157,-0.008,-0.509],[0.471,-0.457,-0.334,-0.098,0.465,-0.007,0.152,-0.062,-0.023,-0.082,-0.236,0.376],[0.471,-0.457,-0.334,-0.098,0.465,-0.007,0.152,-0.062,-0.023,-0.082,-0.236,0.376],[0.326,0.117,0.17,0.055,-0.313,-0.33,0.174,0.199,-0.347,0.521,0.293,0.307],[0.422,0.453,0.093,-0.173,-0.091,-0.623,0.09,0.336,-0.137,-0.126,0.154,0.054],[0.406,-0.097,0.177,0.151,-0.44,-0.152,-0.14,0.397,-0.332,0.36,0.078,0.364],[0.58,-0.449,0.12,0.161,0.132,-0.13,-0.063,0.28,-0.223,0.169,0.091,-0.467],[0.418,-0.016,0.147,0.015,-0.374,-0.278,0.15,0.284,-0.343,0.38,0.313,0.351],[0.585,-0.031,0.231,0.044,-0.549,-0.146,0.354,-0.195,-0.056,0.036,0.166,0.289],[0.564,-0.434,-0.094,0.068,0.539,-0.242,0.207,-0.209,0.041,-0.05,0.185,-0.077],[0.319,0.02,0.228,-0.197,0.224,0.021,0.411,0.25,0.158,-0.451,0.525,-0.144],[0.335,0.232,0.285,-0.238,0.201,-0.044,0.29,0.322,0.184,-0.453,0.429,-0.207],[0.4,0.076,0.418,-0.284,0.276,0.231,0.384,0.122,0.199,-0.268,0.412,0.075],[0.307,0.275,0.182,-0.063,-0.2,-0.641,0.187,-0.327,0.188,-0.053,-0.402,0.024],[0.475,0.189,0.477,0.015,-0.054,-0.225,-0.066,-0.537,0.069,0.067,-0.368,-0.143],[0.226,0.28,0.166,-0.075,-0.174,-0.576,0.048,-0.307,0.188,-0.102,-0.558,-0.148],[0.507,-0.345,0.173,0.183,-0.58,0.197,-0.128,0.197,-0.126,-0.004,-0.032,0.337],[0.404,-0.355,0.217,0.34,-0.256,-0.042,-0.598,0.28,-0.081,0.111,0.11,-0.118],[0.281,-0.284,0.204,0.363,-0.313,0.002,-0.59,-0.075,0.227,-0.251,0.308,-0.081],[0.313,-0.256,0.202,0.26,-0.47,0.119,-0.557,0.207,0.036,-0.094,0.044,0.358],[0.555,-0.432,-0.133,0.029,0.571,-0.236,0.233,-0.163,-0.002,-0.006,0.148,0.032],[0.335,-0.039,0.218,0.157,-0.163,-0.526,0.063,-0.458,0.27,0.04,-0.441,-0.165],[0.491,-0.267,0.248,0.342,-0.049,-0.413,-0.177,-0.277,0.135,0.153,-0.139,-0.41],[0.554,-0.593,-0.101,0.128,0.455,0.018,-0.156,0.101,-0.048,-0.09,-0.247,-0.045],[0.522,-0.24,0.164,0.121,-0.658,0.265,0.165,-0.068,-0.129,0.058,-0.222,0.155],[0.422,-0.097,0.227,0.164,-0.612,0.041,0.08,-0.362,0.158,-0.177,0.305,0.268],[0.25,0.303,-0.465,-0.405,-0.144,-0.092,-0.367,0.069,0.364,0.21,0.135,-0.319],[0.255,0.27,-0.444,-0.384,-0.062,-0.136,-0.345,-0.018,0.47,0.324,0.217,0.059],[0.369,0.627,-0.271,0.348,0.082,0.233,0.049,-0.071,-0.105,-0.112,0.068,-0.424],[0.564,-0.599,-0.061,0.172,0.397,0.007,-0.218,0.126,-0.051,-0.075,-0.204,-0.139],[0.313,-0.131,0.146,0.148,-0.074,-0.245,-0.166,0.401,-0.403,0.638,0.13,-0.037],[0.262,-0.154,0.13,0.159,-0.056,-0.217,-0.204,0.413,-0.413,0.638,0.13,-0.095],[0.202,0.163,0.16,-0.024,-0.17,-0.515,0.218,-0.459,0.262,0.036,-0.534,0.017],[0.427,-0.18,-0.376,-0.353,-0.442,0.276,0.455,0.01,-0.082,-0.046,-0.036,-0.176],[0.568,-0.44,-0.106,0.055,0.55,-0.264,0.19,-0.137,-0.02,0.026,0.203,-0.03],[0.315,0.294,0.576,-0.302,0.21,0.37,-0.014,-0.052,0.137,0.345,-0.249,-0.088],[0.306,0.223,0.579,-0.224,0.126,0.472,-0.08,-0.205,-0.006,0.332,-0.271,0.011],[0.325,0.122,0.516,-0.271,0.275,0.507,0.033,-0.117,-0.022,0.085,-0.134,-0.408],[0.431,0.642,0.099,0.105,0.135,-0.097,0.113,0.042,-0.184,-0.447,0.295,0.136],[0.402,0.579,0.078,0.007,0.172,-0.105,0.133,0.235,-0.05,-0.508,0.297,0.186],[0.341,-0.03,0.127,0.072,-0.378,-0.175,-0.072,0.456,-0.414,0.451,0.092,0.303],[0.43,-0.213,-0.365,-0.327,-0.488,0.329,0.367,0.065,-0.098,-0.043,-0.108,-0.146],[0.297,-0.023,0.138,0.104,-0.02,-0.378,0.03,0.271,-0.376,0.661,0.288,-0.052],[0.246,-0.02,0.12,0.104,0.01,-0.384,0.042,0.249,-0.378,0.662,0.328,-0.115],[0.421,-0.283,-0.318,-0.27,-0.506,0.387,0.281,0.136,-0.13,-0.07,-0.183,-0.105],[0.328,0.123,0.184,0.051,-0.318,-0.31,0.165,0.188,-0.355,0.525,0.286,0.313],[0.225,-0.24,0.182,0.344,-0.274,0.001,-0.53,-0.201,0.313,-0.338,0.347,-0.106],[0.186,-0.224,0.167,0.34,-0.244,-0.016,-0.498,-0.242,0.327,-0.352,0.39,-0.149],[0.375,0.141,0.124,0.023,-0.021,-0.527,-0.041,0.371,-0.357,0.461,0.219,-0.135],[0.349,0.15,0.118,0.021,-0.021,-0.532,-0.028,0.373,-0.364,0.467,0.245,-0.088],[0.425,0.44,0.094,-0.157,-0.108,-0.642,0.056,0.32,-0.202,0.062,0.126,0.042],[0.273,0.113,0.553,-0.228,0.171,0.504,-0.139,0.186,0.245,0.302,-0.254,-0.048],[0.276,0.157,0.526,-0.269,0.206,0.324,0.144,0.258,0.433,0.073,0.195,0.292],[0.265,0.39,-0.199,-0.187,0.067,0.124,-0.313,-0.473,-0.572,-0.121,0.103,0.095],[0.346,0.173,-0.389,-0.291,-0.153,0.241,-0.508,-0.208,-0.346,0.07,-0.059,-0.32],[0.513,-0.028,0.176,0.106,-0.538,0.009,0.492,-0.362,-0.032,0.12,0.092,0.086],[0.46,-0.175,0.147,0.642,-0.131,-0.043,-0.12,-0.116,0.001,0.325,0.199,-0.363],[0.381,0.167,-0.051,0.809,-0.035,0.198,0.071,-0.107,0.049,0.239,0.131,-0.189],[0.35,-0.181,0.112,0.605,-0.026,-0.083,-0.122,-0.151,0.005,0.296,0.272,-0.509],[0.464,0.512,-0.583,-0.085,-0.07,0.148,0.015,-0.233,0.099,0.185,0.217,-0.051],[0.315,0.078,0.487,-0.183,0.108,0.38,-0.116,0.172,0.227,0.455,-0.36,0.192],[0.451,0.353,0.568,-0.332,0.152,0.16,-0.003,0.156,0.239,0.266,-0.173,0.088],[0.558,-0.417,-0.088,0.059,0.523,-0.25,0.234,-0.221,0.045,-0.049,0.234,-0.067],[0.553,0.117,0.161,0.053,0.014,-0.59,-0.128,0.28,-0.177,0.153,0.064,-0.387],[0.563,-0.597,-0.09,0.137,0.449,0.003,-0.16,0.111,-0.058,-0.074,-0.214,-0.075],[0.553,-0.594,-0.047,0.181,0.377,0.025,-0.233,0.121,-0.037,-0.105,-0.222,-0.179],[0.414,-0.217,0.231,0.26,-0.67,0.192,-0.187,-0.156,0.096,-0.129,0.039,0.297],[0.565,-0.444,-0.105,0.061,0.553,-0.246,0.2,-0.172,0.011,-0.022,0.169,-0.054],[0.554,-0.589,-0.017,0.2,0.334,0.031,-0.252,0.127,-0.032,-0.112,-0.208,-0.238],[0.191,0.33,0.02,-0.173,0.084,0.116,-0.339,-0.429,-0.683,-0.188,0.009,-0.04],[0.19,0.325,0.004,-0.156,0.084,0.119,-0.311,-0.456,-0.683,-0.185,0.036,-0.075],[0.377,0.342,-0.395,-0.362,-0.088,0.039,-0.228,-0.404,-0.306,0.083,0.148,-0.327],[0.24,0.449,-0.34,0.271,-0.042,0.085,-0.07,0.378,0.142,-0.145,-0.301,-0.512],[0.186,0.405,-0.257,0.706,0.11,0.284,0.265,-0.023,0.12,0.147,-0.016,0.194],[0.177,0.392,-0.258,0.703,0.103,0.29,0.225,-0.006,0.115,0.133,-0.035,0.277],[0.244,0.146,0.182,0.003,-0.201,-0.576,0.25,-0.448,0.247,0.034,-0.433,0.018],[0.38,0.551,-0.205,0.135,0.095,0.043,-0.131,0.288,-0.024,-0.314,-0.216,0.485],[0.344,0.463,0.078,-0.137,0.039,-0.444,0.104,0.306,-0.051,-0.514,0.24,-0.125],[0.476,0.294,0.567,-0.224,0.027,0.271,-0.233,-0.02,-0.088,0.169,-0.331,-0.204],[0.363,0.308,0.156,-0.078,-0.183,-0.713,0.226,-0.213,0.167,-0.063,-0.268,-0.01],[0.283,0.141,0.183,0.013,-0.221,-0.589,0.319,-0.44,0.246,0.071,-0.311,0.115],[0.217,0.112,0.165,0.009,-0.185,-0.505,0.278,-0.494,0.273,0.091,-0.466,0.03],[0.298,0.41,-0.406,-0.259,-0.148,-0.078,-0.262,0.281,0.11,-0.162,-0.125,-0.531],[0.241,0.463,-0.245,0.647,0.144,0.223,0.355,-0.116,0.088,0.157,0.076,0.031],[0.241,0.463,-0.245,0.647,0.144,0.223,0.355,-0.116,0.088,0.157,0.076,0.031],[0.418,0.426,0.114,-0.151,-0.076,-0.734,0.184,0.01,0.074,-0.123,-0.089,0.033],[0.416,0.475,0.082,-0.191,-0.067,-0.688,0.09,0.162,-0.004,-0.194,-0.046,-0.073],[0.184,0.129,0.132,-0.027,-0.091,-0.481,0.288,-0.483,0.285,0.109,-0.531,-0.003],[0.184,0.129,0.132,-0.027,-0.091,-0.481,0.288,-0.483,0.285,0.109,-0.531,-0.003],[0.231,0.231,-0.094,0.143,-0.043,-0.049,-0.284,0.575,-0.004,-0.31,-0.536,0.256],[0.24,0.168,-0.014,0.037,-0.104,-0.123,-0.342,0.604,-0.058,-0.309,-0.552,0.034],[0.239,0.448,0.047,-0.098,0.037,-0.341,-0.025,0.35,-0.093,-0.621,0.234,-0.202],[0.282,0.409,0.128,-0.119,0.09,-0.293,0.143,0.314,0.016,-0.579,0.401,0.12],[0.356,0.036,0.406,-0.049,0.007,0.475,-0.434,0.085,-0.195,0.178,-0.462,0.009],[0.313,0.071,0.466,-0.115,0.059,0.496,-0.325,0.117,-0.004,0.282,-0.386,0.262],[0.234,0.134,-0.01,0.055,-0.105,-0.091,-0.346,0.605,-0.055,-0.295,-0.569,0.076],[0.268,0.443,-0.02,-0.058,0.124,0.123,-0.245,-0.438,-0.633,-0.171,0.054,0.113],[0.156,0.165,-0.476,-0.359,-0.089,0.019,-0.362,-0.054,0.498,0.38,0.221,-0.095],[0.208,0.255,-0.458,-0.388,-0.094,-0.087,-0.396,0.025,0.463,0.3,0.189,-0.134],[0.131,0.312,-0.22,0.68,0.018,0.285,0.236,0.032,0.161,0.177,-0.032,-0.423]],"keep":["madre","él","hermano","pez","agua","parque","cantante","alta","can","piloto","dinero","cielo","oscuro","noche","monarca","palacio","princesa","príncipe","niño","cansado","mar","azul","perro","niña","alto","contenta","mujer","padre","banco","ella","corona","gato","gerente","viejo","sol","día","peces","reina","estudiante","gobierna","reino","recepcionista","rey","trono","nube","gris","hombre","contento","cansada","sabia","hermana","sabio","vieja","cajero","préstamo","río","caballo"],"xy":[[-0.43,0.931],[0.588,-0.093],[-0.567,0.566],[-0.655,-0.753],[-0.268,-0.704],[-0.797,-0.192],[0.141,0.84],[0.795,0.475],[-0.409,-0.386],[0.171,0.617],[0.48,0.827],[0.458,-0.814],[0.368,-0.489],[0.963,-0.282],[-0.957,0.086],[-0.815,-0.555],[-0.801,0.537],[-0.811,0.219],[-0.316,0.197],[0.638,-0.049],[-0.041,-0.909],[0.119,-0.503],[-0.391,-0.389],[-0.238,0.638],[0.534,0.047],[0.923,0.359],[-0.189,0.821],[-0.504,0.525],[0.299,-0.998],[0.816,0.435],[-0.428,0.337],[-0.208,-0.549],[0.208,0.72],[0.506,-0.043],[0.669,-0.75],[0.933,-0.587],[-0.318,-0.953],[-0.921,0.424],[0.193,0.854],[-0.565,0.058],[-0.505,-0.012],[0.133,1.0],[-0.963,0.093],[-0.909,-0.417],[0.751,-0.494],[0.246,-0.789],[-0.099,0.276],[0.644,-0.107],[0.877,0.358],[0.822,0.5],[-0.514,0.852],[0.582,-0.019],[0.751,0.546],[0.072,-0.127],[0.043,-0.873],[-0.533,-0.871],[-0.569,-0.432]]};
+  const STOP=new Set('el la los las un una de del en con su a al se por es está para y lo'.split(' '));
+  const ix=new Map(D.V.map((w,i)=>[w,i]));
+  const GR={realeza:['rey','reina','príncipe','princesa','monarca','palacio','corona','reino','trono','gobierna'],
+    personas:['hombre','mujer','niño','niña','padre','madre','hermano','hermana','parque'],
+    rasgos:['él','ella','alto','alta','viejo','vieja','sabio','sabia','cansado','cansada','contento','contenta'],
+    oficios:['piloto','gerente','cantante','estudiante','recepcionista'],
+    animales:['perro','can','gato','caballo'],agua:['pez','peces','río','mar','agua'],
+    cielo:['cielo','nube','sol','día','noche','azul','gris','oscuro'],dinero:['banco','dinero','préstamo','cajero']};
+  const COL={realeza:'--c-tra',personas:'--c-red',rasgos:'--muted',oficios:'--d-sis',animales:'--c-fis',agua:'--d-casa',cielo:'--c-apl',dinero:'--c-enl'};
+  const grupo={};Object.entries(GR).forEach(([g,ws])=>ws.forEach(w=>grupo[w]=g));
+  const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
+  const norm=v=>{const n=Math.hypot(...v)||1;return v.map(x=>x/n);};
+  function vector(t){
+    const ws=t.toLowerCase().replace(/[¿?¡!.,;:«»"]/g,' ').split(/\s+/).filter(Boolean);
+    const conoc=ws.filter(w=>ix.has(w)),des=ws.filter(w=>!ix.has(w));
+    let usar=conoc.filter(w=>!STOP.has(w));if(!usar.length)usar=conoc;
+    if(!usar.length)return {v:null,des};
+    const s=new Array(D.E[0].length).fill(0);usar.forEach(w=>D.E[ix.get(w)].forEach((x,i)=>s[i]+=x));
+    return {v:norm(s),des,usar};
+  }
+  function vecinos(v,excluir,k){
+    return D.keep.filter(w=>!excluir.includes(w)).map(w=>[w,dot(v,D.E[ix.get(w)])]).sort((a,b)=>b[1]-a[1]).slice(0,k);
+  }
+  function lugar(t,v){
+    const i=D.keep.indexOf(t);if(i>=0)return D.xy[i];
+    // fuera de la lista del mapa: promedio de la posición de sus 3 vecinos, pesado por similitud
+    const n=vecinos(v,[],3);let sx=0,sy=0,sw=0;n.forEach(([w,c])=>{const p=D.xy[D.keep.indexOf(w)],q=Math.max(c,0.01)**4;sx+=p[0]*q;sy+=p[1]*q;sw+=q;});
+    return [sx/sw,sy/sw];
+  }
+  let marcas=[];
+  const fmt=x=>x.toFixed(2).replace('.',',');
+  const dibujar=canvasWidget($('#c2l1-c'),w=>w<520?0.95:0.62,(ctx,w,h)=>{
+    const P=30,X=x=>P+(x+1)/2*(w-2*P),Y=y=>P+(1-(y+1)/2)*(h-2*P);
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle=tok('--grid');ctx.lineWidth=1;
+    for(let i=-1;i<=1;i+=0.5){ctx.beginPath();ctx.moveTo(X(i),P);ctx.lineTo(X(i),h-P);ctx.stroke();ctx.beginPath();ctx.moveTo(P,Y(i));ctx.lineTo(w-P,Y(i));ctx.stroke();}
+    const fs=w<520?10:11;ctx.font='500 '+fs+'px '+tok('--f-display');ctx.textBaseline='middle';
+    // etiquetas sin encimarse: cada una prueba subir o bajar hasta encontrar lugar libre
+    const cajas=[];
+    D.keep.forEach((wd,i)=>{const [x,y]=D.xy[i],c=tok(COL[grupo[wd]]||'--muted'),px=X(x),py=Y(y);
+      ctx.globalAlpha=marcas.length?0.45:0.9;ctx.fillStyle=c;ctx.beginPath();ctx.arc(px,py,3.2,0,7);ctx.fill();
+      const tw=ctx.measureText(wd).width;let lx=px+5;if(lx+tw>w-2)lx=px-5-tw;
+      let ly=py;for(const d of [0,-11,11,-22,22,-33,33]){const b=[lx,py+d-6,lx+tw,py+d+6];
+        if(!cajas.some(k=>b[0]<k[2]&&b[2]>k[0]&&b[1]<k[3]&&b[3]>k[1])){ly=py+d;cajas.push(b);break;}}
+      if(ly!==py){ctx.strokeStyle=c;ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(lx,ly);ctx.stroke();}
+      ctx.fillText(wd,lx,ly);ctx.globalAlpha=1;});
+    marcas.forEach(m=>{
+      const px=X(m.p[0]),py=Y(m.p[1]);
+      ctx.strokeStyle=tok('--warm');ctx.lineWidth=1.2;ctx.setLineDash([3,3]);
+      m.n.forEach(([wd])=>{const q=D.xy[D.keep.indexOf(wd)];ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(X(q[0]),Y(q[1]));ctx.stroke();});
+      ctx.setLineDash([]);
+      ctx.fillStyle=tok('--warm');ctx.beginPath();ctx.arc(px,py,6,0,7);ctx.fill();
+      ctx.font='700 '+(fs+1)+'px '+tok('--f-display');const t=m.t.length>26?m.t.slice(0,25)+'…':m.t;
+      const tw=ctx.measureText(t).width;let tx=px+9;if(tx+tw>w-4)tx=px-9-tw;
+      ctx.fillStyle=tok('--card');ctx.fillRect(tx-2,py-17,tw+4,14);ctx.fillStyle=tok('--ink');ctx.fillText(t,tx,py-10);
+      ctx.font='500 '+fs+'px '+tok('--f-display');
+    });
+  });
+  function leer(){
+    const ts=$('#c2l1-q').value.split(',').map(s=>s.trim()).filter(Boolean).slice(0,8);
+    marcas=[];const tarj=[],des=new Set();
+    ts.forEach(t=>{const r=vector(t);r.des.forEach(d=>des.add(d));
+      if(!r.v){tarj.push('<div class="c2l1-r"><b>'+t.replace(/</g,'&lt;')+'</b><span>No hay ninguna palabra conocida: no tiene vector.</span></div>');return;}
+      const ex=t.includes(' ')?[]:[t.toLowerCase()];
+      const n=vecinos(r.v,ex,3);marcas.push({t,p:lugar(t.toLowerCase(),r.v),n});
+      tarj.push('<div class="c2l1-r"><b>'+t.replace(/</g,'&lt;')+'</b>'+(r.usar&&r.usar.length>1?'<span>promedio de: '+r.usar.join(' + ')+'</span>':'')+n.map(([w,c])=>'<span>'+w+' · coseno '+fmt(c)+'</span>').join('')+'</div>');});
+    $('#c2l1-res').innerHTML=tarj.join('');
+    const h=[];
+    h.push('<span>Cada punto naranja es un término; las líneas punteadas lo unen con sus tres vecinos más parecidos, medidos con la similitud coseno en las 12 dimensiones. El mapa en 2D es una aproximación: dos palabras pueden verse cerca en el plano y no serlo tanto en 12 dimensiones.</span>');
+    if(des.size)h.push('<span class="warn">Sin vector: «'+[...des].join('», «')+'». Esta tabla solo conoce las '+D.V.length+' palabras de su corpus; un modelo real no tiene este problema porque arma cualquier palabra con tokens.</span>');
+    if(ts.some(t=>/\bbanco\b/.test(t.toLowerCase())&&!t.includes(' ')))h.push('<span>«banco» cae entre el dinero y los peces: un vector fijo por palabra mezcla todos sus sentidos.</span>');
+    $('#c2l1-out').innerHTML=h.join('');
+    dibujar();
+  }
+  $('#c2l1-ley').innerHTML=Object.keys(GR).map(g=>'<span><i style="background:var('+COL[g]+')"></i>'+g+'</span>').join('')+'<span><i style="background:var(--warm)"></i>lo que escribiste</span>';
+  window.miaEmb={D,ix,dot,norm,vector,vecinos,GR,COL,grupo};
+  $('#c2l1-q').addEventListener('input',leer);
+  document.querySelectorAll('[id="02-lab-1"] [data-q]').forEach(b=>b.addEventListener('click',()=>{$('#c2l1-q').value=b.dataset.q;leer();}));
+  leer();
+})();
+</script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  const M=window.miaEmb; // lo define el laboratorio 1 de esta página
+  const {D,ix,dot,norm}=M;
+  const lista=[...D.keep].sort((a,b)=>a.localeCompare(b,'es'));
+  ['#c2l2-a','#c2l2-b','#c2l2-c'].forEach(s=>{$(s).innerHTML=lista.map(w=>'<option>'+w+'</option>').join('');});
+  const vec=w=>D.E[ix.get(w)];
+  const fmt=x=>x.toFixed(2).replace('.',',');
+  function celdas(v){const m=0.75;return v.map(x=>{const a=Math.min(1,Math.abs(x)/m);return '<i title="'+fmt(x)+'" style="background:var('+(x>=0?'--c-enl':'--warm')+');opacity:'+(0.12+0.88*a).toFixed(2)+'"></i>';}).join('');}
+  function poner(a,b,c){$('#c2l2-a').value=a;$('#c2l2-b').value=b;$('#c2l2-c').value=c;leer();}
+  function leer(){
+    const a=$('#c2l2-a').value,b=$('#c2l2-b').value,c=$('#c2l2-c').value;
+    const r=vec(a).map((x,i)=>x-vec(b)[i]+vec(c)[i]),rn=norm(r);
+    const top=D.keep.filter(w=>![a,b,c].includes(w)).map(w=>[w,dot(rn,vec(w))]).sort((p,q)=>q[1]-p[1]).slice(0,5);
+    $('#c2l2-tab').innerHTML=[[a,vec(a)],['− '+b,vec(b)],['+ '+c,vec(c)],['= resultado',rn]].map(([n,v])=>'<div class="c2l2-fila"><span>'+n+'</span>'+celdas(v)+'</div>').join('');
+    $('#c2l2-top').innerHTML=top.map(([w,s],i)=>'<div class="c2l2-v'+(i===0?' uno':'')+'"><span>'+(i+1)+'. '+w+'</span><span class="tr"><i style="width:'+Math.max(0,s*100)+'%"></i></span><b>'+fmt(s)+'</b></div>').join('');
+    const g=top[0][0],h=[];
+    h.push('<span class="big">'+a+' − '+b+' + '+c+' ≈ '+g+' (coseno '+fmt(top[0][1])+')</span>');
+    h.push('<span>Las tres palabras de la cuenta se excluyen de la respuesta, como en el artículo original de word2vec; si no, casi siempre ganaría «'+a+'».</span>');
+    if(a==='padre'&&b==='hombre'&&c==='mujer')h.push('<span class="warn">Falla por poco: «madre» sale segunda. En este corpus, «madre» y «hermana» aparecen en contextos casi iguales, y la aritmética no alcanza a separarlas.</span>');
+    if(a==='piloto'&&c==='ella')h.push('<span class="warn">Sesgo: en el corpus, «el piloto» aparece 9 de cada 10 veces y «la recepcionista», más de 8 de cada 10. Nadie escribió una regla; la asociación salió de contar. Las palabras «piloto» y «recepcionista» no tienen género en español.</span>');
+    if(top[0][1]-top[1][1]<0.02)h.push('<span>Los dos primeros quedan casi empatados: con vectores de juguete de 12 dimensiones, las respuestas cercanas se confunden. En un espacio de cientos de dimensiones hay más lugar para separarlas.</span>');
+    $('#c2l2-out').innerHTML=h.join('');
+  }
+  ['#c2l2-a','#c2l2-b','#c2l2-c'].forEach(s=>$(s).addEventListener('change',leer));
+  document.querySelectorAll('[id="02-lab-2"] [data-a]').forEach(bt=>bt.addEventListener('click',()=>{const [a,b,c]=bt.dataset.a.split('|');poner(a,b,c);}));
+  poner('rey','hombre','mujer');
+})();
+</script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  const M=window.miaEmb; // lo define el laboratorio 1 de esta página
+  const DOCS=['el rey vive en el palacio','la reina lleva la corona','el perro ladra en el parque','el gato duerme en casa',
+    'el banco presta dinero','un banco de peces nada en el mar','el cielo está gris de noche','la nube cubre el sol',
+    'el caballo corre en el campo','la niña juega en el parque','abro una cuenta en el banco','el pez nada en el río'];
+  const STOP=new Set('el la los las un una de del en con su a al se por es está para y lo'.split(' '));
+  const palabras=t=>t.toLowerCase().replace(/[¿?¡!.,;:«»"]/g,' ').split(/\s+/).filter(w=>w&&!STOP.has(w));
+  const VD=DOCS.map(d=>M.vector(d).v);
+  const fmt=x=>x.toFixed(2).replace('.',',');
+  function fila(d,s,max,col,q){
+    const marcado=d.split(' ').map(w=>q.has(w)?'<mark>'+w+'</mark>':w).join(' ');
+    return '<div class="c2l3-d'+(s<=0?' cero':'')+'"><span>'+marcado+'</span><b>'+(Number.isInteger(s)?s:fmt(s))+'</b><span class="tr"><i style="width:'+Math.max(0,s/max*100)+'%;background:var('+col+')"></i></span></div>';
+  }
+  function leer(){
+    const q=$('#c2l3-q').value,qs=new Set(palabras(q));
+    const lex=DOCS.map((d,i)=>[i,palabras(d).filter(w=>qs.has(w)).length]).sort((a,b)=>b[1]-a[1]||a[0]-b[0]).slice(0,5);
+    const r=M.vector(q);
+    const sem=r.v?DOCS.map((d,i)=>[i,M.dot(r.v,VD[i])]).sort((a,b)=>b[1]-a[1]).slice(0,5):[];
+    const hayLex=lex[0][1]>0;
+    $('#c2l3-lex').innerHTML=hayLex?lex.map(([i,s])=>fila(DOCS[i],s,Math.max(1,lex[0][1]),'--c-fis',qs)).join(''):'<span class="hint">Ningún documento contiene esas palabras: la búsqueda exacta no devuelve nada.</span>';
+    $('#c2l3-sem').innerHTML=sem.length?sem.map(([i,s])=>fila(DOCS[i],s,1,'--c-enl',qs)).join(''):'<span class="hint">Ninguna palabra de la búsqueda está en el vocabulario de juguete.</span>';
+    const h=[];
+    if(!hayLex&&sem.length)h.push('<span class="ok">La búsqueda exacta no encuentra nada, pero la búsqueda por significado trae primero «'+DOCS[sem[0][0]]+'» (coseno '+fmt(sem[0][1])+'): no comparte ninguna palabra con «'+q+'», pero sí el sentido.</span>');
+    if(hayLex&&sem.length)h.push('<span>Las dos búsquedas encuentran algo. Fíjate en el orden: la exacta solo cuenta palabras repetidas; la semántica también premia documentos con palabras parecidas.</span>');
+    if(qs.has('banco'))h.push('<span class="warn">«banco» trae a la vez el dinero y los peces: con un vector fijo por palabra, la búsqueda no sabe qué sentido quieres. Agrega contexto («banco dinero» o «banco peces») y mira cómo cambia.</span>');
+    if(r.des&&r.des.length)h.push('<span>Sin vector: «'+r.des.join('», «')+'». En la búsqueda semántica esas palabras no cuentan.</span>');
+    h.push('<span>Cada documento se convierte en el promedio de los vectores de sus palabras, y se ordena por la similitud coseno con el vector de la búsqueda. Los sistemas reales usan un modelo de embeddings de frases en lugar de un promedio, pero miden igual.</span>');
+    $('#c2l3-out').innerHTML=h.join('');
+  }
+  $('#c2l3-q').addEventListener('input',leer);
+  document.querySelectorAll('[id="02-lab-3"] [data-q]').forEach(b=>b.addEventListener('click',()=>{$('#c2l3-q').value=b.dataset.q;leer();}));
+  leer();
+})();
+</script>
+</body>
+</html>

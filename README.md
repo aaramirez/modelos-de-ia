@@ -4,7 +4,7 @@ Cómo funciona por dentro un modelo de lenguaje: tokens, embeddings, atención y
 
 **Ver en línea:** https://aaramirez.github.io/modelos-de-ia/
 
-Este repositorio solo tiene el sitio generado. El curso está en preparación: la tabla de contenido ya está publicada para revisión.
+Este repositorio solo tiene el sitio generado. Curso completo: 10 capítulos con laboratorios interactivos, diagramas y prácticas.
 
 | # | Capítulo |
 |---|---|

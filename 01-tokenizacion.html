@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tokenización · Modelos de IA · Modelos de IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Cómo funciona por dentro un modelo de lenguaje: tokens, embeddings, atención y el Transformer, cómo se entrena y se alinea, cómo genera y razona, y cómo se evalúa y se elige.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="tokenizacion">
+<header class="topbar"><a class="brand" href="index.html">Modelos de <b>IA</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 01 DE 10</span><h1>Del texto a los números: tokenización</h1><p class="lede">Escribes «¿De qué color es el cielo?» y, antes de que el modelo piense nada, un programa sencillo la parte en pedazos y cambia cada pedazo por un número. Ese primer paso decide cuánto pagas, cuánto cabe en una conversación y por qué un modelo brillante no sabe contar las «r» de una palabra.</p></header>
+<section><h2>La pregunta que recorre el curso</h2><div class="prose"><p>Este curso sigue una sola pregunta de punta a punta: <b>«¿De qué color es el cielo?»</b>. La vamos a ver entrar al modelo, convertirse en números, pasar por las capas que la relacionan consigo misma y salir como una respuesta: «El cielo es azul.». Cada capítulo da un paso más hacia adentro.</p><p>Para que los números se puedan calcular a mano, el curso usa además un modelo de juguete al que llamaremos <b>Colibrí</b>. Tiene un vocabulario de solo 32 pedazos de texto, vectores de 4 números y unas pocas capas. Un modelo real tiene cientos de miles de pedazos, vectores de miles de números y decenas de capas, pero hace exactamente las mismas operaciones. Lo que aprendas con Colibrí vale para los grandes.</p></div><div class="analogia"><b>Imagínalo así</b><p>Piensa en una carta que viaja por correo. Antes de que alguien la lea, pasa por una máquina clasificadora que no entiende nada del contenido: solo la pesa, le pone un código y la manda por la cinta correcta. La tokenización es esa máquina. No sabe de colores ni de cielos; solo parte el texto y le pone números. Pero si la máquina etiqueta mal, todo lo que viene después trabaja con una etiqueta equivocada.</p></div><figure class="fig fig-mapa" id="01-diagrama-1"><div class="lienzo"><svg viewBox="0 0 960 440" style="min-width:760px" role="img" aria-label="Mapa del curso. La pregunta ¿De qué color es el cielo? pasa por cuatro estaciones: tokens (capítulo 1), embeddings (capítulo 2), atención y Transformer (capítulo 3) y generar (capítulo 6), y sale la respuesta El cielo es azul; cada token generado vuelve a entrar. Debajo, el entrenamiento (capítulos 4 y 5) ajusta los pesos; las imágenes entran como tokens (capítulo 7); el razonamiento piensa antes de responder (capítulo 8); evaluar y elegir el modelo cierran el curso (capítulos 9 y 10).">
+<defs>
+<marker id="m1d1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="m1d1-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-tra"/></marker>
+</defs>
+
+<path d="M858 54 V30 H282 V54" class="ln ln-d" style="stroke-width:1.6" marker-end="url(#m1d1-a)"/>
+<rect x="430" y="21" width="282" height="18" class="caja" style="stroke:none"/>
+<text x="571" y="34" class="t t-s t-m" text-anchor="middle">cada token generado se agrega y vuelve a entrar</text>
+
+<rect x="16" y="92" width="150" height="76" rx="14" class="caja" style="stroke-width:2"/>
+<text x="30" y="114" class="t t-xs t-b t-m">LA PREGUNTA</text>
+<text x="30" y="137" class="t">¿De qué color</text>
+<text x="30" y="155" class="t">es el cielo?</text>
+<line x1="166" y1="130" x2="192" y2="130" class="ln" style="stroke-width:2" marker-end="url(#m1d1-a)"/>
+
+<rect x="196" y="54" width="172" height="156" rx="12" class="c-fis" style="stroke-width:1.6"/>
+<text x="210" y="76" class="t t-xs t-b k-fis">1 · TOKENS</text>
+<text x="210" y="102" class="t t-s t-mono">¿|De|␣qué|␣color|</text>
+<text x="210" y="120" class="t t-s t-mono">␣es|␣el|␣cielo|?</text>
+<text x="210" y="148" class="t t-s t-m">8 pedazos con su id:</text>
+<text x="210" y="168" class="t t-s t-mono">[4, 8, 10, 11,</text>
+<text x="210" y="186" class="t t-s t-mono"> 12, 13, 16, 5]</text>
+<line x1="368" y1="130" x2="384" y2="130" class="ln" style="stroke-width:2" marker-end="url(#m1d1-a)"/>
+
+<rect x="388" y="54" width="172" height="156" rx="12" class="c-enl" style="stroke-width:1.6"/>
+<text x="402" y="76" class="t t-xs t-b k-enl">2 · EMBEDDINGS</text>
+<g class="caja">
+<rect x="404" y="88" width="16" height="10"/><rect x="420" y="88" width="16" height="10"/><rect x="436" y="88" width="16" height="10"/><rect x="452" y="88" width="16" height="10"/>
+<rect x="404" y="98" width="16" height="10"/><rect x="420" y="98" width="16" height="10"/><rect x="436" y="98" width="16" height="10"/><rect x="452" y="98" width="16" height="10"/>
+<rect x="404" y="108" width="16" height="10"/><rect x="420" y="108" width="16" height="10"/><rect x="436" y="108" width="16" height="10"/><rect x="452" y="108" width="16" height="10"/>
+<rect x="404" y="118" width="16" height="10"/><rect x="420" y="118" width="16" height="10"/><rect x="436" y="118" width="16" height="10"/><rect x="452" y="118" width="16" height="10"/>
+<rect x="404" y="128" width="16" height="10"/><rect x="420" y="128" width="16" height="10"/><rect x="436" y="128" width="16" height="10"/><rect x="452" y="128" width="16" height="10"/>
+<rect x="404" y="138" width="16" height="10"/><rect x="420" y="138" width="16" height="10"/><rect x="436" y="138" width="16" height="10"/><rect x="452" y="138" width="16" height="10"/>
+<rect x="404" y="148" width="16" height="10"/><rect x="420" y="148" width="16" height="10"/><rect x="436" y="148" width="16" height="10"/><rect x="452" y="148" width="16" height="10"/>
+<rect x="404" y="158" width="16" height="10"/><rect x="420" y="158" width="16" height="10"/><rect x="436" y="158" width="16" height="10"/><rect x="452" y="158" width="16" height="10"/>
+</g>
+<text x="478" y="106" class="t t-s">un vector</text>
+<text x="478" y="121" class="t t-s">de 4 números</text>
+<text x="478" y="136" class="t t-s">por token</text>
+<text x="402" y="192" class="t t-s t-m">una tabla de 8 × 4</text>
+<line x1="560" y1="130" x2="576" y2="130" class="ln" style="stroke-width:2" marker-end="url(#m1d1-a)"/>
+
+<rect x="580" y="54" width="172" height="156" rx="12" class="c-red" style="stroke-width:1.6"/>
+<text x="594" y="76" class="t t-xs t-b k-red">3 · ATENCIÓN</text>
+<text x="594" y="90" class="t t-xs t-b k-red">Y TRANSFORMER</text>
+<path d="M610 150 Q640 110 670 150 M610 150 Q665 95 720 150 M640 150 Q680 118 720 150" class="ln s-red" style="stroke-width:1.4"/>
+<circle cx="610" cy="150" r="6" class="k-red"/><circle cx="640" cy="150" r="6" class="k-red"/><circle cx="670" cy="150" r="6" class="k-red"/><circle cx="720" cy="150" r="6" class="k-red"/>
+<text x="694" y="154" class="t t-s t-m">…</text>
+<text x="594" y="178" class="t t-s">cada token mira a los</text>
+<text x="594" y="194" class="t t-s">demás, capa tras capa</text>
+<line x1="752" y1="130" x2="768" y2="130" class="ln" style="stroke-width:2" marker-end="url(#m1d1-a)"/>
+
+<rect x="772" y="54" width="172" height="156" rx="12" class="c-apl" style="stroke-width:1.6"/>
+<text x="786" y="76" class="t t-xs t-b k-apl">6 · GENERAR</text>
+<text x="786" y="96" class="t t-s t-m">¿qué token sigue?</text>
+<text x="826" y="120" class="t t-s t-mono" text-anchor="end">azul</text><rect x="832" y="110" width="96" height="12" rx="3" class="k-apl"/>
+<text x="826" y="140" class="t t-s t-mono" text-anchor="end">gris</text><rect x="832" y="130" width="34" height="12" rx="3" class="k-apl" style="opacity:.6"/>
+<text x="826" y="160" class="t t-s t-mono" text-anchor="end">claro</text><rect x="832" y="150" width="20" height="12" rx="3" class="k-apl" style="opacity:.45"/>
+<text x="786" y="186" class="t t-s">se elige uno y se</text>
+<text x="786" y="201" class="t t-s">repite</text>
+<line x1="858" y1="210" x2="858" y2="234" class="ln" style="stroke-width:2" marker-end="url(#m1d1-a)"/>
+<rect x="772" y="238" width="172" height="44" rx="14" class="caja" style="stroke-width:2"/>
+<text x="858" y="265" class="t t-b" text-anchor="middle">El cielo es azul.</text>
+
+<rect x="16" y="318" width="168" height="66" rx="12" class="caja" style="stroke-dasharray:5 4"/>
+<text x="30" y="340" class="t t-xs t-b t-m">7 · MULTIMODALES</text>
+<text x="30" y="358" class="t t-s">imágenes y audio también</text>
+<text x="30" y="373" class="t t-s">se vuelven tokens</text>
+<line x1="150" y1="318" x2="232" y2="214" class="ln ln-d" marker-end="url(#m1d1-a)"/>
+<rect x="196" y="318" width="364" height="66" rx="12" class="c-tra" style="stroke-width:1.6"/>
+<text x="210" y="340" class="t t-xs t-b k-tra">4 · PREENTRENAMIENTO   5 · AJUSTE Y ALINEAMIENTO</text>
+<text x="210" y="358" class="t t-s">el entrenamiento fija los números (pesos) de la</text>
+<text x="210" y="373" class="t t-s">tabla de embeddings y de cada capa</text>
+<line x1="474" y1="318" x2="474" y2="214" class="ln s-tra" style="stroke-width:2" marker-end="url(#m1d1-t)"/>
+<line x1="540" y1="318" x2="640" y2="214" class="ln s-tra" style="stroke-width:2" marker-end="url(#m1d1-t)"/>
+<rect x="580" y="318" width="172" height="66" rx="12" class="caja" style="stroke-dasharray:5 4"/>
+<text x="594" y="340" class="t t-xs t-b t-m">8 · RAZONAMIENTO</text>
+<text x="594" y="358" class="t t-s">genera pasos para</text>
+<text x="594" y="373" class="t t-s">pensar antes de responder</text>
+<line x1="700" y1="318" x2="790" y2="214" class="ln ln-d" marker-end="url(#m1d1-a)"/>
+<rect x="772" y="318" width="172" height="66" rx="12" class="caja" style="stroke-dasharray:5 4"/>
+<text x="786" y="340" class="t t-xs t-b t-m">9 · EVALUAR  10 · ELEGIR</text>
+<text x="786" y="358" class="t t-s">¿qué tan bueno es?</text>
+<text x="786" y="373" class="t t-s">¿cuánto cuesta y ocupa?</text>
+<line x1="858" y1="282" x2="858" y2="314" class="ln ln-d" marker-end="url(#m1d1-a)"/>
+
+<rect x="16" y="408" width="12" height="12" rx="3" class="c-fis"/><text x="34" y="419" class="t t-s">texto y tokens</text>
+<rect x="150" y="408" width="12" height="12" rx="3" class="c-enl"/><text x="168" y="419" class="t t-s">vectores</text>
+<rect x="250" y="408" width="12" height="12" rx="3" class="c-red"/><text x="268" y="419" class="t t-s">atención y capas</text>
+<rect x="392" y="408" width="12" height="12" rx="3" class="c-apl"/><text x="410" y="419" class="t t-s">salida y generación</text>
+<rect x="546" y="408" width="12" height="12" rx="3" class="c-tra"/><text x="564" y="419" class="t t-s">entrenamiento (pesos)</text>
+<rect x="724" y="408" width="12" height="12" rx="3" class="caja" style="stroke-dasharray:3 2"/><text x="742" y="419" class="t t-s">extensiones y evaluación</text>
+</svg></div><figcaption><b>El viaje de la pregunta: el mapa del curso.</b> Sigue la fila de arriba de izquierda a derecha. La pregunta se parte en tokens (capítulo 1), cada token se cambia por un vector (capítulo 2), los vectores pasan por la atención y las capas del Transformer (capítulo 3), y a la salida se calcula qué token sigue y se elige uno (capítulo 6). La flecha punteada de arriba es la clave de todo: cada token generado se agrega a la entrada y el ciclo se repite hasta terminar la respuesta. En la fila de abajo, el entrenamiento (capítulos 4 y 5) fija los números de la tabla y de las capas; las imágenes entran como tokens (capítulo 7); el razonamiento genera pasos antes de responder (capítulo 8); y al final se evalúa y se elige un modelo (capítulos 9 y 10). Los colores se repiten en todo el curso: ámbar para texto y tokens, verde para vectores, azul para atención y capas, magenta para la salida y violeta para el entrenamiento.</figcaption></figure></section>
+<section><h2>Por qué no letras ni palabras completas</h2><div class="prose"><p>Un modelo de lenguaje es, por dentro, una gran cuenta con números. No puede recibir letras: necesita que alguien convierta el texto en una lista de números enteros. A cada pedazo de texto que el modelo reconoce se le llama <b>token</b> (<i>token</i>, ficha o pieza), y a la lista de todos los tokens que conoce, <b>vocabulario</b> (<i>vocabulary</i>). El programa que parte el texto y le asigna a cada pedazo su número es el <b>tokenizador</b> (<i>tokenizer</i>). Ese número es el <b>identificador del token</b> (<i>token ID</i>).</p><p>Hay dos formas obvias de partir el texto, y las dos fallan.</p><p><b>Por letras.</b> El vocabulario sería pequeño: las letras, los dígitos, los signos. Nunca aparecería una palabra que no se pueda escribir. Pero las secuencias se vuelven muy largas: «¿De qué color es el cielo?» son 26 caracteres. Como verás en el capítulo 3, el costo de procesar una secuencia crece más rápido que su largo, y además el modelo tendría que aprender desde cero que «c-i-e-l-o» forma una idea.</p><p><b>Por palabras completas.</b> La pregunta quedaría en 8 pedazos (contando «¿» y «?»), mucho mejor. Pero el vocabulario explota: «cielo», «cielos», «cielito», «celeste», cada conjugación de cada verbo, cada nombre propio, cada error de tipeo, cada palabra de cada idioma. Haría falta un vocabulario de millones de entradas y, aun así, cualquier palabra nueva quedaría como <b>desconocida</b> (<i>unknown</i>, el famoso <code>&lt;unk&gt;</code>): el modelo no la vería.</p><p>La solución que usan todos los modelos actuales está en el medio: <b>subpalabras</b> (<i>subwords</i>). Las palabras frecuentes quedan enteras («␣cielo» es un solo token), las raras se arman con pedazos («␣ciel» + «ito») y, en el peor caso, se cae a letras o a bytes sueltos. El vocabulario queda en un tamaño fijo, de unas decenas a unos cientos de miles de tokens, y no existe la palabra imposible.</p></div><figure class="fig fig-comparacion" id="01-diagrama-2"><div class="lienzo"><svg viewBox="0 0 960 330" style="min-width:760px" role="img" aria-label="Tres maneras de partir la pregunta. Por letras: 26 tokens, vocabulario de unos cientos, la palabra nueva cielito se puede escribir pero las secuencias son largas. Por palabras: 8 tokens, vocabulario de millones, cielito queda como desconocido. Por subpalabras: 8 tokens, vocabulario de 30.000 a 200.000, cielito se arma con pedazos conocidos.">
+<text x="16" y="28" class="t t-xs t-b t-m">NIVEL</text>
+<text x="150" y="28" class="t t-xs t-b t-m">«¿DE QUÉ COLOR ES EL CIELO?» PARTIDA</text>
+<text x="560" y="28" class="t t-xs t-b t-m">TOKENS</text>
+<text x="630" y="28" class="t t-xs t-b t-m">VOCABULARIO</text>
+<text x="770" y="28" class="t t-xs t-b t-m">PALABRA NUEVA «CIELITO»</text>
+<line x1="16" y1="38" x2="944" y2="38" class="ln"/>
+
+<rect x="16" y="50" width="928" height="78" rx="10" class="caja"/>
+<text x="30" y="84" class="t t-b">Letras</text>
+<text x="30" y="102" class="t t-s t-m">(caracteres)</text>
+<g class="t t-s t-mono">
+<text x="150" y="80">¿|D|e|␣|q|u|é|␣|c|o|l|o|r|</text>
+<text x="150" y="100">␣|e|s|␣|e|l|␣|c|i|e|l|o|?</text>
+</g>
+<text x="560" y="92" class="t t-b t-mono" style="font-size:16px">26</text>
+<text x="630" y="84" class="t t-s">unos cientos</text>
+<text x="630" y="100" class="t t-s t-m">pequeño</text>
+<text x="770" y="84" class="t t-s t-mono">c|i|e|l|i|t|o</text>
+<text x="770" y="102" class="t t-s k-warm">se escribe, pero todo es largo</text>
+
+<rect x="16" y="140" width="928" height="78" rx="10" class="caja"/>
+<text x="30" y="174" class="t t-b">Palabras</text>
+<text x="30" y="192" class="t t-s t-m">completas</text>
+<text x="150" y="180" class="t t-s t-mono">¿|De|qué|color|es|el|cielo|?</text>
+<text x="560" y="182" class="t t-b t-mono" style="font-size:16px">8</text>
+<text x="630" y="174" class="t t-s">millones</text>
+<text x="630" y="190" class="t t-s t-m">(cada forma cuenta)</text>
+<text x="770" y="174" class="t t-s t-mono">&lt;desconocido&gt;</text>
+<text x="770" y="192" class="t t-s k-warm">el modelo no la ve</text>
+
+<rect x="16" y="230" width="928" height="78" rx="10" class="c-fis" style="stroke-width:2"/>
+<text x="30" y="264" class="t t-b k-fis">Subpalabras</text>
+<text x="30" y="282" class="t t-s k-fis">lo que se usa hoy</text>
+<text x="150" y="270" class="t t-s t-mono">¿|De|␣qué|␣color|␣es|␣el|␣cielo|?</text>
+<text x="560" y="272" class="t t-b t-mono" style="font-size:16px">8</text>
+<text x="630" y="264" class="t t-s">30.000 a 200.000</text>
+<text x="630" y="280" class="t t-s t-m">fijo y manejable</text>
+<text x="770" y="264" class="t t-s t-mono">␣ciel|ito</text>
+<text x="770" y="282" class="t t-s k-fis t-b">pedazos conocidos</text>
+</svg></div><figcaption><b>Letras, palabras o pedazos.</b> Cada fila parte la misma pregunta con un criterio distinto. Mira tres columnas: cuántos tokens salen, qué tan grande tiene que ser el vocabulario y qué pasa con una palabra que nunca apareció, «cielito». Las letras dan secuencias largas, las palabras dejan afuera lo nuevo, y las subpalabras (abajo, en ámbar) logran secuencias cortas con un vocabulario fijo. El símbolo ␣ marca un espacio: en la mayoría de los tokenizadores el espacio viaja pegado al principio de la palabra.</figcaption></figure><div class="prose"><p>Fíjate en un detalle que confunde al principio: «␣cielo» y «cielo» son tokens distintos. El primero lleva el espacio adelante y aparece en medio de una oración; el segundo aparece al principio de una línea o pegado a otro signo. Para el modelo son dos números diferentes, y tiene que aprender que significan lo mismo.</p></div><div class="lab" id="01-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>El tokenizador en vivo</h3></div><p class="hint">Escribe cualquier texto y mira cómo lo parte un tokenizador BPE real, entrenado para este curso con texto en inglés, código y español. Cada recuadro es un token y el número de abajo es su identificador. Mueve «Fusiones aprendidas» hacia la izquierda: con menos fusiones, el vocabulario es más chico y los tokens se rompen en pedazos. Prueba los botones de ejemplo y fíjate en los recuadros rayados: son bytes sueltos.</p><style>
+[id="01-lab-1"] textarea{width:100%;min-height:76px;font:500 .95rem/1.4 var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);resize:vertical;box-sizing:border-box}
+[id="01-lab-1"] .c1l1-toks{display:flex;flex-wrap:wrap;gap:3px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);min-height:52px}
+[id="01-lab-1"] .c1l1-t{display:inline-grid;justify-items:center;border-radius:5px;padding:3px 4px 2px;font:500 .9rem var(--f-mono);white-space:pre;border:1px solid transparent;color:var(--ink)}
+[id="01-lab-1"] .c1l1-t small{font:500 .62rem var(--f-mono);color:var(--muted)}
+[id="01-lab-1"] .c1l1-t.n0{background:var(--c-fis-s);border-color:var(--c-fis)}
+[id="01-lab-1"] .c1l1-t.n1{background:var(--c-enl-s);border-color:var(--c-enl)}
+[id="01-lab-1"] .c1l1-t.n2{background:var(--c-red-s);border-color:var(--c-red)}
+[id="01-lab-1"] .c1l1-t.n3{background:var(--c-tra-s);border-color:var(--c-tra)}
+[id="01-lab-1"] .c1l1-t.n4{background:var(--c-apl-s);border-color:var(--c-apl)}
+[id="01-lab-1"] .c1l1-t.byte{border-style:dashed;background:var(--warm-soft);border-color:var(--warm)}
+[id="01-lab-1"] .c1l1-t.nl{color:var(--muted)}
+[id="01-lab-1"] .c1l1-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,120px),1fr));gap:8px}
+[id="01-lab-1"] .c1l1-k{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper)}
+[id="01-lab-1"] .c1l1-k span{display:block;font:600 .74rem var(--f-display);color:var(--muted)}
+[id="01-lab-1"] .c1l1-k output{font:700 1.3rem var(--f-mono);color:var(--ink)}
+[id="01-lab-1"] .c1l1-ids{font:500 .78rem/1.5 var(--f-mono);color:var(--muted);overflow-wrap:anywhere}
+</style>
+<label class="hint" for="c1l1-txt">Escribe o pega cualquier texto:</label>
+<textarea id="c1l1-txt" spellcheck="false">¿De qué color es el cielo?</textarea>
+<div class="btns" role="group" aria-label="Textos de ejemplo">
+  <button type="button" data-t="¿De qué color es el cielo?">La pregunta del curso</button>
+  <button type="button" data-t="What color is the sky?">En inglés</button>
+  <button type="button" data-t="def color(cielo):&#10;    return cielo.get(&quot;color&quot;, &quot;azul&quot;)">En código</button>
+  <button type="button" data-t="¿Cuántas letras «r» tiene «ferrocarril»?">Contar letras</button>
+  <button type="button" data-t="123456 + 789 = 124245">Una suma</button>
+  <button type="button" data-t="El cielo 🌤️ está despejado">Con emoji</button>
+</div>
+<div class="ctls">
+  <label class="ctl">Fusiones aprendidas <output id="c1l1-k-o"></output>
+    <input id="c1l1-k" type="range" min="0" max="3000" step="50" value="3000"></label>
+</div>
+<div class="c1l1-toks" id="c1l1-toks" aria-label="Los tokens del texto"></div>
+<div class="legend"><span><i style="background:var(--c-red)"></i>un token (los colores solo los separan)</span><span><i style="background:var(--warm)"></i>byte suelto: un pedazo de una letra</span><span>␣ = espacio · ↵ = salto de línea</span></div>
+<div class="c1l1-kpis">
+  <div class="c1l1-k"><span>Caracteres</span><output id="c1l1-n1"></output></div>
+  <div class="c1l1-k"><span>Bytes (UTF-8)</span><output id="c1l1-n2"></output></div>
+  <div class="c1l1-k"><span>Tokens</span><output id="c1l1-n3"></output></div>
+  <div class="c1l1-k"><span>Caracteres por token</span><output id="c1l1-n4"></output></div>
+</div>
+<div class="c1l1-ids" id="c1l1-ids" aria-label="Identificadores que recibe el modelo"></div>
+<div class="readout texto" id="c1l1-out" aria-live="polite"></div></div></section>
+<section><h2>BPE: unir los pares más frecuentes</h2><div class="prose"><p>¿Cómo decide el tokenizador qué pedazos merecen ser tokens? El método más usado se llama <b>BPE</b> (<i>Byte Pair Encoding</i>, codificación por pares de bytes). Nació en 1994 como un algoritmo de compresión de datos y en 2015 Rico Sennrich y sus colegas lo adaptaron para traducir con redes neuronales. La familia GPT lo usa desde el primer GPT (2018), GPT-2 (2019) lo llevó a trabajar con bytes y hoy lo usa la mayoría de los modelos.</p></div><div class="analogia"><b>Imagínalo así</b><p>Imagina que tomas apuntes en clase y te cansas de escribir siempre las mismas letras juntas. Primero inventas un signo para «qu», porque aparece en todas partes. Después uno para «que», y luego uno para «porque». Al final del semestre tienes una lista de abreviaturas ordenada por utilidad: las primeras que inventaste son las que más ahorran. BPE hace eso, pero contando en vez de adivinar.</p></div><div class="prose"><p>El algoritmo tiene dos fases. En el <b>entrenamiento</b>, que se hace una sola vez sobre un corpus enorme:</p><ol class="steps"><li><span>Se empieza con un vocabulario mínimo: todas las letras que aparecen o, en los tokenizadores modernos, los 256 valores posibles de un byte.</span></li><li><span>Se cuentan todos los pares de tokens vecinos en el corpus.</span></li><li><span>El par más frecuente se une en un token nuevo, se agrega al vocabulario y se anota la regla.</span></li><li><span>Se repite desde el paso 2 hasta llegar al tamaño de vocabulario elegido.</span></li></ol><p>En el <b>uso</b>, con cada texto nuevo, se parte en letras o bytes y se aplican las reglas aprendidas en el mismo orden en que se aprendieron. No se vuelve a contar nada: el tokenizador es la lista ordenada de fusiones.</p><p>Un detalle importante: antes de contar, el texto se <b>pretokeniza</b> (<i>pre-tokenization</i>): se corta en palabras, números y signos con una expresión regular, y las fusiones nunca cruzan de una palabra a otra. Así «el␣cielo» no puede volverse un solo token, aunque aparezca mucho.</p></div><figure class="fig fig-flujo" id="01-diagrama-3"><div class="lienzo"><svg viewBox="0 0 960 400" style="min-width:760px" role="img" aria-label="BPE en dos fases. Entrenar, una vez: partir el texto en letras o bytes, contar los pares vecinos, unir el par más frecuente y anotar la regla, y repetir hasta llenar el vocabulario. Usar, con cada texto: aplicar las reglas en el orden en que se aprendieron; la palabra cielo pasa de seis piezas a un solo token en cinco fusiones.">
+<defs>
+<marker id="m1d3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="m1d3-f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-fis"/></marker>
+</defs>
+<text x="16" y="26" class="t t-xs t-b t-m">ENTRENAR · UNA VEZ, SOBRE UN CORPUS ENORME</text>
+<rect x="16" y="40" width="300" height="50" rx="10" class="caja"/>
+<text x="30" y="61" class="t t-b">① Partir en letras o bytes</text>
+<text x="30" y="79" class="t t-s t-m">el vocabulario empieza con 256 bytes</text>
+<line x1="166" y1="90" x2="166" y2="110" class="ln" style="stroke-width:2" marker-end="url(#m1d3-a)"/>
+<rect x="16" y="114" width="300" height="50" rx="10" class="c-fis"/>
+<text x="30" y="135" class="t t-b">② Contar los pares vecinos</text>
+<text x="30" y="153" class="t t-s">«e»+«l» aparece 12 veces, «␣»+«e» 11…</text>
+<line x1="166" y1="164" x2="166" y2="184" class="ln" style="stroke-width:2" marker-end="url(#m1d3-a)"/>
+<rect x="16" y="188" width="300" height="50" rx="10" class="c-fis"/>
+<text x="30" y="209" class="t t-b">③ Unir el más frecuente</text>
+<text x="30" y="227" class="t t-s">nace el token «el» y se anota la regla</text>
+<line x1="166" y1="238" x2="166" y2="258" class="ln" style="stroke-width:2" marker-end="url(#m1d3-a)"/>
+<rect x="16" y="262" width="300" height="50" rx="10" class="caja"/>
+<text x="30" y="283" class="t t-b">④ ¿Vocabulario lleno?</text>
+<text x="30" y="301" class="t t-s t-m">por ejemplo, 50.000 o 200.000 tokens</text>
+<path d="M316 287 H352 V139 H320" class="ln s-fis" style="stroke-width:2" marker-end="url(#m1d3-f)"/>
+<text x="360" y="210" class="t t-s k-fis t-b">no:</text>
+<text x="360" y="226" class="t t-s k-fis">repetir</text>
+<line x1="166" y1="312" x2="166" y2="332" class="ln" style="stroke-width:2" marker-end="url(#m1d3-a)"/>
+<text x="180" y="327" class="t t-s t-m">sí</text>
+<rect x="16" y="336" width="300" height="50" rx="10" class="caja" style="stroke-width:2"/>
+<text x="30" y="357" class="t t-b">Lista ordenada de fusiones</text>
+<text x="30" y="375" class="t t-s t-mono">1 e+l · 2 ␣+c · … · 7 ␣ciel+o</text>
+<line x1="440" y1="30" x2="440" y2="386" class="ln ln-d"/>
+<text x="470" y="26" class="t t-xs t-b t-m">USAR · CON CADA TEXTO, LAS REGLAS EN SU ORDEN</text>
+<g class="t t-mono" style="font-size:14px">
+<text x="470" y="72">␣ | c | i | e | l | o</text>
+<text x="470" y="128">␣ | c | i | el | o</text>
+<text x="470" y="184">␣c | i | el | o</text>
+<text x="470" y="240">␣ci | el | o</text>
+<text x="470" y="296">␣ciel | o</text>
+<text x="470" y="352" class="t-b k-fis">␣cielo</text>
+</g>
+<g class="t t-s">
+<text x="700" y="72" class="t-m">6 piezas: un byte por letra</text>
+<text x="700" y="128">regla 1: e + l → el</text>
+<text x="700" y="184">regla 2: ␣ + c → ␣c</text>
+<text x="700" y="240">regla 5: ␣c + i → ␣ci</text>
+<text x="700" y="296">regla 6: ␣ci + el → ␣ciel</text>
+<text x="700" y="352" class="t-b k-fis">regla 7: ␣ciel + o → ␣cielo</text>
+</g>
+<line x1="520" y1="80" x2="520" y2="110" class="ln s-fis" marker-end="url(#m1d3-f)"/>
+<line x1="520" y1="136" x2="520" y2="166" class="ln s-fis" marker-end="url(#m1d3-f)"/>
+<line x1="520" y1="192" x2="520" y2="222" class="ln s-fis" marker-end="url(#m1d3-f)"/>
+<line x1="520" y1="248" x2="520" y2="278" class="ln s-fis" marker-end="url(#m1d3-f)"/>
+<line x1="520" y1="304" x2="520" y2="334" class="ln s-fis" marker-end="url(#m1d3-f)"/>
+<text x="470" y="384" class="t t-s t-m">Reglas del BPE de juguete del laboratorio 3, entrenado con el párrafo del cielo.</text>
+</svg></div><figcaption><b>BPE en dos fases.</b> A la izquierda, el entrenamiento: un ciclo de contar pares, unir el más frecuente y repetir hasta llenar el vocabulario. El resultado es una lista ordenada de reglas. A la derecha, el uso: la palabra «␣cielo» empieza como seis piezas y las reglas, aplicadas en orden, la funden en un solo token. Las reglas son las que aprende el laboratorio 3 con el párrafo del cielo; las reglas 3 y 4 («es» y «␣es») no tocan esta palabra.</figcaption></figure><div class="lab" id="01-lab-3"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Entrena un BPE de juguete</h3></div><p class="hint">El vocabulario empieza con las letras del párrafo. Pulsa «Siguiente fusión» y mira tres cosas: qué par era el más frecuente (1), qué token nuevo entró al vocabulario (2) y cómo el texto queda partido en menos pedazos (3). Con el párrafo del cielo, la quinta, sexta y séptima fusión arman «␣cielo». Cambia a «Palabras con la misma raíz» y mira cómo aparecen solos «␣cant», «␣nad», «␣jug» y «ando»: raíces y terminaciones que nadie programó.</p><style>
+[id="01-lab-3"] textarea{width:100%;min-height:70px;font:500 .9rem/1.4 var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);resize:vertical;box-sizing:border-box}
+[id="01-lab-3"] .c1l3-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px}
+[id="01-lab-3"] .c1l3-box{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--paper);display:grid;gap:6px;align-content:start;min-width:0}
+[id="01-lab-3"] .c1l3-box h4{margin:0;font:700 .72rem var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+[id="01-lab-3"] .c1l3-par{display:grid;grid-template-columns:1fr auto;gap:6px;font:500 .86rem var(--f-mono);padding:3px 6px;border-radius:5px}
+[id="01-lab-3"] .c1l3-par.top{background:var(--c-fis-s);outline:1px solid var(--c-fis);font-weight:700}
+[id="01-lab-3"] .c1l3-voc{display:flex;flex-wrap:wrap;gap:4px}
+[id="01-lab-3"] .c1l3-voc span{font:500 .8rem var(--f-mono);padding:2px 6px;border-radius:5px;background:var(--card);border:1px solid var(--line);white-space:pre}
+[id="01-lab-3"] .c1l3-voc span.nuevo{background:var(--c-fis-s);border-color:var(--c-fis);font-weight:700}
+[id="01-lab-3"] .c1l3-txt{display:flex;flex-wrap:wrap;gap:3px;font:500 .9rem var(--f-mono)}
+[id="01-lab-3"] .c1l3-txt span{padding:2px 4px;border-radius:4px;background:var(--card);border:1px solid var(--line);white-space:pre}
+[id="01-lab-3"] .c1l3-txt span.nuevo{background:var(--c-fis-s);border-color:var(--c-fis)}
+</style>
+<div class="opciones">
+  <label>Párrafo de entrenamiento
+    <select id="c1l3-p">
+      <option value="0">El cielo (el del curso)</option>
+      <option value="1">Palabras con la misma raíz</option>
+      <option value="2">Un poco de código</option>
+    </select></label>
+</div>
+<textarea id="c1l3-txt" spellcheck="false" aria-label="Texto con que se entrena el BPE"></textarea>
+<div class="btns">
+  <button type="button" class="primary" id="c1l3-sig">Siguiente fusión</button>
+  <button type="button" id="c1l3-diez">Diez fusiones</button>
+  <button type="button" id="c1l3-atr">Deshacer</button>
+  <button type="button" id="c1l3-ini">Volver a letras</button>
+</div>
+<div class="c1l3-grid">
+  <div class="c1l3-box"><h4>1 · Pares más frecuentes ahora</h4><div id="c1l3-pares"></div></div>
+  <div class="c1l3-box"><h4>2 · Vocabulario (<span id="c1l3-nv"></span>)</h4><div class="c1l3-voc" id="c1l3-voc"></div></div>
+</div>
+<div class="c1l3-box"><h4>3 · El texto partido con el vocabulario actual (<span id="c1l3-nt"></span> tokens)</h4><div class="c1l3-txt" id="c1l3-seg"></div></div>
+<div class="readout texto" id="c1l3-out" aria-live="polite"></div></div><div class="prose"><p>Con el párrafo de juguete, la primera fusión une «e» y «l» porque el par aparece 12 veces; después de 7 fusiones, el texto pasa de 128 a 80 tokens. Un tokenizador real hace lo mismo sobre miles de millones de palabras, y por eso sus primeros tokens nuevos son «␣the», «␣de», «ing» o «ción»: los pedazos que más se repiten en su corpus.</p></div></section>
+<section><h2>WordPiece, SentencePiece y los tokenizadores por bytes</h2><div class="prose"><p>BPE no es el único método. Vale la pena reconocer tres nombres, porque aparecen en la documentación de cualquier modelo:</p><ul><li><b>WordPiece</b> (pieza de palabra), el tokenizador de BERT (2018) y sus derivados. Se parece a BPE, pero en vez de unir el par más frecuente une el que más aumenta la probabilidad del corpus según un modelo de lenguaje simple. Marca con <code>##</code> los pedazos que continúan una palabra: «jugadores» puede quedar como <code>jug</code>, <code>##adores</code>. BERT usa un vocabulario de unos 30.000 tokens.</li><li><b>SentencePiece</b> (pieza de oración), una biblioteca de Google (2018) que trata el texto como una secuencia cruda de caracteres, sin suponer que las palabras se separan con espacios. Por eso sirve igual para japonés o chino, que no usan espacios. Convierte el espacio en un símbolo visible, «▁», y puede entrenar BPE o un método llamado <b>Unigram</b> (unigrama), que empieza con un vocabulario grande y va quitando los tokens que menos sirven. Lo usaron T5 y las primeras versiones de Llama.</li><li><b>BPE por bytes</b> (<i>byte-level BPE</i>), el de GPT-2 en adelante. Su vocabulario base son los 256 bytes posibles, así que cualquier texto en cualquier idioma, con emojis o con símbolos raros, se puede tokenizar sin <code>&lt;unk&gt;</code>: en el peor caso cae a bytes sueltos. El tokenizador del laboratorio 1 es de este tipo.</li></ul></div><div class="ml"><b>En la práctica</b><p>Cada modelo trae su tokenizador, y no son intercambiables. El identificador 16 en Colibrí es «␣cielo»; en otro modelo es cualquier otra cosa. Por eso un modelo de un proveedor no puede leer los identificadores de otro, y por eso, al bajar un modelo abierto, el tokenizador viene en un archivo propio (por ejemplo <code>tokenizer.json</code> en los repositorios de Hugging Face) junto a los pesos. Cambiar de tokenizador equivale a cambiar de idioma: el modelo habría que reentrenarlo.</p></div></section>
+<section><h2>El vocabulario y los tokens especiales</h2><div class="prose"><p>Además de los pedazos de texto, todo vocabulario tiene <b>tokens especiales</b> (<i>special tokens</i>): identificadores que no corresponden a texto escrito, sino que marcan estructura. Los más comunes son el de <b>inicio de secuencia</b> (<i>beginning of sequence</i>), el de <b>fin de secuencia</b> (<i>end of sequence</i>), el de <b>relleno</b> (<i>padding</i>, para igualar el largo de varios textos procesados juntos) y los que separan los turnos de una conversación.</p><p>Los modelos de chat dependen de ellos. Cuando escribes en una aplicación, el modelo no recibe tu pregunta suelta: recibe una <b>plantilla de chat</b> (<i>chat template</i>) que envuelve cada mensaje con tokens que dicen quién habla. Los nombres cambian de un modelo a otro: GPT-2 tenía un solo especial, <code>&lt;|endoftext|&gt;</code>; BERT usa <code>[CLS]</code>, <code>[SEP]</code> y <code>[MASK]</code>; Llama 3 usa marcas como <code>&lt;|start_header_id|&gt;</code> y <code>&lt;|eot_id|&gt;</code> (fin de turno). La idea es la misma en todos. Y el token de fin cumple un papel decisivo: cuando el modelo lo genera, la respuesta termina.</p></div><figure class="fig fig-esquema" id="01-diagrama-4"><div class="lienzo"><svg viewBox="0 0 960 400" style="min-width:760px" role="img" aria-label="El vocabulario de Colibrí, el modelo de juguete del curso: 32 tokens con su identificador, de 0 a 31; los cuatro primeros son especiales. Debajo, la conversación completa como la ve el modelo: 17 identificadores con los tokens especiales que marcan quién habla y dónde termina.">
+<text x="16" y="24" class="t t-xs t-b t-m">EL VOCABULARIO DE COLIBRÍ · 32 TOKENS</text>
+<rect x="16" y="36" width="107" height="38" rx="7" class="caja" style="stroke-dasharray:4 3;stroke-width:1.5"/>
+<text x="24" y="60" class="t t-s t-m t-mono">0</text>
+<text x="46" y="60" class="t t-mono" style="font-size:12px">&lt;inicio&gt;</text>
+<rect x="129" y="36" width="107" height="38" rx="7" class="caja" style="stroke-dasharray:4 3;stroke-width:1.5"/>
+<text x="137" y="60" class="t t-s t-m t-mono">1</text>
+<text x="159" y="60" class="t t-mono" style="font-size:12px">&lt;fin&gt;</text>
+<rect x="242" y="36" width="107" height="38" rx="7" class="caja" style="stroke-dasharray:4 3;stroke-width:1.5"/>
+<text x="250" y="60" class="t t-s t-m t-mono">2</text>
+<text x="272" y="60" class="t t-mono" style="font-size:12px">&lt;usuario&gt;</text>
+<rect x="355" y="36" width="107" height="38" rx="7" class="caja" style="stroke-dasharray:4 3;stroke-width:1.5"/>
+<text x="363" y="60" class="t t-s t-m t-mono">3</text>
+<text x="385" y="60" class="t t-mono" style="font-size:12px">&lt;asistente&gt;</text>
+<rect x="468" y="36" width="107" height="38" rx="7" class="c-fis"/>
+<text x="476" y="60" class="t t-s t-m t-mono">4</text>
+<text x="498" y="60" class="t t-mono" style="font-size:12px">¿</text>
+<rect x="581" y="36" width="107" height="38" rx="7" class="c-fis"/>
+<text x="589" y="60" class="t t-s t-m t-mono">5</text>
+<text x="611" y="60" class="t t-mono" style="font-size:12px">?</text>
+<rect x="694" y="36" width="107" height="38" rx="7" class="c-fis"/>
+<text x="702" y="60" class="t t-s t-m t-mono">6</text>
+<text x="724" y="60" class="t t-mono" style="font-size:12px">.</text>
+<rect x="807" y="36" width="107" height="38" rx="7" class="c-fis"/>
+<text x="815" y="60" class="t t-s t-m t-mono">7</text>
+<text x="837" y="60" class="t t-mono" style="font-size:12px">,</text>
+<rect x="16" y="80" width="107" height="38" rx="7" class="c-fis"/>
+<text x="24" y="104" class="t t-s t-m t-mono">8</text>
+<text x="46" y="104" class="t t-mono" style="font-size:12px">De</text>
+<rect x="129" y="80" width="107" height="38" rx="7" class="c-fis"/>
+<text x="137" y="104" class="t t-s t-m t-mono">9</text>
+<text x="159" y="104" class="t t-mono" style="font-size:12px">El</text>
+<rect x="242" y="80" width="107" height="38" rx="7" class="c-fis"/>
+<text x="250" y="104" class="t t-s t-m t-mono">10</text>
+<text x="272" y="104" class="t t-mono" style="font-size:12px">␣qué</text>
+<rect x="355" y="80" width="107" height="38" rx="7" class="c-fis"/>
+<text x="363" y="104" class="t t-s t-m t-mono">11</text>
+<text x="385" y="104" class="t t-mono" style="font-size:12px">␣color</text>
+<rect x="468" y="80" width="107" height="38" rx="7" class="c-fis"/>
+<text x="476" y="104" class="t t-s t-m t-mono">12</text>
+<text x="498" y="104" class="t t-mono" style="font-size:12px">␣es</text>
+<rect x="581" y="80" width="107" height="38" rx="7" class="c-fis"/>
+<text x="589" y="104" class="t t-s t-m t-mono">13</text>
+<text x="611" y="104" class="t t-mono" style="font-size:12px">␣el</text>
+<rect x="694" y="80" width="107" height="38" rx="7" class="c-fis"/>
+<text x="702" y="104" class="t t-s t-m t-mono">14</text>
+<text x="724" y="104" class="t t-mono" style="font-size:12px">␣la</text>
+<rect x="807" y="80" width="107" height="38" rx="7" class="c-fis"/>
+<text x="815" y="104" class="t t-s t-m t-mono">15</text>
+<text x="837" y="104" class="t t-mono" style="font-size:12px">␣de</text>
+<rect x="16" y="124" width="107" height="38" rx="7" class="c-fis"/>
+<text x="24" y="148" class="t t-s t-m t-mono">16</text>
+<text x="46" y="148" class="t t-mono" style="font-size:12px">␣cielo</text>
+<rect x="129" y="124" width="107" height="38" rx="7" class="c-fis"/>
+<text x="137" y="148" class="t t-s t-m t-mono">17</text>
+<text x="159" y="148" class="t t-mono" style="font-size:12px">␣mar</text>
+<rect x="242" y="124" width="107" height="38" rx="7" class="c-fis"/>
+<text x="250" y="148" class="t t-s t-m t-mono">18</text>
+<text x="272" y="148" class="t t-mono" style="font-size:12px">␣nube</text>
+<rect x="355" y="124" width="107" height="38" rx="7" class="c-fis"/>
+<text x="363" y="148" class="t t-s t-m t-mono">19</text>
+<text x="385" y="148" class="t t-mono" style="font-size:12px">␣sol</text>
+<rect x="468" y="124" width="107" height="38" rx="7" class="c-fis"/>
+<text x="476" y="148" class="t t-s t-m t-mono">20</text>
+<text x="498" y="148" class="t t-mono" style="font-size:12px">␣noche</text>
+<rect x="581" y="124" width="107" height="38" rx="7" class="c-fis"/>
+<text x="589" y="148" class="t t-s t-m t-mono">21</text>
+<text x="611" y="148" class="t t-mono" style="font-size:12px">␣azul</text>
+<rect x="694" y="124" width="107" height="38" rx="7" class="c-fis"/>
+<text x="702" y="148" class="t t-s t-m t-mono">22</text>
+<text x="724" y="148" class="t t-mono" style="font-size:12px">␣gris</text>
+<rect x="807" y="124" width="107" height="38" rx="7" class="c-fis"/>
+<text x="815" y="148" class="t t-s t-m t-mono">23</text>
+<text x="837" y="148" class="t t-mono" style="font-size:12px">␣rojo</text>
+<rect x="16" y="168" width="107" height="38" rx="7" class="c-fis"/>
+<text x="24" y="192" class="t t-s t-m t-mono">24</text>
+<text x="46" y="192" class="t t-mono" style="font-size:12px">␣verde</text>
+<rect x="129" y="168" width="107" height="38" rx="7" class="c-fis"/>
+<text x="137" y="192" class="t t-s t-m t-mono">25</text>
+<text x="159" y="192" class="t t-mono" style="font-size:12px">␣claro</text>
+<rect x="242" y="168" width="107" height="38" rx="7" class="c-fis"/>
+<text x="250" y="192" class="t t-s t-m t-mono">26</text>
+<text x="272" y="192" class="t t-mono" style="font-size:12px">␣os</text>
+<rect x="355" y="168" width="107" height="38" rx="7" class="c-fis"/>
+<text x="363" y="192" class="t t-s t-m t-mono">27</text>
+<text x="385" y="192" class="t t-mono" style="font-size:12px">curo</text>
+<rect x="468" y="168" width="107" height="38" rx="7" class="c-fis"/>
+<text x="476" y="192" class="t t-s t-m t-mono">28</text>
+<text x="498" y="192" class="t t-mono" style="font-size:12px">␣cel</text>
+<rect x="581" y="168" width="107" height="38" rx="7" class="c-fis"/>
+<text x="589" y="192" class="t t-s t-m t-mono">29</text>
+<text x="611" y="192" class="t t-mono" style="font-size:12px">este</text>
+<rect x="694" y="168" width="107" height="38" rx="7" class="c-fis"/>
+<text x="702" y="192" class="t t-s t-m t-mono">30</text>
+<text x="724" y="192" class="t t-mono" style="font-size:12px">␣y</text>
+<rect x="807" y="168" width="107" height="38" rx="7" class="c-fis"/>
+<text x="815" y="192" class="t t-s t-m t-mono">31</text>
+<text x="837" y="192" class="t t-mono" style="font-size:12px">␣muy</text>
+<text x="16" y="234" class="t t-xs t-b t-m">LA CONVERSACIÓN COMO LA VE EL MODELO</text>
+<rect x="16" y="248" width="72" height="30" rx="6" class="caja" style="stroke-dasharray:4 3;stroke-width:1.5"/>
+<text x="52" y="268" class="t t-mono" style="font-size:12px" text-anchor="middle">&lt;inicio&gt;</text>
+<text x="52" y="293" class="t t-s t-m t-mono" text-anchor="middle">0</text>
+<rect x="93" y="248" width="80" height="30" rx="6" class="caja" style="stroke-dasharray:4 3;stroke-width:1.5"/>
+<text x="133" y="268" class="t t-mono" style="font-size:12px" text-anchor="middle">&lt;usuario&gt;</text>
+<text x="133" y="293" class="t t-s t-m t-mono" text-anchor="middle">2</text>
+<rect x="178" y="248" width="34" height="30" rx="6" class="c-fis"/>
+<text x="195" y="268" class="t t-mono" style="font-size:12px" text-anchor="middle">¿</text>
+<text x="195" y="293" class="t t-s t-m t-mono" text-anchor="middle">4</text>
+<rect x="217" y="248" width="34" height="30" rx="6" class="c-fis"/>
+<text x="234" y="268" class="t t-mono" style="font-size:12px" text-anchor="middle">De</text>
+<text x="234" y="293" class="t t-s t-m t-mono" text-anchor="middle">8</text>
+<rect x="256" y="248" width="43" height="30" rx="6" class="c-fis"/>
+<text x="278" y="268" class="t t-mono" style="font-size:12px" text-anchor="middle">␣qué</text>
+<text x="278" y="293" class="t t-s t-m t-mono" text-anchor="middle">10</text>
+<rect x="304" y="248" width="58" height="30" rx="6" class="c-fis"/>
+<text x="333" y="268" class="t t-mono" style="font-size:12px" text-anchor="middle">␣color</text>
+<text x="333" y="293" class="t t-s t-m t-mono" text-anchor="middle">11</text>
+<rect x="367" y="248" width="36" height="30" rx="6" class="c-fis"/>
+<text x="385" y="268" class="t t-mono" style="font-size:12px" text-anchor="middle">␣es</text>
+<text x="385" y="293" class="t t-s t-m t-mono" text-anchor="middle">12</text>
+<rect x="408" y="248" width="36" height="30" rx="6" class="c-fis"/>
+<text x="426" y="268" class="t t-mono" style="font-size:12px" text-anchor="middle">␣el</text>
+<text x="426" y="293" class="t t-s t-m t-mono" text-anchor="middle">13</text>
+<rect x="449" y="248" width="58" height="30" rx="6" class="c-fis"/>
+<text x="478" y="268" class="t t-mono" style="font-size:12px" text-anchor="middle">␣cielo</text>
+<text x="478" y="293" class="t t-s t-m t-mono" text-anchor="middle">16</text>
+<rect x="512" y="248" width="34" height="30" rx="6" class="c-fis"/>
+<text x="529" y="268" class="t t-mono" style="font-size:12px" text-anchor="middle">?</text>
+<text x="529" y="293" class="t t-s t-m t-mono" text-anchor="middle">5</text>
+<text x="561" y="268" class="t t-s t-m">← pregunta del usuario</text>
+<rect x="16" y="312" width="94" height="30" rx="6" class="caja" style="stroke-dasharray:4 3;stroke-width:1.5"/>
+<text x="63" y="332" class="t t-mono" style="font-size:12px" text-anchor="middle">&lt;asistente&gt;</text>
+<text x="63" y="357" class="t t-s t-m t-mono" text-anchor="middle">3</text>
+<rect x="115" y="312" width="34" height="30" rx="6" class="c-fis"/>
+<text x="132" y="332" class="t t-mono" style="font-size:12px" text-anchor="middle">El</text>
+<text x="132" y="357" class="t t-s t-m t-mono" text-anchor="middle">9</text>
+<rect x="154" y="312" width="58" height="30" rx="6" class="c-fis"/>
+<text x="183" y="332" class="t t-mono" style="font-size:12px" text-anchor="middle">␣cielo</text>
+<text x="183" y="357" class="t t-s t-m t-mono" text-anchor="middle">16</text>
+<rect x="217" y="312" width="36" height="30" rx="6" class="c-fis"/>
+<text x="235" y="332" class="t t-mono" style="font-size:12px" text-anchor="middle">␣es</text>
+<text x="235" y="357" class="t t-s t-m t-mono" text-anchor="middle">12</text>
+<rect x="258" y="312" width="50" height="30" rx="6" class="c-fis"/>
+<text x="283" y="332" class="t t-mono" style="font-size:12px" text-anchor="middle">␣azul</text>
+<text x="283" y="357" class="t t-s t-m t-mono" text-anchor="middle">21</text>
+<rect x="314" y="312" width="34" height="30" rx="6" class="c-fis"/>
+<text x="330" y="332" class="t t-mono" style="font-size:12px" text-anchor="middle">.</text>
+<text x="330" y="357" class="t t-s t-m t-mono" text-anchor="middle">6</text>
+<rect x="352" y="312" width="50" height="30" rx="6" class="caja" style="stroke-dasharray:4 3;stroke-width:1.5"/>
+<text x="378" y="332" class="t t-mono" style="font-size:12px" text-anchor="middle">&lt;fin&gt;</text>
+<text x="378" y="357" class="t t-s t-m t-mono" text-anchor="middle">1</text>
+<text x="418" y="332" class="t t-s t-m">← respuesta del asistente</text>
+<rect x="16" y="376" width="12" height="12" rx="3" class="caja" style="stroke-dasharray:3 2"/><text x="34" y="387" class="t t-s">token especial: no es texto, marca la estructura</text>
+<rect x="400" y="376" width="12" height="12" rx="3" class="c-fis"/><text x="418" y="387" class="t t-s">token de texto (␣ = el espacio va pegado adelante)</text>
+</svg></div><figcaption><b>El vocabulario de Colibrí y la conversación como la ve el modelo.</b> Arriba, los 32 tokens del modelo de juguete con su identificador. Los cuatro primeros, con borde punteado, son especiales. Hay palabras enteras (16 «␣cielo», 21 «␣azul»), signos y dos palabras partidas a propósito: «␣oscuro» se escribe 26 + 27 («␣os» + «curo») y «␣celeste», 28 + 29. Abajo, la conversación completa: la pregunta son los identificadores 4, 8, 10, 11, 12, 13, 16 y 5, y la respuesta, 9, 16, 12, 21 y 6. Con las marcas de inicio, turno y fin, el modelo recibe 17 números.</figcaption></figure><div class="prose"><p>El tamaño del vocabulario es una decisión de diseño con costos de los dos lados. Un vocabulario grande deja secuencias más cortas (cada token cubre más texto), pero el modelo necesita una fila de números por cada token, como verás en el capítulo 2, y la última capa tiene que calcular una probabilidad para cada uno, como verás en el capítulo 6. La tendencia de los últimos años fue crecer: unos 50.000 tokens en GPT-2 (2019), unos 100.000 en GPT-4 (2023) y alrededor de 128.000 a 200.000 en varios modelos de 2024, en buena parte para cubrir mejor otros idiomas.</p></div></section>
+<section><h2>Idiomas, números y código: quién gasta más tokens</h2><div class="prose"><p>Un tokenizador aprende sus fusiones de su corpus de entrenamiento. Si ese corpus es mayormente inglés, las primeras fusiones son para el inglés: «␣the», «␣and», «tion». El español llega más tarde a la fila y le tocan menos fusiones. Resultado: la misma idea, escrita en español, se parte en más pedazos.</p><p>Hay una segunda razón, más silenciosa: los bytes. En UTF-8, la codificación de texto de la web, las letras sin tilde ocupan un byte, pero «á», «é», «ñ», «¿» o «¡» ocupan dos, y un emoji, cuatro o más. Un tokenizador por bytes que no aprendió a juntar esos pares los deja como dos tokens sueltos, que son pedazos sin significado.</p><p>El efecto no es menor. Un estudio de 2023 (Petrov y otros) midió que, para decir lo mismo, algunos idiomas necesitan varias veces los tokens del inglés con los tokenizadores de esa época. El español sale relativamente bien parado entre los idiomas grandes, pero aun así suele pagar más. Con los vocabularios grandes y multilingües más recientes la brecha se achica, aunque no desaparece.</p></div><div class="lab" id="01-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>La misma frase en español, en inglés y en código</h3></div><p class="hint">Elige un juego de textos que dicen lo mismo (puedes editarlos) y mira cuántos tokens gasta cada uno. Las curvas muestran cómo cambia la cuenta según cuántas fusiones tiene el vocabulario. Mira dónde se separan las curvas: con 0 fusiones todo se lee casi letra por letra; con miles de fusiones, el idioma que dominaba el corpus de entrenamiento queda más comprimido.</p><style>
+[id="01-lab-2"] .c1l2-in{display:grid;gap:8px}
+[id="01-lab-2"] .c1l2-in label{display:grid;grid-template-columns:76px 1fr;gap:8px;align-items:center;font:600 .82rem var(--f-display)}
+[id="01-lab-2"] .c1l2-in input{min-width:0;font:500 .86rem var(--f-mono);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+[id="01-lab-2"] .c1l2-in .es{color:var(--c-fis)} [id="01-lab-2"] .c1l2-in .en{color:var(--c-red)} [id="01-lab-2"] .c1l2-in .co{color:var(--c-enl)}
+[id="01-lab-2"] .c1l2-bars{display:grid;gap:6px}
+[id="01-lab-2"] .c1l2-b{display:grid;grid-template-columns:76px 1fr 54px;gap:8px;align-items:center;font:600 .82rem var(--f-display)}
+[id="01-lab-2"] .c1l2-b .tr{height:18px;border-radius:5px;background:var(--grid);overflow:hidden}
+[id="01-lab-2"] .c1l2-b .tr i{display:block;height:100%;border-radius:5px;transition:width .25s}
+[id="01-lab-2"] .c1l2-b b{font:700 .9rem var(--f-mono);text-align:right}
+@media (prefers-reduced-motion: reduce){[id="01-lab-2"] .c1l2-b .tr i{transition:none}}
+</style>
+<div class="opciones">
+  <label>Textos que dicen lo mismo
+    <select id="c1l2-set">
+      <option value="0">La pregunta del curso</option>
+      <option value="1">Una explicación de dos líneas</option>
+      <option value="2">Un reclamo de un cliente</option>
+    </select></label>
+</div>
+<div class="c1l2-in">
+  <label><span class="es">Español</span><input id="c1l2-es" spellcheck="false"></label>
+  <label><span class="en">Inglés</span><input id="c1l2-en" spellcheck="false"></label>
+  <label><span class="co">Código</span><input id="c1l2-co" spellcheck="false"></label>
+</div>
+<div class="ctls">
+  <label class="ctl">Fusiones aprendidas (tamaño del vocabulario) <output id="c1l2-k-o"></output>
+    <input id="c1l2-k" type="range" min="0" max="3000" step="50" value="3000"></label>
+</div>
+<div class="c1l2-bars" id="c1l2-bars" aria-label="Tokens de cada texto"></div>
+<canvas id="c1l2-c" role="img" aria-label="Curvas: cuántos tokens necesita cada texto según cuántas fusiones tiene el vocabulario"></canvas>
+<div class="legend"><span><i style="background:var(--c-fis)"></i>español</span><span><i style="background:var(--c-red)"></i>inglés</span><span><i style="background:var(--c-enl)"></i>código</span><span><i style="background:var(--muted)"></i>fusiones elegidas</span></div>
+<div class="readout texto" id="c1l2-out" aria-live="polite"></div></div><div class="prose"><p>Los números tienen su propia historia. Algunos tokenizadores parten las cifras de a una («2», «0», «2», «6»); otros, en grupos de hasta tres («202», «6»), que es lo que hace el del laboratorio 1. Hay modelos cuyo tokenizador, en su momento, partía los números en grupos irregulares según lo que se repetía en el corpus, de modo que «1999» podía ser un token y «1998», dos. Para un modelo que tiene que sumar, eso es como hacer cuentas con números escritos en bloques de tamaños distintos.</p><p>El código gasta según su estilo. La indentación con espacios, los nombres largos de variables y los signos (<code>{</code>, <code>}</code>, <code>"</code>, <code>:</code>) suman tokens. Los tokenizadores pensados para programar aprenden fusiones para bloques de espacios y palabras como <code>return</code> o <code>self</code>, y eso hace que el mismo programa cueste mucho menos.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Cuántos bytes ocupa cada letra</h3></div><p>Vas a medir con Python, solo con la biblioteca estándar, por qué las tildes y los signos de apertura pesan más en un tokenizador por bytes. Guarda este programa como <code>bytes_por_letra.py</code>:</p><div class="code-copia"><pre><code>frases = {
+    "español": "¿De qué color es el cielo?",
+    "inglés": "What color is the sky?",
+    "emoji": "El cielo 🌤️",
+}
+for idioma, frase in frases.items():
+    b = frase.encode("utf-8")
+    print(f"{idioma}: {len(frase)} caracteres, {len(b)} bytes")
+    for letra in frase:
+        n = len(letra.encode("utf-8"))
+        if n &gt; 1:
+            print(f"   «{letra}» ocupa {n} bytes: {letra.encode('utf-8').hex(' ')}")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python bytes_por_letra.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 bytes_por_letra.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Ejecuta el programa y anota cuántos bytes de más tiene cada frase.</span></li><li><span>Pega en el laboratorio 1 la frase en español con 0 fusiones: cuenta los tokens y compáralos con los bytes.</span></li><li><span>Agrega una frase tuya con «ñ», «ü» y «¡» y vuelve a correrlo.</span></li></ol><p><b>Qué observar:</b> «¿» y «é» ocupan 2 bytes cada uno (<code>c2 bf</code> y <code>c3 a9</code>), así que la pregunta del curso tiene 26 caracteres y 28 bytes, mientras la inglesa tiene 22 de ambos. Con 0 fusiones, el tokenizador por bytes da exactamente un token por byte. El emoji de sol con nube ocupa 4 bytes y el selector que lo acompaña, 3 más: si el vocabulario no los aprendió, son 7 tokens para un solo dibujo.</p></div></section>
+<section><h2>Errores que nacen en el tokenizador: contar letras, invertir palabras, aritmética</h2><div class="prose"><p>Algunas fallas famosas de los modelos de lenguaje no son de inteligencia, sino de vista. El modelo no ve letras: ve tokens.</p><ul><li><b>Contar letras.</b> «¿Cuántas "r" tiene "ferrocarril"?» Para ti son 11 letras a la vista. Para el modelo, con el tokenizador del laboratorio 1, son los pedazos «fer», «ro», «car», «r», «il». Para contar las «r» tiene que saber, de memoria, qué letras hay dentro de cada pedazo. Lo aprende a medias, de haber visto palabras deletreadas en su corpus. El caso más citado fue «¿cuántas "r" tiene "strawberry"?», que muchos modelos de 2023 y 2024 respondían mal.</li><li><b>Invertir palabras.</b> Escribir «cielo» al revés exige separar letras que el modelo recibió fundidas en un solo token. Una técnica conocida para ayudarlo es pedirle que primero deletree la palabra con espacios o guiones («c-i-e-l-o»): así cada letra queda en su propio token.</li><li><b>Aritmética.</b> Si «124245» llega como «124» y «245», y otro número de seis cifras llega partido de otra forma, las columnas de unidades, decenas y centenas no quedan alineadas entre un número y otro. Por eso varios modelos recientes parten los números en cifras sueltas, y por eso los sistemas serios le dan al modelo una calculadora como herramienta en lugar de pedirle cuentas largas.</li><li><b>Espacios y mayúsculas.</b> «␣Cielo», «␣cielo», «cielo» y «CIELO» pueden ser cuatro tokens distintos o partirse de cuatro formas diferentes. Un cambio de formato que para ti es invisible cambia los números que recibe el modelo.</li></ul></div><div class="analogia"><b>Imagínalo así</b><p>Es como pedirle a alguien que cuente las letras de un texto que solo puede leer en taquigrafía. Ve los signos de las sílabas, no las letras. Puede responder bien si se acuerda de cómo se escribe cada signo, pero la pregunta va en contra de lo que tiene delante.</p></div><div class="practica"><div class="practica-title"><span class="tag">En el navegador</span><h3>Compara tokenizadores reales</h3></div><p>Vas a ver cómo parten el mismo texto los tokenizadores de modelos reales, sin registrarte. Abre el <a href="https://huggingface.co/spaces/Xenova/the-tokenizer-playground" target="_blank" rel="noopener">Tokenizer Playground</a> de Hugging Face, que corre los tokenizadores dentro de tu navegador, o <a href="https://tiktokenizer.vercel.app" target="_blank" rel="noopener">Tiktokenizer</a>, que muestra los de OpenAI.</p><ol class="steps"><li><span>Pega «¿De qué color es el cielo?» y anota cuántos tokens da cada tokenizador que ofrezca la página (por ejemplo, el de GPT-4 y el de Llama 3).</span></li><li><span>Pega «What color is the sky?» y compara.</span></li><li><span>Pega «ferrocarril», «Ferrocarril» y «FERROCARRIL», cada una en su línea, y mira cómo cambia la partición.</span></li><li><span>Pega «1998 1999 2026 123456789» y mira cómo se agrupan las cifras.</span></li></ol><p><b>Qué observar:</b> cada tokenizador da una cuenta distinta para la misma frase, porque cada uno aprendió sus fusiones de su propio corpus. Los más nuevos, con vocabularios de 100.000 a 200.000 tokens, suelen partir el español en menos pedazos que los viejos. Las mayúsculas suelen romper una palabra en más tokens, y los números se agrupan según la regla de cada uno. Las páginas pueden cambiar la lista de tokenizadores que ofrecen.</p></div></section>
+<section><h2>Tokens y costo: lo que se cobra y lo que cabe en el contexto</h2><div class="prose"><p>El token no es solo un detalle técnico: es la unidad de medida de todo. Tres cosas se cuentan en tokens.</p><p><b>Lo que se cobra.</b> Los proveedores de modelos por API cobran por millón de tokens, con un precio para los tokens de entrada (lo que envías: instrucciones, documentos, historial de la conversación) y otro, normalmente varias veces mayor, para los de salida (lo que genera el modelo). Si tu texto en español gasta un 30 % más de tokens que el mismo texto en inglés, pagas un 30 % más por lo mismo. Cómo se calcula y se controla ese costo en una aplicación está en <a href="https://aaramirez.github.io/aplicaciones-con-ia/temario.html" target="_blank" rel="noopener">Aplicaciones con IA</a>.</p><p><b>Lo que cabe.</b> Cada modelo tiene una <b>ventana de contexto</b> (<i>context window</i>): el máximo de tokens que puede considerar a la vez, sumando la entrada y la salida. GPT-3 (2020) tenía 2.048; en 2025 son comunes ventanas de cientos de miles de tokens, y algunos modelos anuncian un millón o más. Todo lo que no cabe, el modelo no lo ve. Por qué es caro agrandar esa ventana se explica en el capítulo 3.</p><p><b>Lo que tarda.</b> El modelo genera la respuesta de a un token por paso. Más tokens de salida son más pasos y más espera. Una regla práctica para el inglés es que un token equivale a unas tres cuartas partes de una palabra, unos cuatro caracteres; para el español conviene suponer algo menos de texto por token.</p></div><div class="caso"><b>Un caso real</b><p>Un equipo que armaba un asistente en español calculó su presupuesto con la regla de «cuatro caracteres por token» que leyó en una documentación en inglés. Al medir con el tokenizador real del modelo, sus instrucciones de sistema, escritas en español con muchas tildes y signos de apertura, ocupaban bastante más de lo previsto, y se repetían en cada llamada. La corrección no fue traducir al inglés, sino medir antes de presupuestar: contar los tokens con el tokenizador del modelo elegido, acortar las instrucciones repetidas y vigilar la cuenta de tokens de entrada en cada llamada.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Cuenta los tokens que de verdad recibe un modelo local</h3></div><p>Vas a preguntarle a un modelo que corre en tu computadora cuántos tokens leyó, primero con tu texto solo y después con la plantilla de chat. Necesitas <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> (gratuito y sin cuenta) y un modelo pequeño; cualquiera sirve, aquí usamos <code>llama3.2:1b</code> (unos 1,3 GB). Descárgalo con:</p><div class="cmds"><div class="cmd-panel" data-so="win mac linux"><div class="cmd-l"><code>ollama pull llama3.2:1b</code><button type="button" class="copiar">Copiar</button></div></div></div><p>Guarda este programa como <code>contar_tokens.py</code> (usa solo la biblioteca estándar de Python):</p><div class="code-copia"><pre><code>import json, urllib.request
+
+def contar(texto, crudo):
+    cuerpo = {"model": "llama3.2:1b", "prompt": texto, "raw": crudo,
+              "stream": False, "options": {"num_predict": 1}}
+    pedido = urllib.request.Request("http://localhost:11434/api/generate",
+                                    data=json.dumps(cuerpo).encode("utf-8"),
+                                    headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(pedido) as r:
+        return json.load(r).get("prompt_eval_count")
+
+for texto in ["¿De qué color es el cielo?", "What color is the sky?"]:
+    print(f"{texto!r}: {contar(texto, True)} tokens solo el texto, "
+          f"{contar(texto, False)} con la plantilla de chat")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python contar_tokens.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 contar_tokens.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Ejecuta el programa y anota las cuatro cifras.</span></li><li><span>Resta: la diferencia entre «con la plantilla» y «solo el texto» son los tokens especiales y de formato que el modelo agrega a cada mensaje.</span></li><li><span>Cambia las frases por un párrafo tuyo en español y su traducción al inglés, y compara.</span></li></ol><p><b>Qué observar:</b> <code>prompt_eval_count</code> es la cantidad de tokens de entrada que el modelo procesó. Con <code>raw</code> en <code>true</code>, Ollama no aplica la plantilla; con <code>false</code>, envuelve tu texto con las marcas de turno del modelo y la cuenta sube varias decenas, porque las plantillas recientes incluyen encabezados de sistema. La frase en español debería dar algunos tokens más que la inglesa. Si repites exactamente el mismo pedido, Ollama puede reutilizar lo ya leído y la cifra puede bajar; cambia una letra para forzar una lectura nueva.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>El modelo ve tokens, no letras: muchas de sus rarezas se explican mirando cómo se partió el texto. El tokenizador es un programa simple y fijo, entrenado aparte con BPE u otro método, que decide cuánto cuesta cada texto, cuánto cabe en la ventana de contexto y qué cosas el modelo tiene difíciles de ver, como las letras de una palabra o las cifras de un número. La pregunta del curso ya es una lista de 8 números; en el capítulo 2 cada uno se convierte en un vector.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Por qué los modelos no usan palabras completas como tokens?</summary><p>Porque el vocabulario necesitaría millones de entradas (cada forma de cada palabra, nombres, errores, otros idiomas) y aun así toda palabra nueva quedaría como desconocida. Las subpalabras mantienen un vocabulario fijo y pueden armar cualquier palabra con pedazos.</p></details><details><summary>En el entrenamiento de BPE, ¿qué se hace en cada paso?</summary><p>Se cuentan los pares de tokens vecinos en el corpus, se une el par más frecuente en un token nuevo, se anota la regla y se repite hasta llegar al tamaño de vocabulario elegido.</p></details><details><summary>¿Por qué un tokenizador por bytes nunca produce un token «desconocido»?</summary><p>Porque su vocabulario base son los 256 valores posibles de un byte, y cualquier texto en UTF-8 se puede escribir con bytes; en el peor caso queda en bytes sueltos.</p></details><details><summary>¿Para qué sirven los tokens especiales en un modelo de chat?</summary><p>Marcan la estructura: el inicio y el fin de la secuencia y quién habla en cada turno. Cuando el modelo genera el token de fin, la respuesta termina.</p></details><details><summary>Da dos razones por las que el español suele gastar más tokens que el inglés.</summary><p>Los tokenizadores se entrenan con corpus donde el inglés es mayoría, así que sus fusiones favorecen al inglés; y las tildes, la «ñ» y los signos de apertura ocupan dos bytes en UTF-8, que pueden quedar como tokens sueltos.</p></details><details><summary>¿Por qué a un modelo le cuesta contar las «r» de «ferrocarril»?</summary><p>Porque no recibe letras sino pedazos como «fer», «ro», «car»; para contar tiene que recordar qué letras forman cada token, algo que solo aprendió de forma indirecta.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Qué es UTF-8 y por qué usa entre uno y cuatro bytes por carácter, en lugar de un tamaño fijo?<small>Pista: busca «UTF-8 variable width encoding» y la historia de Unicode.</small></li><li>¿Qué fueron los «glitch tokens» como «SolidGoldMagikarp» y por qué un token que casi no aparece en el entrenamiento hace que el modelo se comporte de forma extraña?</li><li>¿Qué es la «regularización de subpalabras» y por qué entrenar con varias particiones distintas de una misma palabra puede hacer más robusto a un modelo?<small>Pista: busca el artículo de Taku Kudo de 2018 sobre «subword regularization».</small></li><li>¿Existen modelos que trabajan directamente con bytes, sin tokenizador, y qué problema intentan resolver?<small>Pista: busca «byte-level language model tokenizer-free».</small></li><li>¿Por qué los proveedores cobran el token de salida varias veces más caro que el de entrada, si los dos son el mismo tipo de pedazo de texto?<small>Pista: compara cómo se procesa la entrada (toda junta) con cómo se genera la salida (de a un token).</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/1508.07909" target="_blank" rel="noopener">Neural Machine Translation of Rare Words with Subword Units <small>el artículo que llevó BPE a los modelos de lenguaje (Sennrich y otros, 2015), en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2305.15425" target="_blank" rel="noopener">Language Model Tokenizers Introduce Unfairness Between Languages <small>cuántos tokens de más paga cada idioma (Petrov y otros, 2023), en inglés</small></a><a class="vid" href="https://huggingface.co/learn/llm-course/chapter6/1" target="_blank" rel="noopener">Curso de NLP de Hugging Face: tokenizadores <small>BPE, WordPiece y Unigram con código, en inglés</small></a><a class="vid" href="https://aaramirez.github.io/mate/" target="_blank" rel="noopener">Mate para ML <small>vectores y producto punto, que se usan desde el capítulo 2</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/modelos-de-ia" target="_blank" rel="noopener">github.com/aaramirez/modelos-de-ia</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  // BPE por bytes entrenado para este curso: 3000 fusiones sobre ~480 KB de texto
+  // (63 % inglés técnico, 25 % código Python, 12 % español). Cada par [a,b] crea el token 256+k.
+  const MERGES=[[32,32],[256,256],[13,10],[32,116],[32,97],[105,110],[104,101],[114,101],[111,110],[111,114],[101,114],[32,99],[97,116],[101,110],[32,115],[256,32],[101,115],[259,262],[105,115],[32,102],[100,101],[97,108],[32,111],[97,114],[108,101],[258,13],[105,116],[258,257],[32,98],[32,112],[101,100],[32,109],[99,116],[97,115],[261,103],[32,108],[105,264],[97,110],[32,261],[45,45],[32,119],[32,110],[32,263],[117,110],[32,101],[258,271],[269,116],[32,274],[260,110],[101,116],[259,111],[32,100],[257,257],[117,114],[97,109],[32,276],[114,111],[115,116],[283,271],[278,102],[105,99],[105,102],[117,108],[32,40],[117,109],[99,101],[117,116],[115,101],[304,100],[105,108],[259,104],[112,101],[275,265],[109,112],[97,100],[32,61],[117,101],[108,111],[309,110],[284,101],[116,114],[267,264],[32,118],[267,111],[111,116],[97,98],[289,115],[32,34],[117,115],[288,292],[114,97],[111,115],[295,295],[32,104],[116,104],[32,39],[62,62],[111,100],[32,84],[118,101],[40,41],[108,121],[116,334],[260,108],[105,103],[270,101],[298,358],[32,103],[32,121],[32,282],[96,96],[97,99],[105,109],[318,116],[32,265],[101,288],[108,342],[101,120],[268,292],[105,100],[32,299],[95,95],[32,35],[113,117],[260,115],[263,115],[98,106],[257,271],[300,108],[282,104],[121,327],[117,112],[274,116],[112,116],[310,101],[97,121],[32,42],[300,120],[32,317],[266,115],[382,371],[284,121],[311,102],[116,266],[258,301],[268,265],[97,112],[260,263],[326,268],[111,276],[32,344],[260,114],[32,49],[270,336],[283,308],[46,46],[116,111],[99,104],[111,109],[293,100],[320,302],[32,269],[291,111],[278,396],[296,385],[111,108],[32,264],[32,73],[105,280],[105,98],[283,383],[285,312],[299,345],[291,97],[272,116],[108,102],[268,101],[32,65],[41,58],[325,108],[341,280],[107,101],[32,45],[262,114],[373,116],[103,416],[101,109],[32,80],[338,277],[99,107],[34,34],[267,372],[261,116],[265,116],[97,369],[32,114],[105,114],[312,109],[275,428],[352,62],[97,321],[270,116],[105,118],[195,179],[113,332],[97,103],[277,108],[105,355],[32,70],[99,272],[261,101],[259,386],[112,108],[109,302],[116,97],[118,266],[297,340],[409,290],[407,441],[327,99],[32,262],[32,67],[32,105],[58,58],[296,435],[265,109],[267,104],[298,115],[296,104],[39,44],[297,101],[263,110],[32,295],[264,101],[339,329],[348,348],[32,78],[116,101],[267,293],[61,61],[275,453],[114,265],[389,292],[285,279],[112,266],[32,83],[289,101],[97,288],[264,350],[263,100],[354,262],[305,104],[268,286],[270,117],[41,44],[41,46],[99,277],[105,122],[84,262],[313,114],[326,274],[297,320],[112,269],[82,305],[406,286],[114,332],[42,42],[270,111],[260,116],[519,334],[32,272],[287,405],[507,353],[280,469],[265,100],[32,460],[32,50],[368,101],[101,108],[297,111],[360,110],[258,32],[323,431],[270,475],[275,424],[105,112],[32,48],[101,101],[32,366],[32,95],[279,105],[102,481],[411,46],[32,69],[32,85],[291,388],[104,274],[307,268],[32,51],[105,276],[276,102],[313,293],[105,459],[100,266],[307,105],[343,446],[261,272],[101,279],[279,103],[116,272],[398,450],[109,97],[444,332],[104,111],[266,401],[32,96],[437,121],[423,102],[34,44],[117,323],[112,322],[558,110],[121,112],[109,268],[117,313],[262,110],[99,264],[32,91],[517,98],[32,43],[32,280],[478,329],[316,104],[392,42],[410,271],[487,116],[307,111],[336,425],[110,390],[287,528],[99,111],[263,330],[100,391],[333,119],[593,322],[105,286],[116,439],[105,277],[115,266],[346,112],[111,263],[287,353],[40,39],[539,317],[367,107],[117,280],[318,100],[381,115],[279,121],[294,116],[46,95],[32,377],[268,104],[115,111],[108,272],[359,108],[111,322],[116,262],[361,431],[527,333],[32,76],[543,107],[99,372],[492,489],[32,60],[32,77],[486,119],[101,99],[195,169],[32,120],[32,82],[293,103],[195,161],[32,572],[114,105],[111,119],[32,379],[484,588],[308,308],[32,575],[104,116],[39,41],[100,290],[584,266],[48,48],[476,402],[117,272],[379,269],[47,47],[346,345],[337,116],[109,111],[276,100],[262,445],[32,548],[349,289],[73,102],[274,101],[114,497],[267,462],[102,101],[328,579],[112,456],[269,414],[375,350],[330,97],[297,390],[32,346],[259,440],[310,112],[112,264],[376,97],[261,401],[260,100],[483,369],[32,79],[387,280],[291,466],[474,115],[513,101],[267,309],[285,263],[32,68],[669,678],[331,61],[269,266],[470,261],[363,458],[97,355],[338,546],[509,98],[270,305],[93,41],[109,504],[263,288],[69,664],[195,173],[267,263],[397,565],[112,312],[482,279],[84,552],[607,611],[110,340],[112,121],[285,108],[270,121],[32,455],[299,100],[257,256],[257,32],[675,280],[99,353],[569,612],[294,557],[297,310],[103,266],[110,320],[299,107],[287,97],[465,115],[267,277],[553,97],[105,302],[266,111],[461,101],[269,100],[422,357],[452,313],[279,100],[32,124],[495,495],[307,272],[260,99],[524,600],[118,277],[266,497],[556,450],[310,305],[693,269],[291,289],[101,329],[287,268],[294,399],[285,347],[114,310],[108,310],[444,652],[102,102],[260,98],[99,262],[278,498],[350,264],[282,121],[282,272],[299,116],[261,100],[41,41],[277,357],[270,719],[278,322],[105,437],[291,347],[117,98],[311,108],[311,99],[79,78],[267,659],[121,563],[69,82],[287,504],[32,52],[293,116],[105,120],[277,323],[112,449],[706,503],[278,602],[291,269],[105,534],[279,116],[260,112],[291,562],[117,288],[285,114],[285,342],[105,111],[718,290],[296,581],[419,115],[363,305],[112,347],[512,101],[464,655],[438,62],[349,694],[32,66],[117,263],[103,305],[374,115],[105,97],[275,325],[296,101],[333,268],[785,100],[269,115],[259,578],[321,389],[261,286],[265,121],[317,316],[287,391],[282,266],[270,387],[105,288],[300,529],[381,302],[121,758],[105,272],[637,101],[760,668],[32,37],[119,627],[100,689],[339,109],[609,601],[304,121],[418,103],[97,263],[32,53],[362,286],[111,117],[445,305],[367,104],[32,107],[284,305],[111,112],[100,268],[294,100],[105,329],[294,493],[108,466],[337,692],[110,101],[32,194],[116,286],[119,111],[361,653],[326,293],[298,103],[259,521],[108,115],[499,744],[32,122],[679,100],[287,580],[119,530],[384,323],[294,576],[32,312],[723,570],[270,536],[262,402],[112,263],[280,100],[298,112],[362,115],[285,265],[564,115],[284,117],[296,605],[317,102],[32,742],[422,101],[114,282],[39,46],[427,118],[99,421],[298,99],[259,533],[111,111],[365,442],[587,529],[99,405],[111,448],[359,619],[287,101],[278,518],[365,266],[363,691],[349,415],[560,700],[272,115],[443,823],[547,268],[738,99],[282,292],[721,272],[686,591],[300,379],[116,440],[258,314],[297,463],[479,58],[278,500],[468,456],[360,646],[112,279],[370,559],[117,430],[32,87],[261,277],[259,682],[604,116],[354,552],[299,99],[32,72],[367,577],[73,110],[300,329],[259,852],[268,290],[748,413],[425,280],[550,110],[32,47],[491,491],[287,606],[284,322],[259,114],[307,391],[523,838],[104,97],[406,290],[365,115],[326,597],[399,110],[32,106],[112,290],[115,305],[337,515],[296,262],[84,386],[83,67],[40,34],[111,714],[111,313],[321,498],[339,276],[368,277],[379,105],[330,111],[275,734],[97,325],[97,107],[112,114],[284,502],[105,101],[275,809],[356,44],[105,269],[61,34],[290,280],[268,272],[587,449],[93,44],[319,42],[302,101],[102,424],[294,412],[673,274],[267,265],[812,272],[119,670],[296,670],[84,73],[732,279],[67,264],[98,121],[282,115],[364,563],[596,329],[821,115],[263,101],[116,121],[108,108],[421,599],[273,110],[454,115],[640,389],[293,115],[101,330],[119,101],[908,108],[270,968],[32,387],[32,302],[99,108],[337,115],[354,521],[116,386],[287,442],[410,308],[105,289],[108,316],[830,109],[340,101],[417,793],[84,521],[756,115],[338,395],[846,722],[457,786],[263,310],[108,562],[119,104],[757,277],[720,321],[592,272],[266,109],[613,292],[412,883],[446,34],[828,598],[642,634],[740,101],[268,316],[513,286],[633,322],[295,45],[782,395],[267,502],[70,265],[468,316],[724,115],[393,717],[285,618],[355,108],[766,576],[270,390],[476,108],[112,286],[374,277],[116,290],[595,115],[267,671],[112,915],[727,870],[278,471],[119,663],[108,461],[333,445],[309,97],[696,628],[270,449],[313,442],[819,781],[296,880],[268,463],[364,837],[858,266],[287,274],[100,117],[46,377],[393,953],[339,710],[100,111],[354,386],[32,62],[287,293],[108,97],[34,58],[97,106],[752,97],[300,839],[118,269],[341,620],[666,487],[98,610],[99,318],[451,825],[433,110],[356,46],[415,414],[102,453],[325,100],[377,40],[267,459],[108,269],[275,992],[547,374],[259,346],[518,100],[32,54],[32,55],[703,508],[109,108],[360,117],[270,277],[298,330],[78,489],[115,536],[898,731],[108,767],[423,110],[998,269],[32,71],[447,272],[68,69],[65,76],[410,383],[375,111],[273,263],[340,439],[398,814],[309,321],[844,316],[313,346],[414,101],[264,103],[111,107],[871,822],[307,274],[116,112],[293,321],[484,826],[408,48],[73,80],[740,272],[100,360],[296,627],[330,100],[373,412],[267,117],[560,288],[285,97],[325,116],[393,112],[897,815],[359,103],[258,281],[313,997],[473,115],[458,277],[1149,302],[841,1111],[101,112],[260,103],[417,100],[312,387],[261,282],[843,97],[99,97],[807,272],[515,290],[58,654],[737,737],[40,91],[310,98],[261,557],[995,265],[79,82],[341,115],[333,798],[549,108],[483,1052],[499,97],[287,369],[289,116],[109,353],[270,685],[276,120],[74,83],[1178,772],[258,537],[107,115],[853,321],[946,789],[297,264],[385,109],[32,375],[673,663],[98,282],[340,104],[490,280],[661,104],[582,100],[464,265],[111,396],[111,323],[260,118],[339,108],[407,103],[80,73],[111,344],[34,41],[258,256],[270,105],[282,442],[294,1096],[1003,117],[269,390],[464,780],[259,430],[69,120],[790,448],[337,471],[99,416],[282,439],[391,115],[359,599],[791,286],[319,63],[32,64],[98,101],[109,528],[102,111],[99,309],[275,810],[263,911],[32,86],[947,263],[307,317],[103,751],[327,288],[32,525],[111,103],[102,606],[32,430],[112,367],[259,747],[99,577],[280,109],[260,322],[1123,288],[580,414],[284,261],[275,1056],[457,1019],[882,555],[100,97],[296,530],[32,56],[1165,321],[901,1166],[859,730],[639,862],[108,266],[523,1121],[102,399],[102,265],[117,103],[105,266],[296,265],[269,570],[65,84],[118,546],[782,266],[761,533],[702,116],[194,187],[338,101],[195,186],[330,265],[894,436],[91,44],[423,116],[381,676],[102,734],[888,374],[567,120],[285,890],[273,121],[73,73],[294,1147],[278,115],[109,405],[393,503],[118,302],[102,116],[483,676],[267,402],[406,266],[656,440],[482,1091],[82,76],[283,32],[402,944],[375,272],[490,279],[273,323],[291,767],[115,929],[1016,292],[784,103],[270,266],[949,1279],[905,1150],[712,1061],[119,1215],[468,282],[279,441],[451,299],[539,603],[771,265],[284,1189],[956,505],[598,115],[981,772],[69,68],[925,990],[895,316],[264,357],[85,110],[746,116],[32,58],[725,120],[116,105],[318,108],[268,803],[451,1089],[630,61],[79,83],[739,813],[283,715],[117,277],[73,78],[263,960],[443,279],[259,279],[307,97],[626,97],[46,522],[100,432],[107,119],[83,475],[267,1241],[102,779],[721,286],[318,279],[592,1213],[1021,826],[115,320],[300,1214],[892,293],[49,50],[364,810],[976,286],[418,798],[359,1009],[333,115],[476,330],[922,84],[380,919],[451,1264],[303,1249],[850,171],[638,115],[106,111],[399,109],[367,262],[100,105],[875,1142],[265,1185],[111,102],[845,280],[366,44],[433,1199],[1046,112],[98,395],[109,101],[427,98],[676,302],[50,53],[853,465],[418,512],[296,289],[549,120],[493,329],[122,541],[367,372],[285,286],[477,111],[1060,286],[100,820],[959,436],[97,261],[66,67],[333,98],[287,1108],[32,1179],[695,436],[287,261],[119,605],[69,78],[32,92],[70,67],[867,816],[32,654],[711,293],[319,39],[741,332],[754,266],[96,44],[317,121],[345,115],[270,1124],[121,110],[280,1043],[316,101],[291,564],[1394,277],[275,503],[1035,43],[275,780],[118,286],[111,421],[818,277],[341,325],[298,108],[105,293],[499,116],[349,641],[109,462],[283,716],[285,268],[102,456],[833,103],[333,323],[275,114],[860,613],[91,34],[336,97],[304,709],[86,279],[541,280],[112,618],[297,440],[117,413],[110,111],[284,289],[359,597],[1447,121],[119,385],[484,424],[444,375],[359,1305],[114,425],[270,104],[108,388],[270,261],[790,368],[653,321],[287,279],[266,97],[687,103],[1171,97],[117,634],[1135,111],[703,432],[279,413],[99,263],[330,290],[1196,1391],[397,493],[69,110],[114,614],[1273,648],[65,82],[584,395],[119,735],[349,105],[307,689],[102,428],[307,388],[263,103],[306,107],[110,266],[631,268],[307,360],[427,1229],[353,121],[550,1291],[267,108],[77,76],[299,470],[1093,1464],[292,115],[68,820],[345,614],[341,99],[882,1294],[269,793],[80,618],[665,436],[749,869],[415,735],[393,1034],[118,395],[427,1068],[646,1129],[312,119],[368,325],[1508,279],[393,388],[316,432],[433,1302],[636,1402],[349,952],[111,518],[34,93],[117,735],[307,98],[966,101],[267,1164],[268,1058],[850,191],[339,761],[560,1495],[39,93],[361,1192],[99,105],[115,769],[720,465],[289,104],[712,115],[260,288],[102,325],[285,822],[294,1177],[393,116],[366,46],[636,101],[509,413],[481,277],[115,97],[112,842],[67,277],[855,388],[578,286],[96,46],[833,722],[477,264],[427,1027],[85,78],[73,68],[775,84],[462,436],[384,317],[638,110],[266,1521],[287,1293],[376,559],[357,290],[739,726],[273,452],[99,414],[274,264],[566,115],[112,97],[318,272],[559,114],[102,809],[1145,1369],[68,633],[111,309],[498,277],[328,109],[335,1233],[656,312],[32,113],[505,1511],[1431,942],[80,279],[102,318],[695,1082],[501,101],[482,1040],[318,111],[316,97],[291,752],[285,289],[375,97],[300,106],[463,357],[67,111],[1054,114],[49,49],[1083,321],[306,112],[457,1502],[100,622],[285,266],[261,1222],[762,641],[525,115],[116,682],[363,1260],[325,121],[1245,100],[361,913],[858,395],[267,289],[82,101],[517,570],[316,107],[270,1235],[413,279],[111,355],[112,104],[116,115],[284,1333],[354,440],[73,79],[1103,381],[275,921],[100,877],[375,330],[1387,1117],[751,729],[1173,1441],[1183,265],[984,565],[755,622],[311,1365],[783,1055],[620,115],[750,1298],[1242,614],[488,62],[902,277],[977,1473],[66,502],[311,470],[100,452],[486,286],[266,316],[109,442],[910,401],[111,500],[361,101],[457,1032],[82,69],[550,83],[632,847],[79,67],[749,1432],[278,98],[84,80],[1115,1552],[1114,949],[1656,82],[1657,1133],[1658,1314],[284,1057],[307,877],[115,115],[712,110],[285,330],[773,266],[961,533],[287,1363],[1011,264],[99,100],[270,320],[1141,452],[377,44],[103,101],[818,436],[32,123],[98,117],[69,80],[1011,415],[268,547],[307,264],[1198,115],[308,271],[65,110],[526,99],[762,302],[848,290],[471,121],[666,591],[418,445],[754,316],[269,321],[259,1025],[1645,401],[296,391],[1310,401],[691,316],[83,83],[291,1125],[1484,1015],[110,290],[579,413],[413,1040],[116,533],[37,40],[262,330],[338,266],[410,644],[275,462],[1274,1029],[381,97],[553,347],[35,35],[439,1625],[435,97],[356,41],[304,1119],[78,1012],[294,282],[878,115],[294,1206],[112,610],[370,360],[267,1366],[641,110],[889,100],[1300,350],[1600,115],[363,1417],[259,263],[1224,115],[1095,290],[491,348],[115,555],[327,279],[49,48],[451,912],[841,399],[312,714],[71,305],[270,1429],[865,340],[433,1393],[32,536],[102,266],[876,1047],[101,102],[947,602],[448,115],[1435,390],[1403,415],[106,724],[1459,107],[32,41],[1545,1494],[298,582],[380,388],[195,177],[32,1713],[363,1155],[354,104],[887,115],[657,313],[1364,261],[116,277],[308,32],[308,256],[393,813],[1295,1563],[322,101],[99,265],[79,110],[120,121],[115,685],[1186,302],[261,115],[720,1323],[277,332],[1639,325],[468,601],[323,112],[282,463],[279,1507],[418,119],[451,1048],[554,48],[421,316],[98,266],[859,541],[349,116],[100,272],[114,441],[938,118],[284,610],[936,115],[757,115],[1433,290],[1063,290],[280,293],[115,1306],[361,109],[925,1710],[1461,1491],[69,108],[269,99],[116,325],[39,58],[99,286],[875,1408],[609,316],[365,570],[1777,701],[335,290],[1506,115],[787,1734],[609,121],[1228,1688],[756,100],[32,932],[297,1540],[711,456],[270,668],[1690,729],[613,286],[501,543],[285,1025],[421,100],[556,814],[103,1155],[42,44],[368,320],[317,601],[418,1126],[268,97],[387,620],[98,261],[427,726],[298,1312],[406,272],[443,312],[410,256],[410,257],[470,120],[77,268],[285,555],[1756,973],[656,1138],[122,97],[702,97],[259,1138],[292,272],[368,272],[287,952],[105,460],[306,1764],[1718,603],[1004,555],[1856,505],[807,1207],[115,121],[260,1255],[368,282],[420,622],[73,116],[116,269],[681,602],[1007,1375],[844,302],[99,857],[741,375],[285,842],[122,730],[270,717],[727,1085],[287,264],[725,107],[1257,104],[287,375],[494,709],[755,1240],[1612,272],[1190,120],[108,395],[946,117],[54,52],[569,313],[93,58],[402,1098],[457,610],[333,512],[1073,1440],[773,395],[85,1551],[1543,982],[317,116],[526,512],[415,111],[1236,1556],[1267,465],[355,286],[270,412],[376,1805],[1141,591],[108,425],[275,917],[869,99],[711,1679],[905,277],[308,257],[115,264],[274,336],[111,382],[381,369],[294,919],[278,382],[115,104],[380,1348],[351,92],[80,312],[270,1509],[433,108],[408,650],[787,705],[1024,110],[110,534],[287,286],[300,1081],[285,395],[335,1158],[1928,575],[82,79],[1143,1026],[335,1792],[534,108],[425,325],[1063,101],[337,102],[109,305],[83,84],[1357,266],[423,80],[407,413],[490,1026],[32,226],[709,508],[93,40],[310,1341],[812,290],[270,344],[512,982],[1287,1265],[1093,657],[625,115],[541,111],[388,442],[285,332],[1955,276],[291,702],[339,657],[523,333],[108,1079],[81,1463],[427,1899],[1558,1559],[285,769],[300,1238],[1002,114],[849,119],[1239,414],[896,1253],[333,330],[916,581],[270,845],[275,762],[280,1411],[291,425],[280,103],[665,115],[309,115],[427,500],[346,121],[107,541],[103,1064],[586,1043],[70,780],[119,110],[114,825],[91,58],[943,580],[1536,811],[264,302],[468,272],[848,115],[517,1642],[393,1378],[293,107],[32,57],[532,48],[501,116],[312,1876],[1927,264],[117,764],[98,279],[646,1102],[1008,256],[1388,329],[100,269],[1247,115],[116,1168],[549,110],[578,581],[421,559],[72,534],[1136,598],[73,88],[417,320],[645,1580],[461,266],[582,116],[105,265],[270,555],[275,959],[102,886],[114,99],[265,614],[32,90],[1458,1843],[2026,99],[2027,439],[550,1892],[608,60],[100,98],[1078,101],[270,1954],[307,347],[1266,46],[1067,567],[282,97],[117,266],[1286,276],[1586,671],[349,456],[366,96],[302,97],[275,951],[91,39],[101,1238],[61,39],[263,432],[280,288],[99,530],[1083,465],[300,741],[100,261],[802,121],[350,597],[1212,116],[1446,316],[1527,105],[82,633],[976,272],[291,1423],[275,101],[300,1687],[499,604],[771,955],[284,951],[492,340],[1128,600],[695,1130],[261,412],[650,48],[688,633],[2072,955],[266,99],[471,323],[100,789],[1210,717],[605,104],[83,543],[1301,118],[285,1577],[1075,121],[273,109],[748,1015],[34,46],[1332,69],[586,1468],[259,341],[267,97],[73,329],[284,1487],[1358,1654],[98,1057],[885,622],[343,45],[282,101],[935,121],[930,292],[1102,261],[91,45],[421,265],[1663,1842],[312,115],[1046,500],[1615,341],[2105,305],[108,116],[46,1028],[596,1666],[1067,657],[729,101],[546,111],[42,434],[526,460],[1016,577],[1964,1010],[299,399],[109,264],[115,449],[586,116],[725,437],[567,261],[910,805],[1592,555],[316,115],[1122,969],[1175,611],[461,272],[845,449],[93,46],[1501,399],[680,115],[896,280],[1097,321],[115,475],[417,1725],[1722,917],[99,290],[320,110],[1162,1162],[99,659],[97,118],[103,395],[46,41],[1377,1424],[637,286],[360,104],[326,1195],[1212,851],[34,510],[276,99],[586,1285],[263,108],[864,115],[50,48],[326,1999],[1346,374],[105,263],[269,658],[32,368],[1008,271],[876,500],[299,288],[259,1834],[1062,115],[490,268],[259,1168],[492,1012],[104,2011],[305,533],[703,927],[865,119],[476,263],[287,305],[2090,529],[82,1167],[884,530],[849,345],[756,1376],[346,103],[379,430],[116,120],[39,39],[70,424],[1825,274],[259,989],[359,536],[71,1696],[1358,1490],[744,266],[1439,805],[1334,1946],[941,115],[461,751],[42,41],[65,89],[297,98],[868,1225],[122,289],[361,103],[1757,111],[634,110],[332,108],[99,726],[41,93],[376,1853],[298,657],[1032,764],[1340,874],[67,2048],[771,405],[87,581],[259,960],[110,310],[596,710],[1062,286],[457,1567],[393,282],[855,1345],[1732,1419],[932,1419],[415,115],[766,1733],[387,781],[99,293],[112,640],[85,115],[118,274],[98,502],[318,374],[258,426],[373,112],[478,276],[101,471],[307,489],[1074,61],[55,53],[1039,374],[268,336],[100,100],[117,286],[1188,1472],[1789,1129],[1482,269],[876,944],[312,112],[32,89],[65,83],[73,67],[679,658],[727,982],[339,612],[109,98],[300,1284],[285,449],[261,576],[65,116],[1105,290],[102,666],[2259,505],[344,104],[268,344],[289,264],[417,118],[111,99],[641,266],[2182,116],[280,120],[285,963],[269,320],[84,115],[259,101],[1664,648],[1413,99],[40,95],[515,541],[1367,2194],[115,1894],[76,97],[1950,1584],[1480,448],[259,1519],[501,105],[259,117],[1104,1588],[32,479],[328,567],[377,46],[1968,2208],[285,610],[265,360],[443,1677],[99,462],[569,1126],[298,911],[114,912],[687,1343],[316,405],[104,415],[1072,99],[1226,1811],[1197,2139],[308,716],[102,261],[119,880],[289,2058],[277,599],[846,2143],[892,996],[65,108],[916,1727],[1778,115],[1010,101],[116,99],[490,1990],[2068,292],[32,88],[287,618],[1541,666],[837,103],[2320,104],[297,1782],[636,1048],[70,655],[114,268],[275,655],[683,279],[292,277],[287,1444],[1277,115],[586,1174],[901,1453],[108,100],[928,290],[118,272],[1250,115],[108,1125],[1934,759],[87,605],[93,93],[642,340],[498,115],[309,591],[775,2176],[896,1882],[1692,261],[51,50],[554,50],[66,121],[356,58],[99,1434],[1259,107],[275,1620],[1740,430],[85,604],[285,101],[1582,2028],[1087,1944],[1262,778],[73,115],[448,101],[112,330],[42,40],[62,92],[1200,2222],[297,97],[2277,97],[729,111],[260,1039],[2114,567],[421,1079],[316,111],[1758,289],[1943,145],[109,402],[311,280],[871,305],[902,115],[848,266],[84,111],[338,806],[742,115],[377,356],[607,1566],[2291,261],[802,502],[427,1772],[298,1594],[840,110],[869,1343],[457,1597],[443,890],[583,39],[116,824],[424,100],[935,996],[117,381],[961,448],[1073,701],[983,471],[296,778],[819,1779],[518,648],[296,111],[2404,612],[413,2146],[278,99],[749,110],[270,938],[582,906],[337,1504],[1329,286],[298,2075],[490,322],[274,292],[1262,1130],[82,97],[365,538],[1575,108],[1021,588],[2160,109],[298,280],[116,578],[65,1791],[275,435],[46,34],[656,302],[1578,115],[1485,985],[325,290],[725,261],[302,1691],[667,1049],[406,731],[98,263],[316,764],[626,1232],[942,277],[102,921],[116,289],[109,282],[279,1700],[267,1434],[486,726],[284,1422],[1355,272],[622,576],[1786,121],[408,54],[69,723],[65,67],[2180,469],[32,309],[274,104],[551,115],[754,779],[490,1823],[2099,1181],[32,46],[259,436],[339,313],[67,1553],[111,471],[97,282],[118,279],[1482,811],[564,261],[273,774],[1662,628],[632,1204],[1755,373],[2471,577],[1883,121],[1171,289],[330,289],[1153,973],[291,1079],[1589,747],[681,1960],[1957,849],[1203,747],[2481,263],[1962,265],[843,272],[585,61],[1059,272],[582,692],[275,779],[305,97],[484,1195],[1197,1974],[2050,290],[1342,685],[335,269],[1975,1472],[104,1530],[884,1978],[102,503],[1729,508],[308,715],[269,111],[265,103],[433,991],[1865,1055],[351,44],[112,890],[1127,290],[351,45],[299,658],[67,372],[1606,401],[1230,286],[1098,302],[1425,1064],[115,108],[1608,272],[310,1991],[1216,115],[296,261],[2407,1223],[300,1822],[284,985],[261,117],[99,302],[420,261],[40,60],[427,2076],[482,825],[451,268],[266,1924],[1591,329],[49,55],[1925,1426],[554,53],[1329,115],[710,758],[1039,282],[270,97],[1746,450],[583,93],[557,1616],[85,76],[1097,2430],[269,648],[1095,286],[2339,500],[609,824],[1328,2014],[1216,286],[1239,111],[893,286],[2059,530],[1533,1207],[72,415],[398,466],[58,96],[2444,614],[32,38],[72,84],[298,2263],[306,111],[619,838],[1341,603],[1697,76],[350,274],[1075,2017],[373,1378],[330,1833],[482,724],[877,266],[608,92],[530,266],[843,1386],[117,100],[387,266],[359,2106],[68,2196],[776,115],[699,1313],[273,699],[1290,797],[1300,117],[2582,2032],[388,97],[304,565],[686,619],[1335,317],[1555,412],[1486,97],[306,1072],[1234,638],[285,421],[2033,97],[330,347],[413,97],[1268,110],[284,344],[297,1268],[302,272],[1034,97],[1457,1460],[1874,412],[2185,347],[287,272],[298,448],[1104,101],[375,289],[509,2204],[639,115],[322,436],[350,268],[322,102],[640,272],[110,440],[259,1851],[99,995],[354,111],[313,1597],[1367,700],[1905,508],[70,428],[596,761],[106,1909],[407,1980],[2304,759],[409,789],[819,266],[1910,121],[266,1421],[667,851],[840,119],[2213,272],[501,111],[79,1572],[112,938],[1870,2230],[750,1781],[40,45],[313,786],[389,368],[349,2147],[754,371],[2325,792],[266,116],[2151,955],[1922,2226],[2646,432],[644,644],[48,50],[1875,272],[270,1371],[1127,115],[897,357],[791,290],[1283,357],[665,266],[1422,115],[48,49],[1528,628],[430,286],[344,286],[99,268],[755,1614],[262,115],[69,67],[862,115],[518,658],[499,461],[2668,2078],[433,115],[291,1861],[697,1049],[339,112],[2437,2552],[268,600],[1760,597],[705,726],[2554,1253],[430,261],[270,414],[98,1487],[1839,1027],[112,786],[977,700],[102,100],[110,371],[77,69],[70,2249],[1550,75],[85,83],[266,121],[524,1384],[115,1371],[337,100],[1236,2024],[109,261],[651,1542],[274,286],[1941,463],[490,834],[283,256],[84,682],[354,1754],[2310,1009],[341,1240],[405,108],[363,1517],[100,1724],[623,774],[908,620],[122,279],[427,112],[270,341],[293,277],[2592,1265],[884,2575],[302,312],[265,806],[2000,97],[1078,111],[106,97],[270,264],[275,105],[2598,109],[105,2202],[2203,355],[275,277],[1418,1058],[1004,369],[1544,312],[1800,1714],[886,107],[326,989],[277,341],[339,2117],[99,280],[298,2122],[267,280],[1671,115],[871,114],[1809,374],[1565,591],[681,110],[65,1255],[327,268],[261,399],[569,119],[313,1567],[2134,1084],[1127,374],[121,280],[1122,927],[1416,430],[930,2298],[102,1056],[1243,115],[50,50],[376,1721],[108,261],[2400,116],[1476,115],[333,103],[300,2314],[943,111],[841,97],[725,276],[307,458],[260,1738],[457,1152],[743,115],[268,388],[2771,2125],[910,374],[363,111],[40,42],[344,290],[705,98],[275,282],[111,375],[51,52],[267,322],[83,305],[407,2242],[293,493],[422,321],[513,374],[285,381],[483,1230],[284,430],[344,266],[1007,815],[1107,286],[102,435],[636,69],[2166,2338],[1190,493],[696,323],[376,1632],[284,108],[553,2170],[1526,115],[1007,1787],[336,290],[514,263],[267,1356],[361,471],[337,2178],[1798,387],[567,325],[1357,395],[486,101],[2811,658],[116,312],[114,289],[119,265],[2815,107],[486,471],[32,266],[1703,622],[79,76],[84,775],[270,2179],[41,34],[373,388],[115,425],[2825,357],[102,1620],[112,2261],[32,437],[987,613],[2025,1133],[2018,302],[1799,1020],[67,72],[553,1386],[312,122],[665,290],[477,1553],[84,1754],[71,1517],[93,366],[948,2360],[1381,115],[626,111],[275,261],[111,2342],[310,1604],[1084,115],[287,2467],[699,115],[1534,374],[120,368],[306,100],[524,269],[2854,1237],[2714,1232],[2856,806],[111,121],[486,465],[2369,923],[551,97],[2480,97],[1145,111],[1267,122],[1139,2043],[367,1850],[297,921],[2867,97],[99,117],[638,1937],[1760,268],[308,383],[351,881],[98,98],[535,119],[644,257],[276,108],[1156,101],[1768,115],[1676,1408],[755,115],[1972,357],[1771,357],[323,101],[121,1061],[898,2128],[373,99],[2214,272],[2299,280],[1505,321],[1776,432],[82,73],[65,78],[115,2224],[270,1981],[323,913],[351,43],[279,1604],[1989,292],[359,942],[311,118],[46,44],[2145,759],[267,320],[555,100],[486,1982],[97,437],[705,118],[323,653],[2909,465],[284,111],[119,105],[317,481],[261,1206],[916,101],[361,113],[65,115],[263,99],[777,48],[2233,97],[111,118],[316,277],[262,263],[1173,105],[421,115],[56,53],[1744,505],[275,108],[268,413],[114,996],[1310,508],[1004,320],[275,1324],[844,458],[39,510],[503,395],[792,344],[69,839],[410,715],[99,402],[2207,1421],[2010,115],[2012,333],[1776,927],[477,104],[320,293],[477,2343],[2441,851],[307,2679],[99,279],[77,1261],[2089,389],[1653,692],[1456,321],[300,2809],[1705,266],[280,1285],[62,39],[1427,316],[1932,2019],[82,272],[509,2456],[867,1325],[1708,1084],[84,104],[1743,606],[83,101],[423,83],[103,385],[2969,769],[336,996],[1295,290],[46,92],[943,724],[458,432],[278,112],[297,1622],[67,2101],[293,709],[323,113],[32,75],[1579,2190],[108,341],[924,2438],[1728,115],[119,834],[705,500],[1008,383],[2519,1483],[41,434],[958,1029],[420,774],[1404,61],[82,1048],[266,347],[363,1669],[110,97],[868,1410],[275,117],[1895,1460],[267,261],[2269,2199],[905,1953],[2587,289],[285,730],[680,957],[526,111],[259,381],[259,634],[1611,305],[307,1415],[711,778],[2597,1158],[285,2734],[521,98],[287,811],[288,1585],[2727,470],[1520,105],[349,391],[260,2777],[2605,302],[116,265],[2281,289],[109,289],[1489,694],[850,183],[1630,261],[638,108],[2870,2103],[1560,286],[298,1068],[341,357],[270,327],[333,99],[393,938],[3036,580],[477,372],[65,1393],[739,2492],[1209,115],[298,2051],[270,2747],[108,1174],[313,2751],[490,97],[808,263],[49,650],[860,1636],[499,115],[948,701],[2305,101],[1684,402],[632,1020],[1565,452],[265,759],[458,269],[457,432],[103,1260],[364,1571],[117,505],[1814,115],[361,279],[3063,1817],[1906,115],[76,1232],[413,111],[705,1068],[408,50],[1351,51],[2914,648],[904,357],[285,1611],[51,49],[277,115],[101,505],[114,264],[53,48],[103,350],[298,468],[3080,367],[956,263],[379,1150],[93,510],[101,121],[811,759],[1416,266],[1234,368],[119,119],[313,1019],[433,116],[986,115],[278,2333],[309,290],[34,698],[379,302],[2421,2610],[1743,111],[3098,505],[393,2537],[1098,115],[2529,439],[2163,2657],[1261,69],[688,2539],[337,1081],[118,2937],[336,963],[337,2541],[549,839],[115,2432],[1820,2169],[93,39],[291,261],[903,668],[592,769],[3116,280],[803,1499],[1228,1594],[262,108],[294,1222],[1368,261],[2389,641],[32,74],[1936,360],[119,581],[417,115],[681,114],[619,280],[673,119],[439,282],[297,305],[695,778],[80,1930],[3134,84],[3135,1651],[3136,2820],[65,73],[85,69],[108,289],[2538,666],[99,502],[1135,985],[298,100],[354,430],[298,313],[115,2023],[116,279],[307,452],[300,109],[2067,2175],[3151,286],[276,280],[1122,432],[226,148],[3155,128],[68,101],[41,59],[363,1385],[311,1152],[1660,115],[688,2570],[101,97],[32,94],[74,2689],[681,1572],[492,111],[2979,805],[367,99],[91,42],[626,1423],[278,2948],[1307,115],[696,2677],[2361,722],[261,1177],[1570,405],[98,114],[338,279],[987,424],[412,107],[967,37],[60,47],[102,462],[3184,2848],[337,118],[2278,387],[738,112],[406,97],[3001,596],[284,966],[309,289],[1463,115],[304,399],[3009,99],[3195,110],[463,108],[1007,2718],[2038,470],[116,347],[2716,1269],[368,2368],[259,3010],[297,332],[3204,118],[1078,272],[2356,460],[371,279],[2080,316],[459,110],[298,2228],[873,460],[349,2858],[1889,1885],[1593,52],[3029,1085],[367,2328],[804,439],[313,432],[361,1466],[1191,436],[1496,276],[741,652],[2120,399],[1467,493],[3034,286],[2488,286],[458,286],[77,2489],[3037,286],[2755,115],[41,39],[750,1636],[1979,2394],[43,2220],[3235,2221],[912,115],[603,685],[1085,279],[267,452],[849,1982],[693,272],[544,40],[41,366],[276,505],[1570,955],[294,1869],[935,921],[930,779],[1304,115],[261,919],[270,1306],[1818,932],[410,32],[270,360]];
+  const RE=/ ?\p{L}+| ?\p{N}{1,3}| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+/gu;
+  const enc=new TextEncoder(),dec=new TextDecoder('utf-8',{fatal:true});
+  const bytesOf=[];for(let i=0;i<256;i++)bytesOf[i]=[i];
+  MERGES.forEach(([a,b],k)=>{bytesOf[256+k]=bytesOf[a].concat(bytesOf[b]);});
+  const rankCache={};
+  function ranks(K){if(!rankCache[K]){const r=new Map();for(let k=0;k<K;k++)r.set(MERGES[k][0]*65536+MERGES[k][1],k);rankCache[K]=r;}return rankCache[K];}
+  function encode(t,K){
+    const rank=ranks(K),out=[];
+    for(const m of t.matchAll(RE)){
+      let s=[...enc.encode(m[0])];
+      while(s.length>1){
+        let br=Infinity,bi=-1;
+        for(let i=0;i<s.length-1;i++){const r=rank.get(s[i]*65536+s[i+1]);if(r!==undefined&&r<br){br=r;bi=i;}}
+        if(bi<0)break;
+        const [a,b]=MERGES[br],id=256+br,o=[];
+        for(let i=0;i<s.length;i++){if(i<s.length-1&&s[i]===a&&s[i+1]===b){o.push(id);i++;}else o.push(s[i]);}
+        s=o;
+      }
+      out.push(...s);
+    }
+    return out;
+  }
+  function show(id){
+    try{return {txt:dec.decode(new Uint8Array(bytesOf[id])),byte:false};}
+    catch(e){return {txt:bytesOf[id].map(x=>'\\x'+x.toString(16).toUpperCase().padStart(2,'0')).join(''),byte:true};}
+  }
+  window.miaBPE={MERGES,encode,show,bytesOf};
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  function vis(s){return s.replace(/ /g,'␣').replace(/\r?\n/g,'↵').replace(/\t/g,'→');}
+  function leer(){
+    const t=$('#c1l1-txt').value,K=+$('#c1l1-k').value;
+    $('#c1l1-k-o').textContent=K+' · vocabulario de '+(256+K).toLocaleString('es');
+    const ids=encode(t,K);
+    const nc=[...t].length,nb=enc.encode(t).length;
+    let html='',sueltos=0,num=0;
+    ids.forEach((id,i)=>{const s=show(id);if(s.byte)sueltos++;
+      html+='<span class="c1l1-t '+(s.byte?'byte':'n'+(i%5))+(/^\s+$/.test(s.txt)?' nl':'')+'" title="id '+id+'">'+esc(s.byte?s.txt:vis(s.txt))+'<small>'+id+'</small></span>';});
+    $('#c1l1-toks').innerHTML=html||'<span class="hint">Escribe algo arriba.</span>';
+    $('#c1l1-n1').textContent=nc;$('#c1l1-n2').textContent=nb;$('#c1l1-n3').textContent=ids.length;
+    $('#c1l1-n4').textContent=ids.length?(nc/ids.length).toFixed(2).replace('.',','):'—';
+    $('#c1l1-ids').textContent='Lo que recibe el modelo: ['+ids.join(', ')+']';
+    const h=[];
+    if(K===0)h.push('<span class="warn">Sin fusiones, cada byte es un token: el modelo tendría que leer el texto letra por letra (y las letras con tilde valen dos bytes).</span>');
+    else h.push('<span>Con '+K+' fusiones, el texto de '+nc+' caracteres se vuelve '+ids.length+' tokens. Mueve el deslizador a la izquierda y mira cómo los tokens se rompen en pedazos más chicos.</span>');
+    if(nb>nc)h.push('<span>Hay '+(nb-nc)+' bytes más que caracteres: las letras como «é», «ñ» o «¿» ocupan dos bytes en UTF-8, y un emoji, cuatro o más.</span>');
+    if(sueltos)h.push('<span class="warn">'+sueltos+(sueltos===1?' token es un byte suelto':' tokens son bytes sueltos')+': pedazos de una letra que este vocabulario no aprendió a juntar. Al modelo le llegan como piezas sin sentido propio.</span>');
+    if(/\d{4,}/.test(t))h.push('<span>Los números largos se parten en grupos de hasta tres cifras, y no siempre por el mismo lugar: «124245» no se ve como un número, sino como pedazos.</span>');
+    if(/ferrocarril/.test(t))h.push('<span>Mira «ferrocarril»: el modelo recibe pedazos como «fer», «ro», «car», no once letras. Contar las «r» exige saber qué letras hay dentro de cada pedazo.</span>');
+    $('#c1l1-out').innerHTML=h.join('');
+  }
+  $('#c1l1-txt').addEventListener('input',leer);
+  $('#c1l1-k').addEventListener('input',leer);
+  document.querySelectorAll('[id="01-lab-1"] [data-t]').forEach(b=>b.addEventListener('click',()=>{$('#c1l1-txt').value=b.dataset.t;leer();}));
+  leer();
+})();
+</script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  const PAR=['el cielo es azul. el cielo es gris de noche. el mar es azul y el cielo es claro. ¿de qué color es el cielo? el cielo es celeste.',
+    'jugar, jugando, jugador, jugadores, juego. cantar, cantando, cantante, cantantes, canto. nadar, nadando, nadador, nadadores.',
+    'for i in range(10):\n    print(i)\nfor j in range(20):\n    print(j)\nprint(range(5))'];
+  let palabras=[],hist=[],base=0;
+  const vis=s=>s.replace(/ /g,'␣').replace(/\n/g,'↵');
+  function preparar(){
+    const t=$('#c1l3-txt').value;
+    // Se parte en palabras con su espacio adelante; las fusiones nunca cruzan de una palabra a otra
+    const m=t.match(/ ?[^\s]+|\s+/g)||[];
+    palabras=m.map(w=>[...w]);hist=[];
+    base=new Set(palabras.flat()).size;
+    pintar();
+  }
+  function contar(){
+    const c=new Map(),orden=[];
+    palabras.forEach(w=>{for(let i=0;i<w.length-1;i++){const k=w[i]+'\u0000'+w[i+1];if(!c.has(k)){c.set(k,0);orden.push(k);}c.set(k,c.get(k)+1);}});
+    return orden.map(k=>[k,c.get(k)]).sort((a,b)=>b[1]-a[1]); // sort estable: en empate gana el que apareció primero
+  }
+  function fusionar(){
+    const p=contar();if(!p.length||p[0][1]<2)return false;
+    const [a,b]=p[0][0].split('\u0000');
+    hist.push({a,b,n:p[0][1],antes:palabras.map(w=>w.slice())});
+    palabras=palabras.map(w=>{const o=[];for(let i=0;i<w.length;i++){if(i<w.length-1&&w[i]===a&&w[i+1]===b){o.push(a+b);i++;}else o.push(w[i]);}return o;});
+    return true;
+  }
+  function pintar(){
+    const p=contar().slice(0,6),ult=hist.length?hist[hist.length-1]:null,nuevo=ult?ult.a+ult.b:null;
+    $('#c1l3-pares').innerHTML=p.length?p.map((x,i)=>{const [a,b]=x[0].split('\u0000');return '<div class="c1l3-par'+(i===0&&x[1]>1?' top':'')+'"><span>«'+vis(a)+'» + «'+vis(b)+'»</span><span>'+x[1]+' veces</span></div>';}).join(''):'<span class="hint">No quedan pares.</span>';
+    const letras=[...new Set(hist.length?hist[0].antes.flat():palabras.flat())];
+    const voc=letras.map(c=>'<span>'+vis(c)+'</span>').concat(hist.map(h=>'<span'+(h.a+h.b===nuevo?' class="nuevo"':'')+'>'+vis(h.a+h.b)+'</span>'));
+    $('#c1l3-voc').innerHTML=voc.join('');
+    $('#c1l3-nv').textContent=(base+hist.length)+' tokens: '+base+' letras + '+hist.length+' fusiones';
+    const toks=palabras.flat();
+    $('#c1l3-nt').textContent=toks.length;
+    $('#c1l3-seg').innerHTML=toks.map(t=>'<span'+(t===nuevo?' class="nuevo"':'')+'>'+vis(t).replace(/</g,'&lt;')+'</span>').join('');
+    const chars=[...$('#c1l3-txt').value].length;
+    let h='';
+    if(!ult)h='<span>El vocabulario empieza con las '+base+' letras y signos del texto: '+toks.length+' tokens, uno por carácter. Pulsa «Siguiente fusión»: el par resaltado en (1) se une y entra al vocabulario.</span>';
+    else h='<span class="big">Fusión '+hist.length+': «'+vis(ult.a)+'» + «'+vis(ult.b)+'» → «'+vis(nuevo)+'» (aparecía '+ult.n+' veces).</span><span>El texto bajó de '+chars+' a '+toks.length+' tokens ('+(chars/toks.length).toFixed(2).replace('.',',')+' caracteres por token).</span>';
+    if(p.length&&p[0][1]<2)h+='<span class="ok">Ya ningún par se repite: este texto no da para más fusiones. Un tokenizador real hace esto sobre miles de millones de palabras, hasta llegar a 50.000 o 200.000 tokens.</span>';
+    $('#c1l3-out').innerHTML=h;
+  }
+  $('#c1l3-sig').addEventListener('click',()=>{fusionar();pintar();});
+  $('#c1l3-diez').addEventListener('click',()=>{for(let i=0;i<10;i++)if(!fusionar())break;pintar();});
+  $('#c1l3-atr').addEventListener('click',()=>{const h=hist.pop();if(h)palabras=h.antes;pintar();});
+  $('#c1l3-ini').addEventListener('click',preparar);
+  $('#c1l3-p').addEventListener('change',()=>{$('#c1l3-txt').value=PAR[+$('#c1l3-p').value];preparar();});
+  $('#c1l3-txt').addEventListener('input',preparar);
+  $('#c1l3-txt').value=PAR[0];preparar();
+})();
+</script>
+<script>
+(function(){
+  const {$,tok,canvasWidget}=window.Lab;
+  const B=window.miaBPE; // lo define el laboratorio 1 de esta página
+  const SETS=[
+    ['¿De qué color es el cielo?','What color is the sky?','def color(cielo): return cielo.get("color")'],
+    ['El cielo es azul porque la atmósfera dispersa más la luz azul que la roja.','The sky is blue because the atmosphere scatters blue light more than red light.','luz = {"azul": dispersion(450), "roja": dispersion(700)}'],
+    ['Mi factura llegó dos veces este mes, ¿me pueden ayudar a corregirla?','My bill arrived twice this month, can you help me fix it?','{"cliente": 20417, "factura": "duplicada", "accion": "corregir"}']
+  ];
+  const KS=[];for(let k=0;k<=3000;k+=100)KS.push(k);
+  const COL=['--c-fis','--c-red','--c-enl'],NOM=['Español','Inglés','Código'],IDS=['#c1l2-es','#c1l2-en','#c1l2-co'];
+  let curvas=[[],[],[]];
+  function calcular(){curvas=IDS.map(id=>KS.map(k=>B.encode($(id).value,k).length));}
+  const dibujar=canvasWidget($('#c1l2-c'),w=>w<500?0.62:0.42,(ctx,w,h)=>{
+    const L=40,R=22,T=10,Bt=30,K=+$('#c1l2-k').value;
+    const ymax=Math.max(4,...curvas.flat())*1.05;
+    const X=k=>L+k/3000*(w-L-R),Y=v=>T+(1-v/ymax)*(h-T-Bt);
+    ctx.clearRect(0,0,w,h);ctx.font='11px '+tok('--f-mono');ctx.lineWidth=1;
+    ctx.strokeStyle=tok('--grid');ctx.fillStyle=tok('--muted');ctx.textAlign='right';ctx.textBaseline='middle';
+    const paso=ymax>120?40:ymax>60?20:ymax>24?10:5;
+    for(let v=0;v<=ymax;v+=paso){ctx.beginPath();ctx.moveTo(L,Y(v));ctx.lineTo(w-R,Y(v));ctx.stroke();ctx.fillText(v,L-5,Y(v));}
+    ctx.textAlign='center';ctx.textBaseline='top';
+    for(let k=0;k<=3000;k+=1000)ctx.fillText(k,X(k),h-Bt+6);
+    ctx.fillText('fusiones',X(1500),h-14);
+    curvas.forEach((c,j)=>{ctx.strokeStyle=tok(COL[j]);ctx.lineWidth=2.2;ctx.beginPath();c.forEach((v,i)=>{const x=X(KS[i]),y=Y(v);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();});
+    ctx.strokeStyle=tok('--muted');ctx.setLineDash([4,4]);ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(X(K),T);ctx.lineTo(X(K),h-Bt);ctx.stroke();ctx.setLineDash([]);
+  });
+  function leer(){
+    const K=+$('#c1l2-k').value;
+    $('#c1l2-k-o').textContent=K+' · '+(256+K).toLocaleString('es')+' tokens';
+    const n=IDS.map(id=>B.encode($(id).value,K).length),c=IDS.map(id=>[...$(id).value].length);
+    const mx=Math.max(...n,1);
+    $('#c1l2-bars').innerHTML=n.map((v,j)=>'<div class="c1l2-b"><span style="color:var('+COL[j]+')">'+NOM[j]+'</span><span class="tr"><i style="width:'+(v/mx*100)+'%;background:var('+COL[j]+')"></i></span><b>'+v+'</b></div>').join('');
+    const pct=n[1]?Math.round((n[0]/n[1]-1)*100):0;
+    const h=[];
+    h.push('<span>Con '+K+' fusiones: español '+n[0]+' tokens ('+(c[0]/n[0]).toFixed(1).replace('.',',')+' caracteres por token), inglés '+n[1]+' ('+(c[1]/n[1]).toFixed(1).replace('.',',')+'), código '+n[2]+'.</span>');
+    if(pct>0)h.push('<span class="warn">El español gasta '+pct+' % más tokens que el inglés para decir lo mismo.</span>');
+    else if(pct<0)h.push('<span>Aquí el español gasta menos que el inglés: pasa con frases cortas o palabras que el vocabulario sí aprendió.</span>');
+    h.push(K<400?'<span>Con pocas fusiones casi no hay diferencia: todos los idiomas se leen casi letra por letra.</span>':'<span>Este tokenizador se entrenó con 63 % de inglés técnico, 25 % de código y 12 % de español. Las primeras fusiones fueron para el inglés y el código, que eran mayoría: por eso sus curvas bajan antes.</span>');
+    $('#c1l2-out').innerHTML=h.join('');
+    dibujar();
+  }
+  function cargar(){const s=SETS[+$('#c1l2-set').value];IDS.forEach((id,j)=>$(id).value=s[j]);calcular();leer();}
+  $('#c1l2-set').addEventListener('change',cargar);
+  IDS.forEach(id=>$(id).addEventListener('input',()=>{calcular();leer();}));
+  $('#c1l2-k').addEventListener('input',leer);
+  cargar();
+})();
+</script>
+</body>
+</html>

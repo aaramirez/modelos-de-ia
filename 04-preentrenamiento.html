@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Preentrenamiento · Modelos de IA · Modelos de IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Cómo funciona por dentro un modelo de lenguaje: tokens, embeddings, atención y el Transformer, cómo se entrena y se alinea, cómo genera y razona, y cómo se evalúa y se elige.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="preentrenamiento">
+<header class="topbar"><a class="brand" href="index.html">Modelos de <b>IA</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 04 DE 10</span><h1>Preentrenamiento: predecir la siguiente palabra</h1><p class="lede">El Transformer del capítulo 3 empieza con miles de millones de números al azar: no sabe que el cielo es azul ni qué es una palabra. El preentrenamiento los ajusta con una sola tarea, repetida billones de veces: adivinar el token que sigue. Este capítulo explica esa tarea, los datos, las máquinas y las leyes de escala que guiaron la carrera de los modelos.</p></header>
+<section><div class="prose"><p>Al terminar el capítulo 3 teníamos una máquina completa: tabla de embeddings, 28 bloques de atención y red densa, y una capa de salida. Llama 3.2 3B tiene unos 3.200 millones de números en esas piezas, los <b>parámetros</b> o <b>pesos</b> (<i>parameters</i>, <i>weights</i>). Recién construido, cada uno vale un número al azar. Si le preguntas «¿De qué color es el cielo?», responde una sopa de tokens sin sentido. A Colibrí, el modelo de juguete del curso, le pasa lo mismo: en el capítulo 2 elegimos a mano qué mide cada columna de su tabla para poder leerla, pero en un modelo de verdad nadie elige nada. Todos los números, los de la tabla de embeddings y los de cada capa, salen de este capítulo.</p><p>El <b>preentrenamiento</b> (<i>pretraining</i>) es la etapa que convierte esos números al azar en un modelo que sabe idiomas, datos del mundo, estilos de escritura y algo de razonamiento. Es, de lejos, la etapa más cara de la vida de un modelo, y su receta es sorprendentemente simple.</p></div></section>
+<section><h2>El objetivo: predecir el siguiente token</h2><div class="prose"><p>La tarea completa del preentrenamiento es esta: dado un pedazo de texto, adivinar el token que viene después. Nada más.</p></div><div class="analogia"><b>Imagínalo así</b><p>Imagina a alguien que, para aprender un idioma, lee millones de libros tapando cada palabra antes de leerla e intentando adivinarla. Al principio adivina al azar. Con el tiempo aprende que después de «el» suele venir un sustantivo. Más adelante, para adivinar el final de una novela policial, necesita haber entendido quién era el asesino. Nadie le explicó la gramática ni la trama: aprendió las dos porque le servían para adivinar mejor.</p></div><div class="prose"><p>Lo valioso de este objetivo es que el texto trae su propia respuesta. En «El cielo es azul.», la respuesta correcta después de «El cielo es» es «␣azul», y está ahí mismo, en el texto. No hace falta que una persona etiquete nada. Por eso se le llama <b>aprendizaje autosupervisado</b> (<i>self-supervised learning</i>): las etiquetas salen de los datos.</p><p>Para medir qué tan bien adivina, se mira la probabilidad que el modelo le dio al token correcto. Si le dio 0,72 a «␣azul», bien; si le dio 0,01, mal. La medida estándar es la <b>entropía cruzada</b> (<i>cross-entropy</i>): el promedio de <span class="math">-\ln p</span> sobre todas las posiciones, donde <span class="math">p</span> es la probabilidad que el modelo le dio al token que de verdad venía.</p><div class="math-display">\mathcal{L}=-\frac{1}{T}\sum_{t=1}^{T}\ln p_\theta\!\left(x_{t+1}\mid x_1,\dots,x_t\right)</div><p>Se lee así: para cada posición <span class="math">t</span> del texto, el modelo con pesos <span class="math">\theta</span> da una probabilidad al token siguiente <span class="math">x_{t+1}</span> sabiendo todo lo anterior; se toma menos su logaritmo y se promedia. Si el modelo acierta con seguridad, <span class="math">p</span> se acerca a 1 y <span class="math">-\ln p</span> a 0. Si le da probabilidad casi nula al correcto, la pérdida se dispara. Esa cantidad se mide en <b>nats</b> (<i>nats</i>), la unidad que sale de usar el logaritmo natural.</p><p>Otra forma de leer la pérdida es la <b>perplejidad</b> (<i>perplexity</i>), que es <span class="math">e^{\mathcal{L}}</span>: cuántas opciones igual de probables tendría que barajar el modelo, en promedio, en cada paso. Un modelo al azar con 128.256 tokens tiene perplejidad 128.256; un modelo que en cada paso duda entre dos opciones tiene perplejidad 2.</p></div><figure class="fig fig-flujo" id="04-diagrama-1"><div class="lienzo"><svg viewBox="0 0 920 380" style="min-width:720px" role="img" aria-label="El objetivo del preentrenamiento con la frase El cielo es azul punto. La fila de entrada tiene los tokens El, cielo, es, azul. La fila de objetivos es la misma frase corrida un lugar: cielo, es, azul, punto. En cada posición el modelo da una probabilidad al token correcto: 0,20 a cielo, 0,45 a es, 0,72 a azul y 0,60 al punto. La pérdida de cada posición es menos el logaritmo de esa probabilidad: 1,61, 0,80, 0,33 y 0,51. El promedio es 0,81 nats y la perplejidad, 2,25. El entrenamiento ajusta los pesos para que esas probabilidades suban.">
+<defs>
+<marker id="m4d1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="m4d1-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-tra"/></marker>
+</defs>
+<text x="20" y="62" class="t t-xs t-b t-m">ENTRADA</text>
+<g class="t t-mono" text-anchor="middle">
+<rect x="140" y="40" width="150" height="36" rx="8" class="c-fis"/><text x="215" y="63">El</text>
+<rect x="320" y="40" width="150" height="36" rx="8" class="c-fis"/><text x="395" y="63">␣cielo</text>
+<rect x="500" y="40" width="150" height="36" rx="8" class="c-fis"/><text x="575" y="63">␣es</text>
+<rect x="680" y="40" width="150" height="36" rx="8" class="c-fis"/><text x="755" y="63">␣azul</text>
+</g>
+<rect x="140" y="98" width="690" height="44" rx="10" class="c-red"/>
+<text x="485" y="125" class="t t-s k-red t-b" text-anchor="middle">el Transformer (capítulo 3): cada posición mira solo hacia atrás y predice el token siguiente</text>
+<line x1="215" y1="76" x2="215" y2="94" class="ln" marker-end="url(#m4d1-a)"/><line x1="395" y1="76" x2="395" y2="94" class="ln" marker-end="url(#m4d1-a)"/><line x1="575" y1="76" x2="575" y2="94" class="ln" marker-end="url(#m4d1-a)"/><line x1="755" y1="76" x2="755" y2="94" class="ln" marker-end="url(#m4d1-a)"/>
+<line x1="215" y1="142" x2="215" y2="160" class="ln" marker-end="url(#m4d1-a)"/><line x1="395" y1="142" x2="395" y2="160" class="ln" marker-end="url(#m4d1-a)"/><line x1="575" y1="142" x2="575" y2="160" class="ln" marker-end="url(#m4d1-a)"/><line x1="755" y1="142" x2="755" y2="160" class="ln" marker-end="url(#m4d1-a)"/>
+<text x="20" y="186" class="t t-xs t-b t-m">PROBABILIDAD</text>
+<text x="20" y="200" class="t t-xs t-b t-m">DEL CORRECTO</text>
+<g class="t t-s">
+<rect x="140" y="164" width="150" height="50" rx="8" class="c-apl"/><text x="152" y="184" class="t-mono">p(␣cielo) = 0,20</text><rect x="152" y="194" width="25" height="10" rx="2" class="k-apl"/>
+<rect x="320" y="164" width="150" height="50" rx="8" class="c-apl"/><text x="332" y="184" class="t-mono">p(␣es) = 0,45</text><rect x="332" y="194" width="56" height="10" rx="2" class="k-apl"/>
+<rect x="500" y="164" width="150" height="50" rx="8" class="c-apl"/><text x="512" y="184" class="t-mono">p(␣azul) = 0,72</text><rect x="512" y="194" width="91" height="10" rx="2" class="k-apl"/>
+<rect x="680" y="164" width="150" height="50" rx="8" class="c-apl"/><text x="692" y="184" class="t-mono">p(.) = 0,60</text><rect x="692" y="194" width="76" height="10" rx="2" class="k-apl"/>
+</g>
+<text x="20" y="250" class="t t-xs t-b t-m">OBJETIVO</text>
+<text x="20" y="264" class="t t-xs t-b t-m">(CORRIDO UNO)</text>
+<g class="t t-mono" text-anchor="middle">
+<rect x="140" y="232" width="150" height="36" rx="8" class="caja" style="stroke-dasharray:4 3"/><text x="215" y="255">␣cielo</text>
+<rect x="320" y="232" width="150" height="36" rx="8" class="caja" style="stroke-dasharray:4 3"/><text x="395" y="255">␣es</text>
+<rect x="500" y="232" width="150" height="36" rx="8" class="caja" style="stroke-dasharray:4 3"/><text x="575" y="255">␣azul</text>
+<rect x="680" y="232" width="150" height="36" rx="8" class="caja" style="stroke-dasharray:4 3"/><text x="755" y="255">.</text>
+</g>
+<text x="20" y="302" class="t t-xs t-b t-m">PÉRDIDA</text>
+<text x="20" y="316" class="t t-xs t-b t-m">−ln p</text>
+<g class="t t-mono t-b" text-anchor="middle">
+<text x="215" y="310">1,61</text><text x="395" y="310">0,80</text><text x="575" y="310">0,33</text><text x="755" y="310">0,51</text>
+</g>
+<rect x="140" y="326" width="690" height="40" rx="10" class="c-tra"/>
+<text x="485" y="345" class="t t-s t-b k-tra" text-anchor="middle">promedio: 0,81 nats por token · perplejidad e^0,81 ≈ 2,25</text>
+<text x="485" y="360" class="t t-s" text-anchor="middle">el entrenamiento mueve los pesos para que cada probabilidad del correcto suba y la pérdida baje</text>
+<path d="M850 346 H880 V120 H836" class="ln s-tra" style="stroke-width:2" marker-end="url(#m4d1-t)"/>
+<text x="888" y="236" class="t t-xs t-b k-tra" transform="rotate(90 888 236)" text-anchor="middle">AJUSTAR PESOS</text>
+</svg></div><figcaption><b>El objetivo del preentrenamiento.</b> La fila de entrada es «El cielo es azul»; la fila de objetivos es la misma frase corrida un lugar. En cada posición, el Transformer (azul) da una probabilidad al token correcto (rosa): 0,20 a «cielo» después de «El», 0,45 a «es», 0,72 a «azul» y 0,60 al punto. La pérdida de cada posición es <span class="math">-\ln p</span>, y el promedio, 0,81 nats, equivale a una perplejidad de 2,25. La flecha violeta es el entrenamiento: mueve los pesos para que esas probabilidades suban.</figcaption></figure><div class="prose"><p>Gracias a la máscara causal del capítulo 3, un mismo texto de 8.000 tokens da 8.000 ejercicios de adivinanza a la vez, cada posición mirando solo hacia atrás. El modelo no tiene que leer el texto 8.000 veces: hace una sola pasada y calcula todas las pérdidas en paralelo.</p><p>Después de cada pasada viene la corrección. Con la <b>retropropagación</b> (<i>backpropagation</i>) se calcula, para cada uno de los miles de millones de pesos, hacia dónde moverlo para que la pérdida baje, y un optimizador como <b>Adam</b> lo mueve un poquito en esa dirección. Esa es la mecánica general del <b>descenso de gradiente</b> (<i>gradient descent</i>), y está explicada en <a href="https://aaramirez.github.io/aprendizaje-profundo/temario.html" target="_blank" rel="noopener">Aprendizaje profundo</a>. Aquí importa la escala: un modelo actual repite ese ciclo cientos de miles de veces, cada vez con millones de tokens.</p></div><div class="lab" id="04-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Un modelo de caracteres que se entrena en la página</h3></div><p class="hint">Este modelo predice la letra siguiente mirando las anteriores, y se entrena aquí mismo con un párrafo, con la misma pérdida de entropía cruzada. Pulsa «Entrenar 10 pasos», luego «Entrenar 100» y «Hasta 1000», y compara el texto que genera en cada momento. Cambia cuántas letras de contexto mira y vuelve a entrenar.</p><style>
+[id="04-lab-2"] .c4l2-snaps{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:8px}
+[id="04-lab-2"] .c4l2-s{border:1px solid var(--line);border-left:4px solid var(--c-tra);border-radius:8px;padding:8px 10px;background:var(--card);min-height:84px}
+[id="04-lab-2"] .c4l2-s b{display:block;font:700 .72rem var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+[id="04-lab-2"] .c4l2-s p{margin:0;font:500 .84rem/1.4 var(--f-mono);overflow-wrap:anywhere;color:var(--ink)}
+[id="04-lab-2"] .c4l2-s.vacio{border-left-color:var(--line);border-style:dashed}
+[id="04-lab-2"] .c4l2-s.vacio p{color:var(--muted)}
+</style>
+<div class="opciones">
+  <label>Contexto que mira el modelo
+    <select id="c4l2-k">
+      <option value="1">1 letra (bigramas)</option>
+      <option value="2" selected>2 letras (trigramas)</option>
+      <option value="3">3 letras</option>
+    </select></label>
+  <label>Semilla para generar
+    <select id="c4l2-sem">
+      <option value="7" selected>7</option>
+      <option value="42">42</option>
+      <option value="2026">2026</option>
+    </select></label>
+</div>
+<div class="btns">
+  <button type="button" class="primary" id="c4l2-b10">Entrenar 10 pasos</button>
+  <button type="button" id="c4l2-b100">Entrenar 100</button>
+  <button type="button" id="c4l2-b1000">Hasta 1000</button>
+  <button type="button" id="c4l2-reset">Empezar de cero</button>
+</div>
+<canvas id="c4l2-c" role="img" aria-label="Curva de pérdida del modelo de caracteres según los pasos de entrenamiento"></canvas>
+<div class="legend"><span><i style="background:var(--c-tra)"></i>pérdida (entropía cruzada, nats)</span><span><i style="background:var(--muted)"></i>adivinar al azar: ln(V)</span></div>
+<div class="c4l2-snaps" id="c4l2-snaps" aria-live="polite"></div>
+<div class="readout texto" id="c4l2-out" aria-live="polite"></div></div><div class="prose"><p>Fíjate en dos cosas. Primero, el modelo pasa por etapas: letras al azar, letras frecuentes con espacios, sílabas, palabras cortas. Nadie le explicó qué es una palabra; la descubrió porque le servía para adivinar. Segundo, con tan poco texto, al final repite trozos literales del párrafo: lo memorizó. Un modelo grande ve tantos datos distintos que, en vez de memorizar cada frase, se ve obligado a aprender patrones generales. Esa es la apuesta del preentrenamiento: <b>a escala suficiente, predecir el siguiente token obliga a aprender mucho sobre el mundo</b>. Para completar «La capital de Francia es», hace falta saber geografía; para completar la última línea de una demostración, hace falta seguir la matemática.</p></div></section>
+<section><h2>Los datos: web, libros, código; limpieza y deduplicación</h2><div class="prose"><p>Si el objetivo es simple, los datos son donde está el trabajo. Un modelo actual se preentrena con billones de tokens: GPT-3, en 2020, usó unos 300.000 millones; la ficha pública de Llama 3 (2024) habla de más de 15 billones. (En español, un billón es un millón de millones: <span class="math">10^{12}</span>.)</p></div><div class="analogia"><b>Imagínalo así</b><p>El petróleo crudo no se echa directamente al tanque del auto: pasa por una refinería que separa lo útil, descarta las impurezas y mezcla los productos en proporciones precisas. Con los datos pasa lo mismo: de lo que se descarga de internet, la mayor parte se tira, y lo que queda se mezcla con otras fuentes según una receta.</p></div><div class="prose"><p>La fuente principal es la web. <b>Common Crawl</b> (<i>Common Crawl</i>), una organización sin fines de lucro, rastrea y publica cada mes miles de millones de páginas. Sobre esa materia prima, los equipos aplican una cadena de pasos:</p><ol class="steps"><li><span><b>Extraer el texto.</b> Una página trae menús, publicidad, código HTML y botones. Se conserva solo el texto principal.</span></li><li><span><b>Filtrar por idioma.</b> Un clasificador decide en qué idioma está cada página. El inglés domina: los demás idiomas tienen mucho menos texto disponible, y esa es una de las razones por las que los modelos suelen ser mejores en inglés.</span></li><li><span><b>Filtrar por calidad.</b> Reglas simples (demasiado corto, demasiados símbolos, líneas repetidas) y clasificadores entrenados para reconocer texto bien escrito o educativo. Este paso descarta la mayor parte de lo que queda.</span></li><li><span><b>Eliminar duplicados</b> (<i>deduplication</i>). La web está llena de copias: la misma noticia en cien sitios, los mismos términos y condiciones en miles. Los duplicados hacen que el modelo memorice en lugar de generalizar y desperdician cómputo. Se eliminan las copias exactas y también las casi iguales, con técnicas como MinHash.</span></li><li><span><b>Quitar lo que no debe entrar.</b> Datos personales, contenido tóxico y, cada vez más, las preguntas de los exámenes con que después se evaluará el modelo. Si el examen estaba en los datos, la nota no vale (el capítulo 9 trata esa <b>contaminación</b>).</span></li><li><span><b>Mezclar y tokenizar.</b> La web filtrada se combina con código, libros, artículos científicos, matemáticas y enciclopedias. La proporción de cada fuente es una decisión clave: se ha visto que más código y más matemáticas mejoran el razonamiento, incluso en tareas que no son de programar.</span></li></ol></div><figure class="fig fig-flujo" id="04-diagrama-2"><div class="lienzo"><svg viewBox="0 0 920 470" style="min-width:720px" role="img" aria-label="El camino de los datos de preentrenamiento, en seis pasos de arriba hacia abajo: rastrear la web, extraer el texto, filtrar por idioma, filtrar por calidad, eliminar duplicados y quitar datos personales, contenido tóxico y preguntas de exámenes. Una barra a la derecha de cada paso, ilustrativa, muestra cuánto texto queda: cada filtro deja menos. Al final se mezcla la web filtrada con código, libros, artículos científicos, matemáticas y enciclopedias, y todo se tokeniza.">
+<defs>
+<marker id="m4d2-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+</defs>
+<text x="20" y="26" class="t t-xs t-b t-m">PASO</text>
+<text x="470" y="26" class="t t-xs t-b t-m">CUÁNTO TEXTO QUEDA (ILUSTRATIVO)</text>
+<g class="t t-s">
+<rect x="20" y="40" width="420" height="44" rx="8" class="caja"/><text x="34" y="58" class="t-b">1 · Rastrear la web</text><text x="34" y="75" class="t-m">miles de millones de páginas: Common Crawl y otros</text>
+<rect x="20" y="102" width="420" height="44" rx="8" class="caja"/><text x="34" y="120" class="t-b">2 · Extraer el texto</text><text x="34" y="137" class="t-m">fuera menús, HTML, avisos y botones</text>
+<rect x="20" y="164" width="420" height="44" rx="8" class="caja"/><text x="34" y="182" class="t-b">3 · Filtrar por idioma</text><text x="34" y="199" class="t-m">un clasificador decide en qué idioma está cada página</text>
+<rect x="20" y="226" width="420" height="44" rx="8" class="caja"/><text x="34" y="244" class="t-b">4 · Filtrar por calidad</text><text x="34" y="261" class="t-m">reglas y clasificadores: spam, listas, texto roto</text>
+<rect x="20" y="288" width="420" height="44" rx="8" class="caja"/><text x="34" y="306" class="t-b">5 · Eliminar duplicados</text><text x="34" y="323" class="t-m">copias exactas y casi iguales (MinHash)</text>
+<rect x="20" y="350" width="420" height="44" rx="8" class="caja"/><text x="34" y="368" class="t-b">6 · Quitar lo que no debe entrar</text><text x="34" y="385" class="t-m">datos personales, contenido tóxico, preguntas de exámenes</text>
+</g>
+<g class="d-inet">
+<rect x="470" y="48" width="430" height="28" rx="5"/>
+<rect x="470" y="110" width="300" height="28" rx="5"/>
+<rect x="470" y="172" width="200" height="28" rx="5"/>
+<rect x="470" y="234" width="110" height="28" rx="5"/>
+<rect x="470" y="296" width="62" height="28" rx="5"/>
+<rect x="470" y="358" width="56" height="28" rx="5"/>
+</g>
+<g class="t t-s t-m">
+<text x="784" y="129">queda solo el texto</text>
+<text x="684" y="191">muchas páginas no son del idioma</text>
+<text x="594" y="253">la mayoría no pasa</text>
+<text x="546" y="315">mucho se repite</text>
+<text x="540" y="377">ajuste final</text>
+</g>
+<line x1="230" y1="84" x2="230" y2="98" class="ln" marker-end="url(#m4d2-a)"/><line x1="230" y1="146" x2="230" y2="160" class="ln" marker-end="url(#m4d2-a)"/><line x1="230" y1="208" x2="230" y2="222" class="ln" marker-end="url(#m4d2-a)"/><line x1="230" y1="270" x2="230" y2="284" class="ln" marker-end="url(#m4d2-a)"/><line x1="230" y1="332" x2="230" y2="346" class="ln" marker-end="url(#m4d2-a)"/>
+<line x1="230" y1="394" x2="230" y2="410" class="ln" marker-end="url(#m4d2-a)"/>
+<rect x="20" y="414" width="880" height="44" rx="10" class="c-fis"/>
+<text x="34" y="433" class="t t-s t-b k-fis">7 · MEZCLAR Y TOKENIZAR</text>
+<text x="34" y="450" class="t t-s">web filtrada + código + libros + artículos científicos + matemáticas + enciclopedias → billones de tokens, cada fuente con su proporción</text>
+</svg></div><figcaption><b>El camino de los datos.</b> Cada caja es un paso, de arriba hacia abajo, y la barra de la derecha muestra, de forma ilustrativa, cuánto texto sobrevive: cada filtro deja menos, y el de calidad es el que más descarta. Abajo, en naranja, la mezcla final con otras fuentes y la tokenización del capítulo 1.</figcaption></figure><div class="practica"><div class="practica-title"><span class="tag">En el navegador</span><h3>Mira por dentro un conjunto de datos de preentrenamiento</h3></div><p>FineWeb es un conjunto de datos abierto, publicado por Hugging Face en 2024, con unos 15 billones de tokens de páginas web en inglés ya filtradas. FineWeb 2 hace lo mismo para más de mil idiomas. Vas a mirar sus filas en el visor público, sin cuenta.</p><ol class="steps"><li><span>Abre <a href="https://huggingface.co/datasets/HuggingFaceFW/fineweb" target="_blank" rel="noopener">huggingface.co/datasets/HuggingFaceFW/fineweb</a> y baja hasta el visor de datos (<i>Dataset Viewer</i>).</span></li><li><span>Lee cinco o seis filas de la columna <code>text</code>. Mira también las columnas <code>url</code>, <code>language_score</code> y <code>token_count</code>.</span></li><li><span>Abre <a href="https://huggingface.co/datasets/HuggingFaceFW/fineweb-2" target="_blank" rel="noopener">huggingface.co/datasets/HuggingFaceFW/fineweb-2</a>, busca en el visor un subconjunto en español (su nombre empieza con <code>spa_</code>) y compara.</span></li><li><span>Abre <a href="https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu" target="_blank" rel="noopener">huggingface.co/datasets/HuggingFaceFW/fineweb-edu</a> y mira la columna <code>score</code>: es la nota de un clasificador que estima cuán educativa es cada página.</span></li></ol><p><b>Qué observar:</b> el texto ya viene limpio, sin menús ni HTML, y cada fila es un documento completo. Hay de todo: recetas, foros, noticias, manuales. El visor puede tardar en cargar o mostrar los subconjuntos con otros nombres; si pasa, busca en la ficha la lista de idiomas. Lo que ves es el tipo de texto del que un modelo base aprende todo lo que sabe, y también sus errores y sesgos.</p></div></section>
+<section><h2>El entrenamiento a gran escala: GPU, paralelismo y semanas de cómputo</h2><div class="prose"><p>¿Cuánto trabajo es preentrenar un modelo? Hay una regla práctica muy usada: el cómputo total es aproximadamente <span class="math">C \approx 6\,N\,D</span> operaciones, donde <span class="math">N</span> es la cantidad de parámetros y <span class="math">D</span> la de tokens de entrenamiento. Para un modelo de 8.000 millones de parámetros con 15 billones de tokens:</p><div class="math-display">C \approx 6 \times 8\times10^{9} \times 15\times10^{12} = 7{,}2\times10^{23}\ \text{operaciones}</div></div><div class="analogia"><b>Imagínalo así</b><p>Construir una represa no es un trabajo para una cuadrilla, sino para miles de obreros coordinados durante meses: unos excavan, otros cargan, otros vierten concreto, y si uno se detiene, el resto lo nota. Un preentrenamiento grande es una obra así, con GPU en lugar de obreros.</p></div><div class="prose"><p>Una GPU de centro de datos actual hace del orden de <span class="math">10^{14}</span> a <span class="math">10^{15}</span> operaciones por segundo en la práctica. Aun en el mejor caso, <span class="math">7{,}2\times10^{23}</span> operaciones son años de trabajo para una sola GPU. La ficha pública de Llama 3 8B reporta 1,3 millones de horas de GPU, y la de Llama 3 70B, 6,4 millones. Por eso se entrena en miles de GPU a la vez durante semanas o meses.</p><p>Repartir el trabajo no es trivial, porque el modelo no cabe en una sola GPU. Entrenar con Adam exige guardar, por cada parámetro, el peso, su gradiente y dos promedios del optimizador: en la práctica, unos 16 bytes por parámetro. Para 8.000 millones de parámetros son unos 128 GB, más que los 80 GB de una GPU grande. Hay tres formas de repartir, y los entrenamientos grandes combinan las tres:</p><ul><li><b>Paralelismo de datos</b> (<i>data parallelism</i>): cada GPU tiene una copia del modelo y procesa un lote distinto de textos; al final de cada paso se promedian los gradientes. Variantes como FSDP o ZeRO, además, reparten entre las GPU los pesos y los estados del optimizador para que quepan.</li><li><b>Paralelismo de tensores</b> (<i>tensor parallelism</i>): una misma matriz se corta en pedazos y cada GPU multiplica el suyo. Exige conexiones muy rápidas entre GPU, así que se usa dentro de un mismo servidor.</li><li><b>Paralelismo de tubería</b> (<i>pipeline parallelism</i>): las capas se reparten en orden, como estaciones de una línea de montaje.</li></ul></div><figure class="fig fig-arquitectura" id="04-diagrama-3"><div class="lienzo"><svg viewBox="0 0 940 400" style="min-width:740px" role="img" aria-label="Tres formas de repartir un entrenamiento entre GPU. Paralelismo de datos: cada GPU tiene una copia completa del modelo y procesa un lote distinto de textos; al final de cada paso se promedian los gradientes. Paralelismo de tensores: una misma matriz de una capa se corta en pedazos y cada GPU multiplica su pedazo; las GPU deben estar muy bien conectadas. Paralelismo de tubería: las capas se reparten, de la 1 a la 7 en una GPU, de la 8 a la 14 en otra, y así; los lotes pasan de una GPU a la siguiente como en una línea de montaje. Los entrenamientos grandes combinan las tres formas en miles de GPU.">
+<defs>
+<marker id="m4d3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+</defs>
+
+<rect x="16" y="16" width="292" height="326" rx="14" class="caja"/>
+<text x="32" y="42" class="t t-xs t-b k-tra">PARALELISMO DE DATOS</text>
+<text x="32" y="60" class="t t-s">cada GPU: el modelo entero, otro lote</text>
+<g class="t t-s" text-anchor="middle">
+<rect x="36" y="80" width="56" height="26" rx="5" class="c-fis"/><text x="64" y="97">lote 1</text>
+<rect x="100" y="80" width="56" height="26" rx="5" class="c-fis"/><text x="128" y="97">lote 2</text>
+<rect x="164" y="80" width="56" height="26" rx="5" class="c-fis"/><text x="192" y="97">lote 3</text>
+<rect x="228" y="80" width="56" height="26" rx="5" class="c-fis"/><text x="256" y="97">lote 4</text>
+<rect x="36" y="126" width="56" height="90" rx="6" class="c-red"/><text x="64" y="166" class="k-red t-b">GPU</text><text x="64" y="182">modelo</text><text x="64" y="196">completo</text>
+<rect x="100" y="126" width="56" height="90" rx="6" class="c-red"/><text x="128" y="166" class="k-red t-b">GPU</text><text x="128" y="182">modelo</text><text x="128" y="196">completo</text>
+<rect x="164" y="126" width="56" height="90" rx="6" class="c-red"/><text x="192" y="166" class="k-red t-b">GPU</text><text x="192" y="182">modelo</text><text x="192" y="196">completo</text>
+<rect x="228" y="126" width="56" height="90" rx="6" class="c-red"/><text x="256" y="166" class="k-red t-b">GPU</text><text x="256" y="182">modelo</text><text x="256" y="196">completo</text>
+</g>
+<line x1="64" y1="106" x2="64" y2="122" class="ln" marker-end="url(#m4d3-a)"/><line x1="128" y1="106" x2="128" y2="122" class="ln" marker-end="url(#m4d3-a)"/><line x1="192" y1="106" x2="192" y2="122" class="ln" marker-end="url(#m4d3-a)"/><line x1="256" y1="106" x2="256" y2="122" class="ln" marker-end="url(#m4d3-a)"/>
+<path d="M64 216 V240 H256 V216 M128 216 V240 M192 216 V240" class="ln s-tra" style="stroke-width:2"/>
+<rect x="76" y="250" width="168" height="30" rx="6" class="c-tra"/><text x="160" y="270" class="t t-s k-tra t-b" text-anchor="middle">promediar gradientes</text>
+<line x1="160" y1="240" x2="160" y2="246" class="ln s-tra" style="stroke-width:2"/>
+<text x="32" y="306" class="t t-s">Simple y muy usado. Límite: el</text>
+<text x="32" y="322" class="t t-s">modelo entero debe caber en cada GPU.</text>
+
+<rect x="324" y="16" width="292" height="326" rx="14" class="caja"/>
+<text x="340" y="42" class="t t-xs t-b k-tra">PARALELISMO DE TENSORES</text>
+<text x="340" y="60" class="t t-s">una matriz cortada en pedazos</text>
+<rect x="364" y="84" width="212" height="132" rx="6" class="caja" style="stroke-width:2"/>
+<g class="c-red" style="stroke-width:1.2">
+<rect x="368" y="88" width="48" height="124"/><rect x="420" y="88" width="48" height="124"/><rect x="472" y="88" width="48" height="124"/><rect x="524" y="88" width="48" height="124"/>
+</g>
+<g class="t t-s k-red t-b" text-anchor="middle"><text x="392" y="154">GPU 1</text><text x="444" y="154">GPU 2</text><text x="496" y="154">GPU 3</text><text x="548" y="154">GPU 4</text></g>
+<text x="470" y="236" class="t t-s t-m" text-anchor="middle">la matriz W de una capa</text>
+<path d="M392 212 V256 H548 V212 M444 212 V256 M496 212 V256" class="ln ln-d"/>
+<rect x="388" y="262" width="164" height="26" rx="6" class="caja"/><text x="470" y="279" class="t t-s" text-anchor="middle">juntar resultados</text>
+<text x="340" y="306" class="t t-s">Cada GPU hace un pedazo de cada</text>
+<text x="340" y="322" class="t t-s">cuenta: exige conexiones muy rápidas.</text>
+
+<rect x="632" y="16" width="292" height="326" rx="14" class="caja"/>
+<text x="648" y="42" class="t t-xs t-b k-tra">PARALELISMO DE TUBERÍA</text>
+<text x="648" y="60" class="t t-s">las capas repartidas en orden</text>
+<g class="t t-s" text-anchor="middle">
+<rect x="652" y="84" width="252" height="30" rx="6" class="c-red"/><text x="778" y="104">GPU 4 · capas 22 a 28</text>
+<rect x="652" y="124" width="252" height="30" rx="6" class="c-red"/><text x="778" y="144">GPU 3 · capas 15 a 21</text>
+<rect x="652" y="164" width="252" height="30" rx="6" class="c-red"/><text x="778" y="184">GPU 2 · capas 8 a 14</text>
+<rect x="652" y="204" width="252" height="30" rx="6" class="c-red"/><text x="778" y="224">GPU 1 · capas 1 a 7</text>
+</g>
+<line x1="666" y1="204" x2="666" y2="198" class="ln" marker-end="url(#m4d3-a)"/><line x1="666" y1="164" x2="666" y2="158" class="ln" marker-end="url(#m4d3-a)"/><line x1="666" y1="124" x2="666" y2="118" class="ln" marker-end="url(#m4d3-a)"/>
+<rect x="652" y="250" width="252" height="28" rx="6" class="c-fis"/><text x="778" y="269" class="t t-s" text-anchor="middle">lotes que suben uno tras otro</text>
+<line x1="778" y1="250" x2="778" y2="238" class="ln" marker-end="url(#m4d3-a)"/>
+<text x="648" y="306" class="t t-s">Como una línea de montaje: cada</text>
+<text x="648" y="322" class="t t-s">GPU guarda solo sus capas.</text>
+<rect x="16" y="356" width="908" height="32" rx="10" class="c-tra"/>
+<text x="470" y="377" class="t t-s t-b k-tra" text-anchor="middle">Un entrenamiento grande combina las tres formas en miles de GPU durante semanas o meses</text>
+</svg></div><figcaption><b>Tres formas de repartir el entrenamiento.</b> A la izquierda, paralelismo de datos: cuatro GPU con el modelo completo, cada una con su lote (naranja), y los gradientes que se promedian (violeta). Al centro, paralelismo de tensores: una matriz cortada en cuatro columnas, una por GPU. A la derecha, paralelismo de tubería: las 28 capas repartidas en cuatro GPU y los lotes que suben de una a otra.</figcaption></figure><div class="prose"><p>A esa escala aparecen problemas que en un experimento pequeño no existen. Las GPU fallan: con miles trabajando semanas, alguna se rompe cada pocas horas, y el entrenamiento guarda copias de seguridad de los pesos para retomar desde ahí. La pérdida a veces da saltos bruscos hacia arriba y hay que volver atrás. Para ahorrar memoria y tiempo, las cuentas se hacen con números de 16 bits en lugar de 32. Una parte importante del oficio de preentrenar es, sencillamente, ingeniería de sistemas.</p></div></section>
+<section><h2>Las leyes de escala: parámetros, datos y cómputo (Kaplan, Chinchilla)</h2><div class="prose"><p>Con presupuestos de decenas o cientos de millones de dólares, nadie quiere adivinar. La gran sorpresa de 2020 fue que la pérdida de un modelo se puede <b>predecir</b> antes de entrenarlo.</p></div><div class="analogia"><b>Imagínalo así</b><p>Cuando estudias para un examen, las primeras horas suben mucho la nota y cada hora extra la sube un poco menos. Lo notable es que esa curva, en los modelos de lenguaje, es tan regular que con unos pocos experimentos pequeños se puede calcular la nota que sacaría un estudiante cien veces más grande que estudie cien veces más.</p></div><div class="prose"><p>En 2020, un equipo de OpenAI (Kaplan y otros) entrenó cientos de modelos de distintos tamaños y encontró <b>leyes de escala</b> (<i>scaling laws</i>): la pérdida baja como una potencia de los parámetros, de los datos y del cómputo. En un gráfico con los dos ejes en escala logarítmica, esas curvas son rectas casi perfectas a lo largo de muchos órdenes de magnitud. Su conclusión práctica fue que, con más cómputo, convenía sobre todo agrandar el modelo.</p><p>En 2022, un equipo de DeepMind (Hoffmann y otros) revisó la pregunta con más cuidado: con un presupuesto fijo de cómputo, ¿cuántos parámetros y cuántos tokens? Ajustaron una fórmula de este tipo:</p><div class="math-display">L(N,D)=E+\frac{A}{N^{\alpha}}+\frac{B}{D^{\beta}}</div><p>Se lee así: hay un piso <span class="math">E</span> que ningún modelo puede bajar (la incertidumbre propia del texto), más un término que se achica al crecer los parámetros <span class="math">N</span> y otro que se achica al crecer los datos <span class="math">D</span>. Su respuesta fue que parámetros y datos deben crecer <b>juntos</b>, a razón de unos <b>20 tokens por parámetro</b>. Los modelos de la época, como GPT-3 con 175.000 millones de parámetros y 300.000 millones de tokens, estaban demasiado grandes para los datos que habían visto.</p></div><div class="caso"><b>Un caso real</b><p><b>Chinchilla contra Gopher.</b> Para probarlo, DeepMind entrenó Chinchilla, un modelo de 70.000 millones de parámetros con 1,4 billones de tokens, usando el mismo cómputo que había gastado en Gopher, de 280.000 millones de parámetros y 300.000 millones de tokens. Chinchilla, cuatro veces más pequeño, superó a Gopher en casi todas las pruebas. Además, al ser más pequeño, era más barato de usar. Desde entonces, a esa proporción de unos 20 tokens por parámetro se la llama «óptima según Chinchilla».</p></div><div class="lab" id="04-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>La curva de pérdida con escala</h3></div><p class="hint">La fórmula del laboratorio es la ley de escala ajustada a los datos de Chinchilla (en la versión revisada por Besiroglu y otros, 2024). Mueve los parámetros y los tokens y mira la pérdida predicha, el cómputo y cuántos días de GPU costaría. Prueba los botones de los modelos publicados. En la vista «Mismo cómputo, otro reparto», busca el punto verde: el mejor reparto para ese presupuesto.</p><div class="btns" role="group" aria-label="Vista">
+  <button type="button" id="c4l1-v1" aria-pressed="true">Pérdida según los datos</button>
+  <button type="button" id="c4l1-v2" aria-pressed="false">Mismo cómputo, otro reparto</button>
+</div>
+<div class="ctls">
+  <label class="ctl">Parámetros N <output id="c4l1-n-o"></output>
+    <input id="c4l1-n" type="range" min="8" max="12" step="0.05" value="10.85"></label>
+  <label class="ctl">Tokens de entrenamiento D <output id="c4l1-d-o"></output>
+    <input id="c4l1-d" type="range" min="9" max="13.5" step="0.05" value="11.5"></label>
+</div>
+<div class="btns" role="group" aria-label="Modelos publicados">
+  <button type="button" data-n="175e9" data-d="300e9">GPT-3 (2020)</button>
+  <button type="button" data-n="280e9" data-d="300e9">Gopher (2021)</button>
+  <button type="button" data-n="70e9" data-d="1.4e12">Chinchilla (2022)</button>
+  <button type="button" data-n="8e9" data-d="15e12">Llama 3 8B (2024)</button>
+</div>
+<canvas id="c4l1-c" role="img" aria-label="Pérdida predicha por la ley de escala según parámetros y tokens"></canvas>
+<div class="legend" id="c4l1-ley"></div>
+<div class="readout texto" id="c4l1-out" aria-live="polite"></div></div><div class="prose"><p>La historia no terminó en Chinchilla. Esa proporción minimiza el costo de <b>entrenar</b>, pero un modelo se entrena una vez y se usa millones de veces. Un modelo más pequeño entrenado con muchos más tokens llega a una pérdida algo peor que la óptima para su cómputo, pero es mucho más barato y rápido de usar. Por eso muchos modelos abiertos recientes se entrenan muy por encima de los 20 tokens por parámetro: Llama 3 8B vio unos 15 billones de tokens, casi 1.900 por parámetro. Las leyes de escala siguen siendo la brújula; lo que cambió es qué se quiere optimizar.</p></div></section>
+<section><h2>Capacidades emergentes: realidad y debate</h2><div class="prose"><p>Si la pérdida baja suave y predecible, ¿las habilidades también aparecen suave y predecibles? En 2022, un estudio de Google (Wei y otros) llamó <b>capacidades emergentes</b> (<i>emergent abilities</i>) a las que parecían ausentes en modelos pequeños y aparecían de golpe al pasar cierto tamaño: sumar números de varias cifras, resolver ciertos acertijos, seguir instrucciones en varios pasos.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un examen de «todo o nada» puede engañar. Si un estudiante mejora un poco cada semana en cada paso de un problema de cinco pasos, su nota en «problema completo bien resuelto» se queda en cero durante semanas y luego sube de golpe. El aprendizaje fue gradual; el salto lo puso la forma de calificar.</p></div><div class="prose"><p>En 2023, otro equipo (Schaeffer y otros) mostró que muchos de esos saltos dependen justamente de la métrica. Si un modelo acierta cada token de una respuesta de cinco tokens con probabilidad <span class="math">p</span>, la probabilidad de acertar los cinco es <span class="math">p^5</span>. Cuando <span class="math">p</span> sube suavemente de 0,5 a 0,7, a 0,9 y a 0,97, la respuesta completa pasa de 3 % a 17 %, a 59 % y a 86 %: una curva que parece un salto aunque lo de abajo cambió de a poco. Medidas con métricas continuas, muchas de esas capacidades crecen suave.</p><p>El debate sigue abierto, y las dos partes tienen algo de razón. La pérdida promedio es muy predecible; una habilidad concreta, en una tarea concreta, lo es mucho menos. Para quien usa modelos, la lección práctica es desconfiar de dos frases: «este modelo no puede hacer X» (puede que el siguiente sí) y «este modelo de pronto razona» (puede ser una forma de medir).</p></div></section>
+<section><h2>El modelo base: autocompleta, no conversa</h2><div class="prose"><p>Al terminar el preentrenamiento queda un <b>modelo base</b> (<i>base model</i>, también <i>pretrained model</i>). Sabe muchísimo, pero hace una sola cosa: continuar el texto que recibe de la forma más probable según lo que leyó.</p><p>Si le das «¿De qué color es el cielo?», puede responder «Azul», pero también puede seguir con otra pregunta, porque en la web una pregunta suelta suele estar en una lista de preguntas frecuentes. No sabe que tú esperas una respuesta, ni cuándo terminar, ni que debe ser amable o rechazar un pedido dañino. Tampoco conoce los tokens especiales con que las aplicaciones de chat separan los turnos de la conversación.</p><p>Con un modelo base se puede trabajar, pero hay que «disfrazar» el pedido de documento. En 2020, el artículo de GPT-3 mostró que si el texto de entrada tiene forma de examen resuelto, con algunos ejemplos de pregunta y respuesta, el modelo continúa respondiendo la pregunta nueva. A eso se le llamó <b>aprendizaje con pocos ejemplos</b> (<i>few-shot learning</i>): el modelo no cambia sus pesos, solo imita el patrón del texto.</p></div><div class="lab" id="04-lab-3"><div class="lab-title"><span class="tag">Laboratorio</span><h3>El modelo base frente al modelo de chat</h3></div><p class="hint">Elige un pedido y la forma de entregarlo: texto suelto, como documento de preguntas y respuestas o con la plantilla de chat. Arriba ves el texto exacto que entra al modelo; abajo, lo que suele hacer cada tipo de modelo. Busca la combinación en la que el modelo base sí responde.</p><style>
+[id="04-lab-3"] .c4l3-dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px}
+[id="04-lab-3"] .c4l3-col{border:1px solid var(--line);border-top:4px solid var(--c-tra);border-radius:10px;padding:8px 10px;background:var(--card);display:grid;gap:6px;align-content:start}
+[id="04-lab-3"] .c4l3-col.chat{border-top-color:var(--c-apl)}
+[id="04-lab-3"] .c4l3-col b{font:700 .74rem var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+[id="04-lab-3"] .c4l3-col pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:500 .82rem/1.45 var(--f-mono);color:var(--ink);background:none;padding:0}
+[id="04-lab-3"] .c4l3-col pre em{font-style:normal;color:var(--muted)}
+[id="04-lab-3"] .c4l3-col small{font:500 .8rem/1.4 var(--f-body);color:var(--muted)}
+[id="04-lab-3"] .c4l3-ve{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;background:var(--paper)}
+[id="04-lab-3"] .c4l3-ve b{display:block;font:700 .72rem var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+[id="04-lab-3"] .c4l3-ve pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:500 .8rem/1.45 var(--f-mono);color:var(--c-fis);background:none;padding:0}
+</style>
+<div class="opciones">
+  <label>Pedido
+    <select id="c4l3-p">
+      <option value="0" selected>¿De qué color es el cielo?</option>
+      <option value="1">Escribe un correo para pedir un día libre.</option>
+    </select></label>
+  <label>Cómo se le entrega
+    <select id="c4l3-f">
+      <option value="0" selected>Texto suelto</option>
+      <option value="1">Como documento de preguntas y respuestas</option>
+      <option value="2">Con la plantilla de chat</option>
+    </select></label>
+</div>
+<div class="c4l3-ve"><b>Lo que ve el modelo (texto exacto que entra)</b><pre id="c4l3-ve"></pre></div>
+<div class="c4l3-dos">
+  <div class="c4l3-col"><b>Modelo base (solo preentrenado)</b><pre id="c4l3-base"></pre><small id="c4l3-nb"></small></div>
+  <div class="c4l3-col chat"><b>Modelo de chat (ajustado y alineado)</b><pre id="c4l3-chat"></pre><small id="c4l3-nc"></small></div>
+</div>
+<div class="readout texto" id="c4l3-out" aria-live="polite"></div>
+<p class="hint">Salidas ilustrativas, escritas para el curso según el comportamiento típico de cada tipo de modelo. La plantilla es la de la familia Llama 3. Puedes reproducir la comparación con la práctica de esta sección.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>El mismo modelo, base y ajustado</h3></div><p>Ollama publica Llama 3.2 1B en dos versiones: la base (etiqueta <code>text</code>) y la ajustada para conversar. Vas a hacerles la pregunta del curso a las dos. Necesitas Ollama (capítulo 3) y unos 2 GB de espacio; cualquier par base y ajustado de otro modelo pequeño sirve.</p><div class="cmds"><div class="cmd-panel" data-so="win mac linux"><div class="cmd-l"><code>ollama pull llama3.2:1b-text-q4_K_M</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama pull llama3.2:1b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama run llama3.2:1b-text-q4_K_M "¿De qué color es el cielo?"</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama run llama3.2:1b "¿De qué color es el cielo?"</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama run llama3.2:1b-text-q4_K_M "Pregunta: ¿Cuál es la capital de Chile? Respuesta: Santiago. Pregunta: ¿De qué color es el cielo? Respuesta:"</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama show llama3.2:1b-text-q4_K_M --template</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama show llama3.2:1b --template</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Corre las dos primeras preguntas y compara: ¿cuál responde y cuál sigue escribiendo otra cosa? Si el modelo base no se detiene, córtalo con Ctrl+C.</span></li><li><span>Corre la tercera, con formato de documento, y mira si ahora el modelo base responde.</span></li><li><span>Compara las dos plantillas que muestra <code>--template</code>.</span></li></ol><p><b>Qué observar:</b> el modelo base suele continuar el texto como si fuera una página (más preguntas, otra lista, un párrafo cualquiera) y no sabe cuándo parar; con el formato de preguntas y respuestas suele contestar, y luego inventa la pregunta siguiente. El ajustado responde y se detiene. La plantilla del modelo base es solo el texto tal cual; la del ajustado envuelve tu mensaje en tokens especiales como <code>&lt;|start_header_id|&gt;</code>. Las salidas cambian en cada corrida: el muestreo es el tema del capítulo 6.</p></div><div class="prose"><p>Convertir ese autocompletador en un asistente que responde, se detiene y rechaza lo que no debe es el trabajo del capítulo 5. Es mucho más barato que el preentrenamiento, pero cambia por completo cómo se comporta el modelo.</p></div><figure class="fig fig-esquema" id="04-diagrama-4"><div class="lienzo"><svg viewBox="0 0 920 300" style="min-width:720px" role="img" aria-label="La vida de un modelo de lenguaje en tres etapas. Primero, el preentrenamiento: billones de tokens de texto general, semanas o meses en miles de GPU y la mayor parte del cómputo; produce el modelo base, que autocompleta documentos. Después, el ajuste con instrucciones: decenas de miles a millones de ejemplos de pedido y respuesta. Por último, el alineamiento con preferencias: comparaciones entre respuestas. El resultado es el modelo de chat, que conversa. Este capítulo trata la primera etapa y el capítulo 5, las otras dos.">
+<defs>
+<marker id="m4d4-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+</defs>
+<rect x="16" y="40" width="300" height="150" rx="14" class="c-tra" style="stroke-width:2.4"/>
+<text x="32" y="64" class="t t-xs t-b k-tra">ESTE CAPÍTULO · PREENTRENAMIENTO</text>
+<text x="32" y="90" class="t t-s">predecir el token siguiente</text>
+<text x="32" y="112" class="t t-s">· billones de tokens de texto general</text>
+<text x="32" y="130" class="t t-s">· semanas o meses en miles de GPU</text>
+<text x="32" y="148" class="t t-s">· la mayor parte del cómputo total</text>
+<text x="32" y="176" class="t t-s t-m">aprende idioma, datos y estilos</text>
+<rect x="352" y="80" width="130" height="70" rx="12" class="caja" style="stroke-width:2"/>
+<text x="417" y="108" class="t t-b" text-anchor="middle">modelo base</text>
+<text x="417" y="128" class="t t-s t-m" text-anchor="middle">autocompleta</text>
+<line x1="316" y1="115" x2="348" y2="115" class="ln" style="stroke-width:2" marker-end="url(#m4d4-a)"/>
+<rect x="518" y="40" width="250" height="68" rx="12" class="caja" style="stroke-dasharray:5 4"/>
+<text x="532" y="62" class="t t-xs t-b t-m">CAPÍTULO 5 · AJUSTE CON INSTRUCCIONES</text>
+<text x="532" y="82" class="t t-s">decenas de miles a millones de</text>
+<text x="532" y="98" class="t t-s">ejemplos de pedido y respuesta</text>
+<rect x="518" y="122" width="250" height="68" rx="12" class="caja" style="stroke-dasharray:5 4"/>
+<text x="532" y="144" class="t t-xs t-b t-m">CAPÍTULO 5 · PREFERENCIAS</text>
+<text x="532" y="164" class="t t-s">comparaciones entre respuestas:</text>
+<text x="532" y="180" class="t t-s">«esta es mejor que esa»</text>
+<path d="M482 115 H500 V74 H514" class="ln" marker-end="url(#m4d4-a)"/>
+<line x1="643" y1="108" x2="643" y2="118" class="ln" marker-end="url(#m4d4-a)"/>
+<rect x="796" y="80" width="110" height="70" rx="12" class="c-apl" style="stroke-width:2"/>
+<text x="851" y="108" class="t t-b k-apl" text-anchor="middle">modelo</text>
+<text x="851" y="126" class="t t-b k-apl" text-anchor="middle">de chat</text>
+<text x="851" y="142" class="t t-s" text-anchor="middle">conversa</text>
+<path d="M768 156 H782 V115 H792" class="ln" style="stroke-width:2" marker-end="url(#m4d4-a)"/>
+<text x="16" y="230" class="t t-xs t-b t-m">CÓMPUTO DE CADA ETAPA (ILUSTRATIVO)</text>
+<rect x="16" y="242" width="680" height="22" rx="4" class="k-tra"/>
+<rect x="696" y="242" width="16" height="22" rx="0" class="caja" style="stroke-dasharray:3 2"/>
+<text x="24" y="258" class="t t-s t-b" style="fill:var(--card)">preentrenamiento</text>
+<text x="720" y="258" class="t t-s">ajuste y alineamiento</text>
+<text x="16" y="286" class="t t-s t-m">El modelo base ya sabe casi todo lo que sabrá; las etapas siguientes cambian sobre todo cómo se comporta.</text>
+</svg></div><figcaption><b>La vida de un modelo de lenguaje.</b> A la izquierda, el preentrenamiento (violeta, este capítulo), con billones de tokens y la mayor parte del cómputo. Produce el modelo base, que autocompleta. Las dos etapas punteadas, ajuste con instrucciones y preferencias, son el capítulo 5, y terminan en el modelo de chat (rosa). Abajo, una barra ilustrativa: casi todo el cómputo se va en la primera etapa.</figcaption></figure></section>
+<section><h2>Los derechos de autor de los datos de entrenamiento</h2><div class="prose"><p>Los billones de tokens del preentrenamiento incluyen libros, noticias, código y obras de millones de personas que no fueron consultadas. Si eso es un uso legítimo, quién debe recibir qué y cómo puede un autor excluir su obra son preguntas que hoy se discuten en tribunales y en leyes de varios países. Se tratan en <a href="https://aaramirez.github.io/ia-responsable/temario.html" target="_blank" rel="noopener">IA responsable</a>; aquí basta con saber que la composición de los datos no es solo una decisión técnica.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Predecir el siguiente token, a escala suficiente, obliga a aprender mucho sobre el mundo. El objetivo es simple y no necesita etiquetas; el trabajo está en los datos (filtrar, deduplicar, mezclar) y en la ingeniería para repartir billones de operaciones entre miles de GPU. Las leyes de escala hacen predecible la pérdida y dicen cómo repartir el cómputo entre parámetros y datos. El resultado es un modelo base que sabe mucho y solo autocompleta.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Por qué el preentrenamiento se llama autosupervisado?</summary><p>Porque las respuestas correctas salen del propio texto: el token siguiente está en los datos y no hace falta que una persona etiquete nada.</p></details><details><summary>Un modelo le da probabilidad 0,5 al token correcto en cada posición. ¿Cuál es su pérdida y su perplejidad?</summary><p>La pérdida es <span class="math">-\ln 0{,}5 \approx 0{,}69</span> nats por token y la perplejidad es <span class="math">e^{0{,}69}=2</span>: en promedio duda entre dos opciones igual de probables.</p></details><details><summary>¿Por qué se eliminan los duplicados de los datos?</summary><p>Porque hacen que el modelo memorice en lugar de generalizar, desperdician cómputo y, si incluyen preguntas de evaluación, inflan las notas.</p></details><details><summary>Con la regla <span class="math">C \approx 6ND</span>, ¿cuánto cómputo cuesta un modelo de 1.000 millones de parámetros con 20.000 millones de tokens?</summary><p><span class="math">6 \times 10^{9} \times 2\times10^{10} = 1{,}2\times10^{20}</span> operaciones.</p></details><details><summary>¿Qué cambió Chinchilla respecto de la recomendación de 2020?</summary><p>Mostró que, con cómputo fijo, parámetros y datos deben crecer juntos (unos 20 tokens por parámetro), y que los modelos de entonces estaban demasiado grandes para los datos que habían visto.</p></details><details><summary>¿Por qué Llama 3 8B se entrenó con muchos más tokens que el óptimo de Chinchilla?</summary><p>Porque ese óptimo minimiza el costo de entrenar, pero un modelo pequeño entrenado más tiempo es más barato y rápido de usar, y se usa millones de veces.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿De dónde sale el 6 de la regla <span class="math">C \approx 6ND</span>? ¿Qué parte corresponde a la pasada hacia adelante y qué parte a la retropropagación?<small>Pista: busca «transformer FLOPs per token 6N».</small></li><li>¿Qué es el formato de números bfloat16 y por qué los entrenamientos lo prefieren al formato de 16 bits clásico?<small>Pista: busca «bfloat16 vs float16 dynamic range».</small></li><li>¿Cómo encuentra MinHash documentos casi iguales sin comparar cada par de documentos?<small>Pista: busca «MinHash locality sensitive hashing near duplicates».</small></li><li>ZeRO tiene tres etapas. ¿Qué reparte cada una entre las GPU y cuánta memoria ahorra?<small>Pista: busca «ZeRO optimizer stages 1 2 3».</small></li><li>¿Qué es un «pico de pérdida» (<i>loss spike</i>) y qué técnicas usan los equipos para evitarlos o recuperarse?<small>Pista: busca «loss spikes large language model training stability».</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/2203.15556" target="_blank" rel="noopener">Training Compute-Optimal Large Language Models (Hoffmann y otros, 2022) <small>el artículo de Chinchilla, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2001.08361" target="_blank" rel="noopener">Scaling Laws for Neural Language Models (Kaplan y otros, 2020) <small>artículo original, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2404.10102" target="_blank" rel="noopener">Chinchilla Scaling: A replication attempt (Besiroglu y otros, 2024) <small>la revisión de la fórmula que usa el laboratorio, en inglés</small></a><a class="vid" href="https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1" target="_blank" rel="noopener">FineWeb: decanting the web for the finest text data at scale <small>cómo se limpia un conjunto de datos de la web, en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/modelos-de-ia" target="_blank" rel="noopener">github.com/aaramirez/modelos-de-ia</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const {$,tok,fmt,canvasWidget,frame,curve,dot}=window.Lab;
+  const TXT="el modelo lee el texto de izquierda a derecha y en cada paso intenta adivinar la letra que sigue. al principio no sabe nada y escribe letras al azar. despues de ver el texto muchas veces aprende que despues de una q casi siempre viene una u, que las palabras se separan con espacios y que la mayoria de las palabras terminan en vocal o en s. con mas pasos empieza a escribir palabras cortas que existen, como el, la, de, que y en, y luego palabras mas largas. nunca le dijimos que es una palabra ni que es una silaba: lo aprendio solo, porque saberlo le ayuda a adivinar mejor la letra que sigue. un modelo de lenguaje grande hace lo mismo con tokens en lugar de letras, con miles de millones de parametros en lugar de unos pocos miles y con billones de tokens en lugar de un parrafo.";
+  const CH=[...new Set(TXT)].sort(),V=CH.length,ID={};CH.forEach((c,i)=>ID[c]=i);
+  const MARCAS=[0,10,100,1000];
+  let K,ctxs,C,R,N,W,paso,hist,snaps;
+  function preparar(){
+    K=+$('#c4l2-k').value;const mapa=new Map();
+    for(let i=K;i<TXT.length;i++){const k=TXT.slice(i-K,i);if(!mapa.has(k))mapa.set(k,mapa.size);}
+    ctxs=[...mapa.keys()];C=new Float64Array(ctxs.length*V);R=new Float64Array(ctxs.length);
+    for(let i=K;i<TXT.length;i++){const c=mapa.get(TXT.slice(i-K,i));C[c*V+ID[TXT[i]]]++;R[c]++;}
+    preparar.mapa=mapa;N=TXT.length-K;W=new Float64Array(ctxs.length*V);paso=0;hist=[[0,perdida()]];snaps={0:generar()};
+  }
+  function probs(c,out){let m=-1e9;for(let b=0;b<V;b++)m=Math.max(m,W[c*V+b]);let s=0;for(let b=0;b<V;b++){out[b]=Math.exp(W[c*V+b]-m);s+=out[b];}for(let b=0;b<V;b++)out[b]/=s;return out;}
+  const P=new Float64Array(V);
+  function perdida(){let l=0;for(let c=0;c<ctxs.length;c++){probs(c,P);for(let b=0;b<V;b++)if(C[c*V+b])l-=C[c*V+b]*Math.log(P[b]);}return l/N;}
+  const LR=0.1;
+  function entrenar(){ // un paso de descenso de gradiente sobre todo el párrafo
+    for(let c=0;c<ctxs.length;c++){probs(c,P);for(let b=0;b<V;b++)W[c*V+b]-=LR*(R[c]*P[b]-C[c*V+b])/R[c];}
+    paso++;
+  }
+  function azar(sem){let s=sem>>>0;return()=>{s=(s+0x6D2B79F5)>>>0;let t=s;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
+  function generar(){
+    const r=azar(+$('#c4l2-sem').value);let s=TXT.slice(0,K),out='';
+    for(let i=0;i<110;i++){const c=preparar.mapa.get(s.slice(-K));let p;
+      if(c===undefined){p=new Float64Array(V).fill(1/V);}else{p=probs(c,new Float64Array(V));}
+      let u=r(),j=0;while(j<V-1&&u>p[j]){u-=p[j];j++;}
+      out+=CH[j];s+=CH[j];}
+    return TXT.slice(0,K)+out;
+  }
+  const dibujar=canvasWidget($('#c4l2-c'),w=>w<520?0.62:0.36,(ctx,w,h)=>{
+    if(!hist)return;
+    const F=frame(ctx,w,h,{x0:0,x1:1060,y0:0,y1:3.6,sx:200,sy:1});
+    curve(ctx,F,()=>Math.log(V),tok('--muted'),1.5,[5,4]);
+    F.clip();ctx.strokeStyle=tok('--c-tra');ctx.lineWidth=2.5;ctx.beginPath();
+    hist.forEach(([x,y],i)=>i?ctx.lineTo(F.X(x),F.Y(y)):ctx.moveTo(F.X(x),F.Y(y)));ctx.stroke();ctx.restore();
+    const [x,y]=hist[hist.length-1];dot(ctx,F.X(x),F.Y(y),tok('--c-tra'),5);
+  });
+  function mostrar(){
+    $('#c4l2-snaps').innerHTML=MARCAS.map(m=>snaps[m]!==undefined
+      ?'<div class="c4l2-s"><b>A los '+m+' pasos</b><p>'+snaps[m].replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</p></div>'
+      :'<div class="c4l2-s vacio"><b>A los '+m+' pasos</b><p>todavía no llega aquí</p></div>').join('');
+    const l=hist[hist.length-1][1];
+    const fase=paso<10?'Escribe letras al azar: cada una tiene la misma probabilidad.':paso<100?'Ya aprendió qué letras son frecuentes y que hay espacios, pero casi no forma palabras.':paso<1000?'Aparecen sílabas y palabras cortas que existen: «de», «la», «que», «el».':'Escribe trozos casi literales del párrafo: con tan poco texto, el modelo lo memoriza.';
+    $('#c4l2-out').innerHTML='<span>Paso <b>'+paso+'</b> · pérdida <b>'+fmt(l,3).replace('.',',')+'</b> nats · perplejidad <b>'+fmt(Math.exp(l),1).replace('.',',')+'</b> (al azar: '+V+' letras, ln V = '+fmt(Math.log(V),2).replace('.',',')+')</span><span>'+fase+'</span><span>Parámetros: '+(ctxs.length*V).toLocaleString('es')+' números, uno por cada par (contexto de '+K+' letra'+(K>1?'s':'')+', letra siguiente) visto en el texto.</span>';
+    dibujar();
+  }
+  function hasta(n){const meta=Math.min(1000,n);while(paso<meta){entrenar();if(paso%5===0||MARCAS.includes(paso))hist.push([paso,perdida()]);if(MARCAS.includes(paso))snaps[paso]=generar();}mostrar();}
+  $('#c4l2-b10').addEventListener('click',()=>hasta(paso+10));
+  $('#c4l2-b100').addEventListener('click',()=>hasta(paso+100));
+  $('#c4l2-b1000').addEventListener('click',()=>hasta(1000));
+  $('#c4l2-reset').addEventListener('click',()=>{preparar();mostrar();});
+  $('#c4l2-k').addEventListener('change',()=>{preparar();mostrar();});
+  $('#c4l2-sem').addEventListener('change',()=>{const p=paso;preparar();hasta(p);
+    // regenerar las muestras con la nueva semilla requiere reentrenar desde cero: hasta() ya lo hizo
+  });
+  preparar();mostrar();
+})();
+</script>
+<script>
+(function(){
+  const {$,tok,fmt,canvasWidget,frame,curve,dot}=window.Lab;
+  // Ajuste de Besiroglu et al. (2024) a los datos de Chinchilla: L = E + A/N^a + B/D^b
+  const E=1.8172,A=482.01,B=2085.43,a=0.3478,b=0.3658;
+  const L=(N,D)=>E+A/Math.pow(N,a)+B/Math.pow(D,b);
+  const G=Math.pow((a*A)/(b*B),1/(a+b));
+  const optimo=C=>{const N=G*Math.pow(C/6,b/(a+b));return [N,C/6/N];};
+  const FLOPS_GPU=4e14; // supuesto: una GPU de centro de datos a 400 billones de operaciones por segundo efectivas
+  let vista=1;
+  const es=x=>{ // número grande en palabras del español
+    if(x>=1e12)return fmt(x/1e12,x>=1e13?0:1).replace('.',',')+' billones';
+    if(x>=1e9)return fmt(x/1e9,x>=1e10?0:1).replace('.',',')+' mil millones';
+    if(x>=1e6)return fmt(x/1e6,0)+' millones';return Math.round(x).toLocaleString('es');};
+  const cient=x=>{const e=Math.floor(Math.log10(x));return fmt(x/Math.pow(10,e),1).replace('.',',')+'×10^'+e;};
+  const dibujar=canvasWidget($('#c4l1-c'),w=>w<520?0.75:0.45,(ctx,w,h)=>{
+    const N=Math.pow(10,+$('#c4l1-n').value),D=Math.pow(10,+$('#c4l1-d').value);
+    if(vista===1){
+      const F=frame(ctx,w,h,{x0:9,x1:13.5,y0:1.8,y1:3.4,sx:1,sy:0.2});
+      [8,9,10,11,12].forEach(e=>curve(ctx,F,x=>L(Math.pow(10,e),Math.pow(10,x)),tok('--grid'),1.5));
+      [8,9,10,11,12].forEach(e=>{const y=L(Math.pow(10,e),Math.pow(10,13.4));ctx.font='10px '+tok('--f-mono');ctx.fillStyle=tok('--muted');ctx.textAlign='right';ctx.fillText('10^'+e,F.X(13.45),F.Y(y)-7);});
+      curve(ctx,F,x=>L(N,Math.pow(10,x)),tok('--c-tra'),2.5);
+      curve(ctx,F,()=>E,tok('--muted'),1.2,[5,4]);
+      dot(ctx,F.X(Math.log10(D)),F.Y(L(N,D)),tok('--warm'),6);
+      ctx.fillStyle=tok('--muted');ctx.font='11px '+tok('--f-mono');ctx.textAlign='left';ctx.fillText('log10 de los tokens D',F.p.l+4,F.p.t+10);ctx.fillText('piso E = 1,82',F.p.l+4,F.Y(E)-8);
+      $('#c4l1-ley').innerHTML='<span><i style="background:var(--c-tra)"></i>tu modelo (N fijo, más datos)</span><span><i style="background:var(--grid)"></i>otros tamaños: 10^8 a 10^12 parámetros</span><span><i style="background:var(--warm)"></i>tu punto</span>';
+    }else{
+      const C=6*N*D;const F=frame(ctx,w,h,{x0:8,x1:12,y0:1.8,y1:3.4,sx:0.5,sy:0.2});
+      curve(ctx,F,x=>{const n=Math.pow(10,x);return L(n,C/6/n);},tok('--c-tra'),2.5);
+      const [No,Do]=optimo(C);
+      dot(ctx,F.X(Math.log10(No)),F.Y(L(No,Do)),tok('--good'),6);
+      dot(ctx,F.X(Math.log10(N)),F.Y(L(N,D)),tok('--warm'),6);
+      ctx.fillStyle=tok('--muted');ctx.font='11px '+tok('--f-mono');ctx.textAlign='left';ctx.fillText('log10 de los parámetros N (C = 6·N·D fijo)',F.p.l+4,F.p.t+10);
+      $('#c4l1-ley').innerHTML='<span><i style="background:var(--c-tra)"></i>mismo cómputo repartido de otra forma</span><span><i style="background:var(--good)"></i>reparto óptimo</span><span><i style="background:var(--warm)"></i>tu reparto</span>';
+    }
+  });
+  function leer(){
+    const N=Math.pow(10,+$('#c4l1-n').value),D=Math.pow(10,+$('#c4l1-d').value);
+    $('#c4l1-n-o').textContent=es(N);$('#c4l1-d-o').textContent=es(D);
+    const C=6*N*D,[No,Do]=optimo(C),dias=C/FLOPS_GPU/86400;
+    const r=D/N,l=L(N,D),lo=L(No,Do);
+    const juicio=r<10?'<span class="warn">Pocos datos para tanto modelo: con el mismo cómputo, un modelo más pequeño entrenado con más tokens llegaría a menor pérdida.</span>'
+      :r>60?'<span class="warn">Muchos más tokens que el óptimo para este cómputo: la pérdida es algo mayor, pero el modelo es pequeño y barato de usar. Es la elección de muchos modelos abiertos recientes.</span>'
+      :'<span class="ok">Reparto cercano al óptimo: unos 20 tokens por parámetro.</span>';
+    $('#c4l1-out').innerHTML='<span class="big">Pérdida predicha: '+fmt(l,3).replace('.',',')+' nats por token</span>'+
+      '<span>Cómputo: C ≈ 6·N·D = '+cient(C)+' operaciones · '+fmt(r,r<10?1:0).replace('.',',')+' tokens por parámetro</span>'+
+      '<span>Con '+cient(FLOPS_GPU)+' operaciones por segundo por GPU: '+Math.round(dias).toLocaleString('es')+' días-GPU, o '+fmt(Math.max(dias/1000,0.01),1).replace('.',',')+' días con 1.000 GPU.</span>'+
+      '<span>Mismo cómputo, reparto óptimo: '+es(No)+' de parámetros y '+es(Do)+' de tokens → pérdida '+fmt(lo,3).replace('.',',')+'.</span>'+juicio;
+    dibujar();
+  }
+  ['#c4l1-n','#c4l1-d'].forEach(s=>$(s).addEventListener('input',leer));
+  document.querySelectorAll('[id="04-lab-1"] [data-n]').forEach(btn=>btn.addEventListener('click',()=>{
+    $('#c4l1-n').value=Math.log10(+btn.dataset.n);$('#c4l1-d').value=Math.min(13.5,Math.log10(+btn.dataset.d));leer();}));
+  const v1=$('#c4l1-v1'),v2=$('#c4l1-v2');
+  v1.addEventListener('click',()=>{vista=1;v1.setAttribute('aria-pressed','true');v2.setAttribute('aria-pressed','false');leer();});
+  v2.addEventListener('click',()=>{vista=2;v2.setAttribute('aria-pressed','true');v1.setAttribute('aria-pressed','false');leer();});
+  leer();
+})();
+</script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  const P=['¿De qué color es el cielo?','Escribe un correo para pedir un día libre.'];
+  const ENV=[p=>p,p=>'Pregunta: ¿Cuál es la capital de Chile?\nRespuesta: Santiago.\n\nPregunta: '+p+'\nRespuesta:',
+    p=>'<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n'+p+'<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n'];
+  // Salidas ilustrativas, escritas para el curso a partir del comportamiento típico de cada tipo de modelo
+  const BASE=[
+    [['\n¿Por qué el cielo es azul de día y rojo al atardecer?\n¿Qué es la dispersión de Rayleigh?\n¿Por qué de noche el cielo es negro?\n\nPreguntas frecuentes sobre la atmósfera — Capítulo 3…','Continúa el texto como si fuera una página de preguntas frecuentes. No responde: imita el tipo de documento donde suele aparecer una pregunta así.'],
+     [' Azul, porque la atmósfera dispersa más la luz azul del Sol que la roja.\n\nPregunta: ¿Por qué el mar es salado?\nRespuesta: Porque los ríos…','Responde bien, porque el formato del documento pide una respuesta. Pero no sabe cuándo parar: inventa la pregunta siguiente.'],
+     ['assistant<|end_header_id|>\n\nuser\n¿Y el mar?<|eot_id|>user\n¿De qué color es el cielo?…','Los tokens especiales le resultan extraños: nunca los vio en ese orden durante el preentrenamiento. La salida es errática.']],
+    [['\nEscribe un correo para pedir un aumento.\nEscribe un correo para renunciar.\nEscribe una carta de presentación.\n\nEjercicios de redacción para la unidad 4. Tiempo estimado: 45 minutos.','Lo toma como una línea de una lista de ejercicios y sigue la lista.'],
+     [' Asunto: Solicitud de día libre\n\nEstimado Sr. Pérez:\nPor medio de la presente le solicito el día viernes 14…\n\nPregunta: Escribe un correo para pedir un aumento.\nRespuesta:','Escribe el correo porque el documento lo pide, y después sigue con otra pregunta inventada.'],
+     ['<|start_header_id|>user<|end_header_id|>\n\nEscribe un correo para pedir un día libre.<|eot_id|><|start_header_id|>…','Repite la estructura en lugar de responder: no aprendió qué significa ese formato.']]];
+  const CHAT=[
+    ['El cielo se ve azul durante el día porque la atmósfera dispersa más la luz azul del Sol que la de otros colores. Al atardecer puede verse naranja o rojo, y de noche, casi negro.','Aunque el texto esté suelto, responde: el ajuste le enseñó que un texto así es un pedido.'],
+    ['Azul. Durante el día, la atmósfera dispersa más la luz azul del Sol que los demás colores.','Sigue el formato del documento y se detiene al terminar la respuesta.'],
+    ['El cielo es azul durante el día, porque la atmósfera dispersa más la luz azul del Sol. Al atardecer se ve naranja o rojo y, de noche, oscuro.<|eot_id|>','Es el formato en que fue entrenado. Termina con el token especial de fin de turno, y el programa deja de generar.']];
+  const CHAT2=[
+    ['Asunto: Solicitud de día libre\n\nHola, [nombre]:\nTe escribo para pedirte el viernes [fecha] como día libre. Dejaré mis pendientes al día y [compañero] puede cubrir lo urgente.\n\nGracias,\n[tu nombre]','Entiende el pedido y deja espacios para completar.'],
+    [' Asunto: Solicitud de día libre\n\nHola, [nombre]:\nTe escribo para pedirte el viernes [fecha] como día libre…\n\nGracias,\n[tu nombre]','Escribe el correo y se detiene.'],
+    ['Asunto: Solicitud de día libre\n\nHola, [nombre]:\nTe escribo para pedirte el viernes [fecha] como día libre. Dejaré mis pendientes al día.\n\nGracias,\n[tu nombre]<|eot_id|>','Responde y cierra el turno con el token de fin.']];
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/(&lt;\|[a-z_]+\|>)/g,'<em>$1</em>');
+  function leer(){
+    const p=+$('#c4l3-p').value,f=+$('#c4l3-f').value;
+    $('#c4l3-ve').innerHTML=esc(ENV[f](P[p]));
+    const [tb,nb]=BASE[p][f],[tc,nc]=(p===0?CHAT:CHAT2)[f];
+    $('#c4l3-base').innerHTML=esc(tb);$('#c4l3-nb').textContent=nb;
+    $('#c4l3-chat').innerHTML=esc(tc);$('#c4l3-nc').textContent=nc;
+    $('#c4l3-out').innerHTML=f===1?'<span class="ok">Con un documento que «pide» una respuesta, el modelo base también responde: sabe la respuesta, le falta saber que debe darla y cuándo parar.</span>'
+      :f===2?'<span>La plantilla de chat usa tokens especiales (en gris). El modelo de chat los conoce porque los vio miles de veces en el ajuste fino; el modelo base no.</span>'
+      :'<span class="warn">El modelo base completa el documento más probable; el de chat responde. Los dos se preentrenaron igual: la diferencia está en el ajuste del capítulo 5.</span>';
+  }
+  ['#c4l3-p','#c4l3-f'].forEach(s=>$(s).addEventListener('change',leer));
+  leer();
+})();
+</script>
+</body>
+</html>

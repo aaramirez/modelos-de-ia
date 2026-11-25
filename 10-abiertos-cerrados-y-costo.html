@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Abiertos, cerrados y costo · Modelos de IA · Modelos de IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Cómo funciona por dentro un modelo de lenguaje: tokens, embeddings, atención y el Transformer, cómo se entrena y se alinea, cómo genera y razona, y cómo se evalúa y se elige.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="abiertos-cerrados-y-costo">
+<header class="topbar"><a class="brand" href="index.html">Modelos de <b>IA</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 10 DE 10</span><h1>Modelos abiertos y cerrados, tamaños, cuantización y costo</h1><p class="lede">Elegir un modelo no es elegir el que encabeza la tabla: es elegir cuánto control quieres, cuánta memoria tienes, cuánto puedes esperar y cuánto puedes pagar por cada token. Este capítulo hace las cuentas por dentro: cuánto ocupa un modelo, qué se pierde al guardarlo con menos bits, cómo una mezcla de expertos tiene muchos parámetros y usa pocos, y por qué la velocidad depende más de la memoria que del cálculo.</p></header>
+<section><h2>Cerrados por API y abiertos con sus pesos: qué gana y qué pierde cada uno</h2><div class="prose"><p>Llegaste al final del recorrido. «¿De qué color es el cielo?» ya se tokenizó, se volvió vectores, pasó por las capas de atención, salió muestreada token por token como «El cielo es azul.» y, en el capítulo anterior, aprendiste a medir qué tan bien responde un modelo. Queda la decisión práctica: <b>qué modelo usar, dónde correrlo y cuánto cuesta</b>.</p></div><div class="analogia"><b>Imagínalo así</b><p>Para moverte por la ciudad puedes tomar un taxi o comprar un carro. El taxi no te pide mantenimiento ni estacionamiento, siempre es un modelo reciente y pagas por kilómetro; pero no eliges la ruta del conductor, el precio lo fija otro y un día la empresa puede retirar el servicio. El carro propio cuesta aunque esté parado, lo mantienes tú y envejece; a cambio, lo usas a cualquier hora, lo modificas y nadie sabe a dónde vas. Si viajas poco, el taxi gana; si viajas todo el día, el carro.</p></div><div class="prose"><p>Un <b>modelo cerrado</b> (<i>closed model</i>, o propietario) solo se usa a través de la <b>API</b> (<i>Application Programming Interface</i>, interfaz de programación) de quien lo entrenó: tu programa envía el texto por la red y recibe la respuesta, sin ver nunca los pesos. Un <b>modelo de pesos abiertos</b> (<i>open-weight model</i>) publica sus <b>pesos</b> (<i>weights</i>), los millones o miles de millones de números que aprendió en el entrenamiento, para que cualquiera los descargue y los corra en su propio equipo.</p><div class="tbl"><table><thead><tr><th></th><th>Cerrado por API</th><th>Abierto con sus pesos</th></tr></thead><tbody><tr><td>Calidad en la frontera</td><td>Suele estar al frente</td><td>Detrás, a una distancia que se ha acortado a meses</td></tr><tr><td>Cómo se paga</td><td>Por token, sin costo fijo</td><td>Por el equipo (GPU, servidor), lo uses o no</td></tr><tr><td>Datos</td><td>Salen hacia el proveedor, según su contrato</td><td>Pueden no salir nunca de tu red</td></tr><tr><td>Personalizar</td><td>Lo que permita la API</td><td>Ajuste fino, cuantización, destilación, lo que quieras</td></tr><tr><td>Estabilidad</td><td>El proveedor actualiza o retira versiones</td><td>La versión que descargaste no cambia</td></tr><tr><td>Operación</td><td>Nada que mantener</td><td>Servidores, monitoreo, actualizaciones: todo tuyo</td></tr></tbody></table></div><p>La distancia entre los mejores abiertos y los mejores cerrados cambia rápido: un análisis de <a href="https://epoch.ai/blog/open-models-report" target="_blank" rel="noopener">Epoch AI</a> de 2024 la estimaba en alrededor de un año, y en 2025 y 2026 varios modelos abiertos quedaron muy cerca de la frontera en muchas tareas. Para decidir, vale lo del capítulo anterior: medir los candidatos en tu caso.</p><p>Una aclaración: <b>pesos abiertos no es lo mismo que código abierto</b> (<i>open source</i>). La definición de la Open Source Initiative (octubre de 2024) pide además el código de entrenamiento y suficiente información sobre los datos para reproducir el modelo. La mayoría de los «abiertos» publican solo los pesos; unos pocos, como la familia OLMo, también los datos y el código.</p></div></section>
+<section><h2>Licencias de modelos abiertos</h2><div class="prose"><p>Que los pesos se puedan descargar no significa que puedas hacer cualquier cosa con ellos. Cada modelo trae una <b>licencia</b> (<i>license</i>) que dice qué está permitido, y las hay de tres tipos:</p><ul><li><b>Licencias permisivas de software</b>, como Apache 2.0 o MIT: permiten uso comercial, modificar y redistribuir, con la obligación de conservar el aviso de la licencia. Varios modelos de Mistral, de Qwen y de DeepSeek se publicaron así (cada modelo de una familia puede tener su propia licencia: hay que mirar la del tamaño exacto que usas).</li><li><b>Licencias comunitarias propias</b> del laboratorio, como la de Llama o los términos de Gemma: permiten uso comercial, pero con condiciones. La de Llama, por ejemplo, exige una licencia aparte a quien supere 700 millones de usuarios mensuales, pide mencionar que el producto está construido con Llama e incluye una política de usos prohibidos.</li><li><b>Licencias no comerciales o de investigación</b>: sirven para probar y estudiar, no para un producto.</li></ul><p>Antes de elegir un modelo abierto para un producto, revisa cinco puntos en su licencia: <b>uso comercial</b>, <b>límites por tamaño de la empresa o número de usuarios</b>, <b>usos prohibidos</b>, <b>si puedes usar sus salidas para entrenar otros modelos</b> y <b>qué obligaciones de atribución o de nombre</b> tienen los modelos derivados. La licencia viene en el archivo <code>LICENSE</code> del repositorio de pesos y en la ficha del modelo (<i>model card</i>). Las preguntas legales de fondo (derechos de autor de los datos con que se entrenó) están en <a href="https://aaramirez.github.io/ia-responsable/temario.html" target="_blank" rel="noopener">IA responsable</a>.</p></div></section>
+<section><h2>Parámetros y memoria: cuánto ocupa un modelo</h2><div class="prose"><p>La primera cuenta para elegir es si el modelo <b>cabe</b>. La regla es simple: cada parámetro es un número, y cada número ocupa una cantidad fija de bits.</p><p><b>memoria de los pesos = parámetros × bits por parámetro ÷ 8</b></p><p>Empecemos por Colibrí: 32 tokens, vectores de 4 números, 2 capas con 2 cabezas de 2 dimensiones y un contexto de 16 tokens. Su tabla de embeddings tiene 32 × 4 = 128 números, y la capa de salida reutiliza esa misma tabla. Cada capa suma 64 en la atención (las matrices de consultas, claves, valores y salida, de 4 × 4) y, si su red densa tiene 16 neuronas, como es costumbre (cuatro veces la dimensión), 128 más, junto con unos pocos de normalización. En total, unos 530 parámetros: en 16 bits, poco más de 1 KB; en 4 bits, unos 300 bytes. Un modelo de 8.000 millones de parámetros (8B, de <i>billion</i>, mil millones en inglés) guardado en 16 bits, que son 2 bytes, ocupa 8 × 2 = <b>16 GB</b>: la misma cuenta, con quince millones de veces más números. Ese es el formato en que se entrenan y se publican casi todos: <b>BF16</b> (<i>brain floating point</i>), un número de 16 bits que guarda el mismo rango que uno de 32 bits con menos precisión.</p><p>Pero los pesos no son lo único en la memoria. Recuerda la <b>caché de claves y valores</b> (<i>KV cache</i>) del capítulo 6: para no recalcular la atención de todo el texto anterior en cada token nuevo, el modelo guarda las claves y los valores de cada token, en cada capa. Su tamaño crece con el contexto:</p><p><b>caché KV = 2 (clave y valor) × capas × cabezas de clave y valor × dimensión por cabeza × bytes × tokens</b></p><p>Con los números públicos de Llama 3 8B (32 capas, 8 cabezas de clave y valor, 128 dimensiones por cabeza) y 2 bytes por número, cada token ocupa 2 × 32 × 8 × 128 × 2 = 131.072 bytes, es decir, <b>128 KB por token</b>. Un contexto de 8.000 tokens suma 1 GB; uno de 128.000 tokens, 16 GB: tanto como el modelo entero. Y la caché es <b>por conversación</b>: si el servidor atiende a 10 personas a la vez, son 10 cachés.</p></div><div class="analogia"><b>Imagínalo así</b><p>Los pesos son la biblioteca de un abogado: ocupan los mismos estantes atienda a uno o a cien clientes. La caché KV es el escritorio con los papeles de cada caso abierto: crece con cada página que el cliente trae, y hay un escritorio por cliente. Una oficina se queda sin espacio por los escritorios mucho antes que por la biblioteca.</p></div><div class="prose"><p>Por eso los modelos actuales usan <b>atención con consultas agrupadas</b> (<i>grouped-query attention</i>, GQA): en Llama 3 8B, 32 cabezas de consulta comparten 8 de clave y valor, y la caché ocupa cuatro veces menos.</p></div><figure class="fig fig-comparacion" id="10-diagrama-1"><div class="lienzo"><svg viewBox="0 0 960 340" style="min-width:760px" role="img" aria-label="Memoria que necesita un modelo de 8.000 millones de parámetros en cuatro configuraciones. En 16 bits con 8.000 tokens de contexto: 16 GB de pesos, 1 de caché y 1 de margen, 18 GB. En 16 bits con 128.000 tokens: la caché sube a 16 GB y el total a 33 GB. En 8 bits: unos 10,5 GB. En 4 bits: unos 6,8 GB. Líneas verticales marcan un teléfono de 8 GB, una portátil de 16 GB y una GPU de escritorio de 24 GB; una GPU de centro de datos de 80 GB aloja todas.">
+<text x="16" y="24" class="t t-xs t-b t-m">UN MODELO DE 8B · LO QUE TIENE QUE CABER</text>
+<line x1="356.0" y1="52" x2="356.0" y2="262" class="ln s-warm" style="stroke-dasharray:5 4"/>
+<text x="360.0" y="48" class="t t-s k-warm">teléfono · 8 GB</text>
+<line x1="492.0" y1="52" x2="492.0" y2="262" class="ln s-warm" style="stroke-dasharray:5 4"/>
+<text x="496.0" y="48" class="t t-s k-warm">portátil · 16 GB</text>
+<line x1="628.0" y1="52" x2="628.0" y2="262" class="ln s-warm" style="stroke-dasharray:5 4"/>
+<text x="632.0" y="48" class="t t-s k-warm">GPU de escritorio · 24 GB</text>
+<text x="16" y="78" class="t t-b">16 bits</text>
+<text x="16" y="94" class="t t-s t-m">contexto de 8.000 tokens</text>
+<rect x="220.0" y="66" width="272.0" height="30" rx="4" class="c-tra"/>
+<rect x="492.0" y="66" width="17.0" height="30" rx="4" class="c-red"/>
+<rect x="509.0" y="66" width="17.0" height="30" rx="4" class="caja" style="stroke-dasharray:3 2"/>
+<text x="534.0" y="86" class="t t-b t-mono">18 GB</text>
+<text x="228.0" y="86" class="t t-s">pesos 16 GB</text>
+<text x="16" y="130" class="t t-b">16 bits</text>
+<text x="16" y="146" class="t t-s t-m">contexto de 128.000 tokens</text>
+<rect x="220.0" y="118" width="272.0" height="30" rx="4" class="c-tra"/>
+<rect x="492.0" y="118" width="272.0" height="30" rx="4" class="c-red"/>
+<rect x="764.0" y="118" width="17.0" height="30" rx="4" class="caja" style="stroke-dasharray:3 2"/>
+<text x="789.0" y="138" class="t t-b t-mono">33 GB</text>
+<text x="228.0" y="138" class="t t-s">pesos 16 GB</text>
+<text x="500.0" y="138" class="t t-s">caché KV 16 GB</text>
+<text x="16" y="182" class="t t-b">8 bits</text>
+<text x="16" y="198" class="t t-s t-m">contexto de 8.000 tokens</text>
+<rect x="220.0" y="170" width="144.5" height="30" rx="4" class="c-tra"/>
+<rect x="364.5" y="170" width="17.0" height="30" rx="4" class="c-red"/>
+<rect x="381.5" y="170" width="17.0" height="30" rx="4" class="caja" style="stroke-dasharray:3 2"/>
+<text x="406.5" y="190" class="t t-b t-mono">10,5 GB</text>
+<text x="228.0" y="190" class="t t-s">pesos 8,5 GB</text>
+<text x="16" y="234" class="t t-b">4 bits*</text>
+<text x="16" y="250" class="t t-s t-m">contexto de 8.000 tokens</text>
+<rect x="220.0" y="222" width="81.6" height="30" rx="4" class="c-tra"/>
+<rect x="301.6" y="222" width="17.0" height="30" rx="4" class="c-red"/>
+<rect x="318.6" y="222" width="17.0" height="30" rx="4" class="caja" style="stroke-dasharray:3 2"/>
+<text x="362" y="242" class="t t-b t-mono">6,8 GB</text>
+<line x1="220.0" y1="262" x2="900.0" y2="262" class="ln"/>
+<line x1="220.0" y1="262" x2="220.0" y2="267" class="ln"/><text x="220.0" y="281" class="t t-s t-m" text-anchor="middle">0 GB</text>
+<line x1="356.0" y1="262" x2="356.0" y2="267" class="ln"/><text x="356.0" y="281" class="t t-s t-m" text-anchor="middle">8 GB</text>
+<line x1="492.0" y1="262" x2="492.0" y2="267" class="ln"/><text x="492.0" y="281" class="t t-s t-m" text-anchor="middle">16 GB</text>
+<line x1="628.0" y1="262" x2="628.0" y2="267" class="ln"/><text x="628.0" y="281" class="t t-s t-m" text-anchor="middle">24 GB</text>
+<line x1="764.0" y1="262" x2="764.0" y2="267" class="ln"/><text x="764.0" y="281" class="t t-s t-m" text-anchor="middle">32 GB</text>
+<line x1="900.0" y1="262" x2="900.0" y2="267" class="ln"/><text x="900.0" y="281" class="t t-s t-m" text-anchor="middle">40 GB</text>
+<rect x="16" y="304" width="14" height="14" rx="3" class="c-tra"/><text x="36" y="316" class="t t-s">pesos</text>
+<rect x="96" y="304" width="14" height="14" rx="3" class="c-red"/><text x="116" y="316" class="t t-s">caché KV (claves y valores)</text>
+<rect x="290" y="304" width="14" height="14" rx="3" class="caja" style="stroke-dasharray:3 2"/><text x="310" y="316" class="t t-s">margen de trabajo</text>
+<text x="440" y="316" class="t t-s t-m">* unos 4,8 bits por peso con las escalas · una GPU de 80 GB aloja todas las filas</text>
+</svg></div><figcaption><b>Lo que tiene que caber en la memoria.</b> Cada barra es el mismo modelo de 8B en una configuración distinta: los pesos (violeta) en 16, 8 y unos 4,8 bits, la caché KV (azul) de un contexto de 8.000 o de 128.000 tokens y un margen de trabajo. Las líneas verticales marcan la memoria típica de un teléfono, una portátil y una GPU de escritorio. Se lee buscando dónde termina cada barra: lo que pasa una línea no cabe en ese equipo. Fíjate en la segunda fila: con un contexto largo, la caché pesa tanto como el modelo.</figcaption></figure><div class="prose"><p>Entrenar pide mucho más: con los gradientes y el estado del optimizador Adam, unos 16 bytes por parámetro, o 128 GB para el mismo modelo de 8B. Por eso atrae LoRA, del capítulo 5.</p></div><div class="lab" id="10-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>La calculadora de memoria y costo</h3></div><p class="hint">Elige un modelo de arquitectura pública (uno es una mezcla de expertos), la precisión de los pesos y de la caché, el equipo, el contexto y cuántas conversaciones atiende a la vez. Mira la barra de memoria contra la del equipo, cuántos equipos hacen falta, los tokens por segundo que permite su ancho de banda y el costo por millón de tokens según el precio por hora y las horas con trabajo.</p><style>
+[id="10-lab-1"] .c10l1-g{display:grid;gap:4px}
+[id="10-lab-1"] .c10l1-g>span{font:700 .72rem var(--f-display);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+[id="10-lab-1"] .c10l1-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,128px),1fr));gap:8px}
+[id="10-lab-1"] .c10l1-k{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper)}
+[id="10-lab-1"] .c10l1-k span{display:block;font:600 .74rem var(--f-display);color:var(--muted)}
+[id="10-lab-1"] .c10l1-k output{font:700 1.15rem var(--f-mono);color:var(--ink)}
+[id="10-lab-1"] .c10l1-k.mal output{color:var(--warm)}
+[id="10-lab-1"] .c10l1-k.bien output{color:var(--good)}
+[id="10-lab-1"] canvas{width:100%;display:block}
+</style>
+<div class="c10l1-g"><span>Modelo (arquitectura pública)</span>
+<div class="btns" role="group" aria-label="Modelo" id="c10l1-m">
+  <button type="button" data-m="l3" aria-pressed="false">Llama 3.2 3B</button>
+  <button type="button" data-m="q7" aria-pressed="false">Qwen2.5 7B</button>
+  <button type="button" data-m="l8" aria-pressed="true">Llama 3 8B</button>
+  <button type="button" data-m="mx" aria-pressed="false">Mixtral 8x7B (expertos)</button>
+  <button type="button" data-m="l70" aria-pressed="false">Llama 3 70B</button>
+</div></div>
+<div class="opciones">
+  <label>Pesos
+    <select id="c10l1-w"><option value="16">16 bits (BF16)</option><option value="8.5">8 bits (Q8_0, 8,5 bits por peso)</option><option value="4.8" selected>4 bits (Q4_K_M, unos 4,8 bits por peso)</option></select></label>
+  <label>Caché KV
+    <select id="c10l1-kv"><option value="16" selected>16 bits</option><option value="8">8 bits</option></select></label>
+  <label>Equipo
+    <select id="c10l1-eq">
+      <option value="tel">Teléfono · 8 GB · 60 GB/s</option>
+      <option value="p16">Portátil · 16 GB · 100 GB/s</option>
+      <option value="m64">Portátil con memoria unificada · 64 GB · 400 GB/s</option>
+      <option value="g24" selected>GPU de escritorio · 24 GB · 1.000 GB/s</option>
+      <option value="g80">GPU de centro de datos · 80 GB · 3.350 GB/s</option>
+    </select></label>
+</div>
+<div class="ctls">
+  <label class="ctl">Contexto por conversación <output id="c10l1-c-o"></output>
+    <input id="c10l1-c" type="range" min="0" max="7" step="1" value="3" aria-label="Contexto por conversación"></label>
+  <label class="ctl">Conversaciones a la vez <output id="c10l1-n-o"></output>
+    <input id="c10l1-n" type="range" min="1" max="64" step="1" value="1" aria-label="Conversaciones a la vez"></label>
+  <label class="ctl">Precio del equipo por hora <output id="c10l1-p-o"></output>
+    <input id="c10l1-p" type="range" min="0.1" max="8" step="0.1" value="2" aria-label="Precio del equipo por hora"></label>
+  <label class="ctl">Horas con trabajo (uso) <output id="c10l1-u-o"></output>
+    <input id="c10l1-u" type="range" min="5" max="100" step="5" value="50" aria-label="Porcentaje de uso"></label>
+</div>
+<canvas id="c10l1-mem" role="img" aria-label="Barra de memoria: pesos, caché y margen frente a la memoria del equipo"></canvas>
+<div class="legend"><span><i style="background:var(--c-tra)"></i>pesos</span><span><i style="background:var(--c-red)"></i>caché KV</span><span><i style="background:var(--muted)"></i>margen de trabajo</span><span><i style="background:var(--warm)"></i>memoria de cada equipo</span></div>
+<canvas id="c10l1-tp" role="img" aria-label="Tokens por segundo según cuántas conversaciones se atienden a la vez"></canvas>
+<div class="legend"><span><i style="background:var(--accent)"></i>tokens por segundo del equipo (todas las conversaciones)</span><span><i style="background:var(--c-apl)"></i>tokens por segundo de cada conversación</span></div>
+<div class="c10l1-kpis">
+  <div class="c10l1-k"><span>Memoria total</span><output id="c10l1-k1"></output></div>
+  <div class="c10l1-k" id="c10l1-kb2"><span>Equipos necesarios</span><output id="c10l1-k2"></output></div>
+  <div class="c10l1-k"><span>Tokens/s por conversación</span><output id="c10l1-k3"></output></div>
+  <div class="c10l1-k"><span>Tokens/s del equipo</span><output id="c10l1-k4"></output></div>
+  <div class="c10l1-k"><span>US$ por millón de tokens</span><output id="c10l1-k5"></output></div>
+</div>
+<div class="readout texto" id="c10l1-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Calcula la memoria de un modelo real desde su configuración</h3></div><p>Todo modelo publicado en Hugging Face trae un archivo <code>config.json</code> con su arquitectura. Este script lo descarga (es público y no pide cuenta) y calcula los pesos y la caché KV. Solo usa la biblioteca estándar de Python.</p><div class="code-copia"><pre><code>import json, urllib.request
+
+URL = "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/resolve/main/config.json"
+c = json.load(urllib.request.urlopen(URL))
+
+capas = c["num_hidden_layers"]
+cabezas_kv = c["num_key_value_heads"]
+dim_cabeza = c["hidden_size"] // c["num_attention_heads"]
+print("capas:", capas, "| cabezas KV:", cabezas_kv, "| dimensión por cabeza:", dim_cabeza)
+print("contexto máximo:", c["max_position_embeddings"], "tokens")
+
+params = 7.6e9  # dato de la ficha del modelo
+for bits in (16, 8, 4):
+    print(f"pesos en {bits} bits: {params * bits / 8 / 1e9:.1f} GB")
+
+por_token = 2 * capas * cabezas_kv * dim_cabeza * 2  # bytes, en 16 bits
+print(f"caché KV: {por_token / 1024:.0f} KB por token")
+for tokens in (4096, 32768):
+    print(f"  {tokens} tokens: {por_token * tokens / 1024**3:.2f} GB")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><p>Guárdalo como <code>memoria.py</code> y córrelo:</p><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python memoria.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 memoria.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Compara la caché por token con los 128 KB de Llama 3 8B del texto.</span></li><li><span>Cambia la URL por la de otro modelo público (en su página, pestaña <i>Files</i>, abre <code>config.json</code> y copia el enlace) y ajusta <code>params</code> con el dato de su ficha.</span></li><li><span>Si tienes Ollama con el modelo del capítulo 1, corre <code>ollama show llama3.2:1b</code> y mira su arquitectura, su contexto y su cuantización.</span></li></ol><p><b>Qué observar:</b> este modelo tiene 28 capas pero solo 4 cabezas de clave y valor, así que su caché ocupa 56 KB por token, menos de la mitad que la de Llama 3 8B aunque los dos tengan un tamaño parecido. La arquitectura, no solo el número de parámetros, decide cuánta memoria pide un contexto largo.</p></div></section>
+<section><h2>Cuantización: de 16 a 8 y 4 bits</h2><div class="prose"><p>Si el modelo no cabe, la herramienta principal es la <b>cuantización</b> (<i>quantization</i>): guardar cada peso con menos bits. En lugar de un número de 16 bits con miles de valores posibles, se guarda un entero de 8 bits (256 valores) o de 4 bits (solo 16 valores), y una <b>escala</b> (<i>scale</i>) que dice cuánto vale cada escalón.</p></div><div class="analogia"><b>Imagínalo así</b><p>Una paleta de pintura con miles de tonos frente a una caja de 16 lápices de colores. Con 16 lápices bien elegidos, un retrato se reconoce perfectamente; lo que se pierde son los degradados finos. Y si el dibujo tiene un solo punto de un color muy extremo, desperdiciar un lápiz en él deja menos lápices para todo lo demás.</p></div><div class="prose"><p>La receta más simple, la <b>cuantización por máximo absoluto</b> (<i>absmax</i>), funciona así para 8 bits: se busca el peso de mayor valor absoluto del grupo, se define la escala como ese máximo dividido entre 127, y cada peso se guarda como el entero más cercano a peso ÷ escala. Si el máximo es 0,8, la escala es 0,0063; el peso 0,31 se guarda como 49, y al volver da 0,3087: un error de 0,0013. Con 4 bits solo hay enteros de −7 a 7, la escala es 0,8 ÷ 7 = 0,114, y el mismo peso se guarda como 3 y vuelve como 0,343: un error 25 veces mayor.</p></div><figure class="fig fig-esquema" id="10-diagrama-2"><div class="lienzo"><svg viewBox="0 0 960 430" style="min-width:760px" role="img" aria-label="Cuantizar es redondear a una escalera. Doce pesos de un bloque, entre menos 0,62 y 0,8. Con 8 bits hay 255 escalones y cada peso cae casi en su lugar: error medio 0,001. Con 4 bits hay 15 escalones de 0,114 y cada peso se corre hasta el más cercano: error medio 0,031. Si el bloque tiene un valor atípico de 3,2, la escala se estira a 0,457 y los doce pesos se amontonan en cuatro escalones del centro: error medio 0,129.">
+<defs><marker id="m10d2-w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-warm"/></marker></defs>
+<text x="16" y="24" class="t t-xs t-b t-m">① LOS PESOS ORIGINALES DE UN BLOQUE (16 BITS)</text>
+<line x1="55.0" y1="56" x2="905.0" y2="56" class="ln"/>
+<line x1="80.0" y1="52" x2="80.0" y2="60" class="ln"/><text x="80.0" y="76" class="t t-s t-m" text-anchor="middle">-0,8</text>
+<line x1="280.0" y1="52" x2="280.0" y2="60" class="ln"/><text x="280.0" y="76" class="t t-s t-m" text-anchor="middle">-0,4</text>
+<line x1="480" y1="52" x2="480" y2="60" class="ln"/><text x="480" y="76" class="t t-s t-m" text-anchor="middle">0</text>
+<line x1="680.0" y1="52" x2="680.0" y2="60" class="ln"/><text x="680.0" y="76" class="t t-s t-m" text-anchor="middle">0,4</text>
+<line x1="880.0" y1="52" x2="880.0" y2="60" class="ln"/><text x="880.0" y="76" class="t t-s t-m" text-anchor="middle">0,8</text>
+<circle cx="170.0" cy="56" r="5" class="k-tra"/>
+<circle cx="275.0" cy="56" r="5" class="k-tra"/>
+<circle cx="345.0" cy="56" r="5" class="k-tra"/>
+<circle cx="420.0" cy="56" r="5" class="k-tra"/>
+<circle cx="455.0" cy="56" r="5" class="k-tra"/>
+<circle cx="495.0" cy="56" r="5" class="k-tra"/>
+<circle cx="550.0" cy="56" r="5" class="k-tra"/>
+<circle cx="590.0" cy="56" r="5" class="k-tra"/>
+<circle cx="635.0" cy="56" r="5" class="k-tra"/>
+<circle cx="715.0" cy="56" r="5" class="k-tra"/>
+<circle cx="770.0" cy="56" r="5" class="k-tra"/>
+<circle cx="880.0" cy="56" r="5" class="k-tra"/>
+<text x="892.0" y="52" class="t t-s">máximo 0,8:</text><text x="892.0" y="66" class="t t-s">fija la escala</text>
+<text x="16" y="108" class="t t-xs t-b t-m">② 8 BITS: 255 ESCALONES DE 0,0063</text>
+<path d="M80.0 128V140M83.1 128V140M86.3 128V140M89.4 128V140M92.6 128V140M95.7 128V140M98.9 128V140M102.0 128V140M105.2 128V140M108.3 128V140M111.5 128V140M114.6 128V140M117.8 128V140M120.9 128V140M124.1 128V140M127.2 128V140M130.4 128V140M133.5 128V140M136.7 128V140M139.8 128V140M143.0 128V140M146.1 128V140M149.3 128V140M152.4 128V140M155.6 128V140M158.7 128V140M161.9 128V140M165.0 128V140M168.2 128V140M171.3 128V140M174.5 128V140M177.6 128V140M180.8 128V140M183.9 128V140M187.1 128V140M190.2 128V140M193.4 128V140M196.5 128V140M199.7 128V140M202.8 128V140M206.0 128V140M209.1 128V140M212.3 128V140M215.4 128V140M218.6 128V140M221.7 128V140M224.9 128V140M228.0 128V140M231.2 128V140M234.3 128V140M237.5 128V140M240.6 128V140M243.8 128V140M246.9 128V140M250.1 128V140M253.2 128V140M256.4 128V140M259.5 128V140M262.7 128V140M265.8 128V140M269.0 128V140M272.1 128V140M275.3 128V140M278.4 128V140M281.6 128V140M284.7 128V140M287.9 128V140M291.0 128V140M294.2 128V140M297.3 128V140M300.5 128V140M303.6 128V140M306.8 128V140M309.9 128V140M313.1 128V140M316.2 128V140M319.4 128V140M322.5 128V140M325.7 128V140M328.8 128V140M332.0 128V140M335.1 128V140M338.3 128V140M341.4 128V140M344.6 128V140M347.7 128V140M350.9 128V140M354.0 128V140M357.2 128V140M360.3 128V140M363.5 128V140M366.6 128V140M369.8 128V140M372.9 128V140M376.1 128V140M379.2 128V140M382.4 128V140M385.5 128V140M388.7 128V140M391.8 128V140M395.0 128V140M398.1 128V140M401.3 128V140M404.4 128V140M407.6 128V140M410.7 128V140M413.9 128V140M417.0 128V140M420.2 128V140M423.3 128V140M426.5 128V140M429.6 128V140M432.8 128V140M435.9 128V140M439.1 128V140M442.2 128V140M445.4 128V140M448.5 128V140M451.7 128V140M454.8 128V140M458.0 128V140M461.1 128V140M464.3 128V140M467.4 128V140M470.6 128V140M473.7 128V140M476.9 128V140M480.0 128V140M483.1 128V140M486.3 128V140M489.4 128V140M492.6 128V140M495.7 128V140M498.9 128V140M502.0 128V140M505.2 128V140M508.3 128V140M511.5 128V140M514.6 128V140M517.8 128V140M520.9 128V140M524.1 128V140M527.2 128V140M530.4 128V140M533.5 128V140M536.7 128V140M539.8 128V140M543.0 128V140M546.1 128V140M549.3 128V140M552.4 128V140M555.6 128V140M558.7 128V140M561.9 128V140M565.0 128V140M568.2 128V140M571.3 128V140M574.5 128V140M577.6 128V140M580.8 128V140M583.9 128V140M587.1 128V140M590.2 128V140M593.4 128V140M596.5 128V140M599.7 128V140M602.8 128V140M606.0 128V140M609.1 128V140M612.3 128V140M615.4 128V140M618.6 128V140M621.7 128V140M624.9 128V140M628.0 128V140M631.2 128V140M634.3 128V140M637.5 128V140M640.6 128V140M643.8 128V140M646.9 128V140M650.1 128V140M653.2 128V140M656.4 128V140M659.5 128V140M662.7 128V140M665.8 128V140M669.0 128V140M672.1 128V140M675.3 128V140M678.4 128V140M681.6 128V140M684.7 128V140M687.9 128V140M691.0 128V140M694.2 128V140M697.3 128V140M700.5 128V140M703.6 128V140M706.8 128V140M709.9 128V140M713.1 128V140M716.2 128V140M719.4 128V140M722.5 128V140M725.7 128V140M728.8 128V140M732.0 128V140M735.1 128V140M738.3 128V140M741.4 128V140M744.6 128V140M747.7 128V140M750.9 128V140M754.0 128V140M757.2 128V140M760.3 128V140M763.5 128V140M766.6 128V140M769.8 128V140M772.9 128V140M776.1 128V140M779.2 128V140M782.4 128V140M785.5 128V140M788.7 128V140M791.8 128V140M795.0 128V140M798.1 128V140M801.3 128V140M804.4 128V140M807.6 128V140M810.7 128V140M813.9 128V140M817.0 128V140M820.2 128V140M823.3 128V140M826.5 128V140M829.6 128V140M832.8 128V140M835.9 128V140M839.1 128V140M842.2 128V140M845.4 128V140M848.5 128V140M851.7 128V140M854.8 128V140M858.0 128V140M861.1 128V140M864.3 128V140M867.4 128V140M870.6 128V140M873.7 128V140M876.9 128V140M880.0 128V140" class="ln" style="stroke-width:.6"/>
+<circle cx="171.3" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="275.3" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="344.6" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="420.2" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="454.8" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="495.7" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="549.3" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="590.2" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="634.3" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="716.2" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="769.8" cy="134" r="5" style="fill:var(--good)"/>
+<circle cx="880.0" cy="134" r="5" style="fill:var(--good)"/>
+<text x="892.0" y="132" class="t t-s">error medio</text><text x="892.0" y="146" class="t t-s t-mono">0,001</text>
+<text x="16" y="182" class="t t-xs t-b t-m">③ 4 BITS: 15 ESCALONES DE 0,114</text>
+<line x1="80.0" y1="196" x2="80.0" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="137.1" y1="196" x2="137.1" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="194.3" y1="196" x2="194.3" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="251.4" y1="196" x2="251.4" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="308.6" y1="196" x2="308.6" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="365.7" y1="196" x2="365.7" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="422.9" y1="196" x2="422.9" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="480.0" y1="196" x2="480.0" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="537.1" y1="196" x2="537.1" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="594.3" y1="196" x2="594.3" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="651.4" y1="196" x2="651.4" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="708.6" y1="196" x2="708.6" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="765.7" y1="196" x2="765.7" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="822.9" y1="196" x2="822.9" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="880.0" y1="196" x2="880.0" y2="226" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<circle cx="170.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<line x1="170.0" y1="206" x2="190.3" y2="218" class="ln s-warm" style="stroke-width:1.4" marker-end="url(#m10d2-w)"/>
+<circle cx="194.3" cy="222" r="5" class="k-warm"/>
+<circle cx="275.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<line x1="275.0" y1="206" x2="255.4" y2="218" class="ln s-warm" style="stroke-width:1.4" marker-end="url(#m10d2-w)"/>
+<circle cx="251.4" cy="222" r="5" class="k-warm"/>
+<circle cx="345.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<line x1="345.0" y1="206" x2="361.7" y2="218" class="ln s-warm" style="stroke-width:1.4" marker-end="url(#m10d2-w)"/>
+<circle cx="365.7" cy="222" r="5" class="k-warm"/>
+<circle cx="420.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<circle cx="422.9" cy="222" r="5" class="k-warm"/>
+<circle cx="455.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<line x1="455.0" y1="206" x2="476.0" y2="218" class="ln s-warm" style="stroke-width:1.4" marker-end="url(#m10d2-w)"/>
+<circle cx="480.0" cy="222" r="5" class="k-warm"/>
+<circle cx="495.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<line x1="495.0" y1="206" x2="484.0" y2="218" class="ln s-warm" style="stroke-width:1.4" marker-end="url(#m10d2-w)"/>
+<circle cx="480.0" cy="222" r="5" class="k-warm"/>
+<circle cx="550.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<line x1="550.0" y1="206" x2="541.1" y2="218" class="ln s-warm" style="stroke-width:1.4" marker-end="url(#m10d2-w)"/>
+<circle cx="537.1" cy="222" r="5" class="k-warm"/>
+<circle cx="590.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<circle cx="594.3" cy="222" r="5" class="k-warm"/>
+<circle cx="635.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<line x1="635.0" y1="206" x2="647.4" y2="218" class="ln s-warm" style="stroke-width:1.4" marker-end="url(#m10d2-w)"/>
+<circle cx="651.4" cy="222" r="5" class="k-warm"/>
+<circle cx="715.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<line x1="715.0" y1="206" x2="712.6" y2="218" class="ln s-warm" style="stroke-width:1.4" marker-end="url(#m10d2-w)"/>
+<circle cx="708.6" cy="222" r="5" class="k-warm"/>
+<circle cx="770.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<circle cx="765.7" cy="222" r="5" class="k-warm"/>
+<circle cx="880.0" cy="200" r="3.5" class="caja" style="stroke:var(--muted)"/>
+<circle cx="880.0" cy="222" r="5" class="k-warm"/>
+<text x="892.0" y="206" class="t t-s">error medio</text><text x="892.0" y="220" class="t t-s t-mono">0,031</text>
+<text x="55.0" y="244" class="t t-s t-m">○ peso original · ● escalón donde queda guardado</text>
+<text x="16" y="272" class="t t-xs t-b t-m">④ 4 BITS CON UN VALOR ATÍPICO DE 3,2 EN EL BLOQUE: ESCALONES DE 0,457</text>
+<line x1="67.5" y1="332" x2="892.5" y2="332" class="ln"/>
+<line x1="80.0" y1="318" x2="80.0" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="137.1" y1="318" x2="137.1" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="194.3" y1="318" x2="194.3" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="251.4" y1="318" x2="251.4" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="308.6" y1="318" x2="308.6" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="365.7" y1="318" x2="365.7" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="422.9" y1="318" x2="422.9" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="480.0" y1="318" x2="480.0" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="537.1" y1="318" x2="537.1" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="594.3" y1="318" x2="594.3" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="651.4" y1="318" x2="651.4" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="708.6" y1="318" x2="708.6" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="765.7" y1="318" x2="765.7" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="822.9" y1="318" x2="822.9" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<line x1="880.0" y1="318" x2="880.0" y2="346" class="ln" style="stroke:var(--grid);stroke-width:2"/>
+<circle cx="422.9" cy="332" r="4" class="k-warm"/>
+<circle cx="422.9" cy="323" r="4" class="k-warm"/>
+<circle cx="422.9" cy="314" r="4" class="k-warm"/>
+<circle cx="480.0" cy="332" r="4" class="k-warm"/>
+<circle cx="480.0" cy="323" r="4" class="k-warm"/>
+<circle cx="480.0" cy="314" r="4" class="k-warm"/>
+<circle cx="480.0" cy="293" r="4" class="k-warm"/>
+<circle cx="480.0" cy="284" r="4" class="k-warm"/>
+<circle cx="537.1" cy="332" r="4" class="k-warm"/>
+<circle cx="537.1" cy="323" r="4" class="k-warm"/>
+<circle cx="537.1" cy="314" r="4" class="k-warm"/>
+<circle cx="594.3" cy="332" r="4" class="k-warm"/>
+<circle cx="880.0" cy="332" r="6" class="k-tra"/><text x="880.0" y="366" class="t t-s" text-anchor="middle">atípico</text>
+<text x="480" y="366" class="t t-s k-warm" text-anchor="middle">12 pesos en 4 escalones</text>
+<text x="67.5" y="366" class="t t-s">error medio <tspan class="t-mono">0,129</tspan></text>
+<rect x="16" y="380" width="928" height="40" rx="10" class="caja" style="stroke-dasharray:5 4"/>
+<text x="32" y="405" class="t t-s"><tspan class="t-b">La defensa:</tspan> partir la matriz en bloques de 32 o 64 pesos, cada uno con su escala. El atípico solo estira la escala de su bloque y los demás bloques quedan como en ③.</text>
+</svg></div><figcaption><b>Redondear pesos a una escalera.</b> Arriba, doce pesos de un bloque como puntos sobre una recta; el mayor, 0,8, fija la escala. En 8 bits hay 255 escalones y cada peso queda casi en su lugar. En 4 bits hay 15 escalones de 0,114: cada peso (círculo vacío) se corre al escalón más cercano (punto rojo), y la flecha es su error. Abajo, el mismo bloque con un valor atípico de 3,2: la escala se estira a 0,457 y los doce pesos se amontonan en cuatro escalones, con un error cuatro veces mayor. Partir los pesos en bloques chicos, cada uno con su escala, encierra el daño del atípico en su bloque.</figcaption></figure><div class="prose"><p>El enemigo de la cuantización son los <b>valores atípicos</b> (<i>outliers</i>): unos pocos pesos o activaciones mucho más grandes que el resto. Un estudio de 2022 (<a href="https://arxiv.org/abs/2208.07339" target="_blank" rel="noopener">LLM.int8()</a>) mostró que en los modelos de más de unos 6.700 millones de parámetros aparecen dimensiones con activaciones enormes que arruinan una cuantización ingenua. Las soluciones que se usan hoy combinan tres ideas:</p><ul><li><b>Bloques</b> (<i>block-wise quantization</i>): en lugar de una escala para toda una matriz, una escala por cada bloque de 32 o 64 pesos. El atípico solo estira la escala de su bloque. Es lo que hace el formato <b>GGUF</b> de llama.cpp, el que usa Ollama: su variante Q4_0 guarda bloques de 32 pesos de 4 bits con una escala de 16 bits, unos 4,5 bits por peso en total.</li><li><b>Cuantizar mirando los datos</b>: métodos como GPTQ (2022) y AWQ (2023) usan unos cientos de textos de ejemplo para ver qué pesos importan más y protegerlos.</li><li><b>Mezclar precisiones</b>: las capas más sensibles, como la tabla de embeddings o la última capa, se dejan con más bits. Por eso un archivo «de 4 bits» suele pesar entre 4,5 y 5 bits por peso.</li></ul><p>¿Cuánto se pierde? Como regla general, que hay que confirmar con cada modelo y cada tarea: en <b>8 bits</b>, casi nada medible; en <b>4 bits</b> con un buen método, poco en la mayoría de las tareas, con más pérdida en matemática, código y en idiomas con menos datos; en <b>3 y 2 bits</b>, la calidad cae rápido. Los modelos pequeños sufren más que los grandes, porque cada peso carga más información. Y la forma honesta de saberlo es la del capítulo anterior: evaluar la versión cuantizada en tu caso, no la original.</p><p>La cuantización tiene una ventaja que no es obvia: <b>acelera</b>. Al generar, por cada token el modelo tiene que leer todos sus pesos desde la memoria, y en ese paso la GPU pasa más tiempo esperando datos que calculando. Si los pesos ocupan la cuarta parte, se leen en la cuarta parte del tiempo.</p></div><div class="lab" id="10-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>El mismo modelo en 16, 8 y 4 bits</h3></div><p class="hint">La capa de salida de Colibrí, que comparte sus 128 pesos con la tabla de embeddings del capítulo 2 (32 tokens × 4 números) y decide qué token sigue a «El cielo es». Elige los bits y el tamaño del bloque, enciende un valor atípico y mira cómo cada peso cae a su escalón, cómo cambia la distribución del siguiente token y qué responde el modelo en 16, 8 y 4 bits, con la memoria y la velocidad que tendría un modelo de 8B en una portátil.</p><style>
+[id="10-lab-2"] .c10l2-g{display:grid;gap:4px}
+[id="10-lab-2"] .c10l2-g>span{font:700 .72rem var(--f-display);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+[id="10-lab-2"] .c10l2-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;align-items:start}
+[id="10-lab-2"] canvas{width:100%;display:block}
+[id="10-lab-2"] .c10l2-dist{display:grid;gap:4px;font:500 .78rem var(--f-mono);color:var(--ink)}
+[id="10-lab-2"] .c10l2-row{display:grid;grid-template-columns:5.6rem minmax(0,1fr) 3.4rem;gap:6px;align-items:center}
+[id="10-lab-2"] .c10l2-row .bb{display:grid;gap:2px}
+[id="10-lab-2"] .c10l2-row i{display:block;height:8px;border-radius:3px;min-width:1px}
+[id="10-lab-2"] .c10l2-row i.r{background:var(--muted);opacity:.55}
+[id="10-lab-2"] .c10l2-row i.q{background:var(--c-apl)}
+[id="10-lab-2"] .c10l2-row span:last-child{text-align:right;color:var(--muted);font-size:.72rem}
+[id="10-lab-2"] .c10l2-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,120px),1fr));gap:8px}
+[id="10-lab-2"] .c10l2-k{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper)}
+[id="10-lab-2"] .c10l2-k span{display:block;font:600 .74rem var(--f-display);color:var(--muted)}
+[id="10-lab-2"] .c10l2-k output{font:700 1.1rem var(--f-mono);color:var(--ink)}
+[id="10-lab-2"] .c10l2-tw{overflow-x:auto}
+[id="10-lab-2"] table{border-collapse:collapse;width:100%;font:500 .8rem var(--f-display);color:var(--ink)}
+[id="10-lab-2"] th,[id="10-lab-2"] td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap}
+[id="10-lab-2"] th{color:var(--muted);font-size:.72rem;font-weight:600}
+[id="10-lab-2"] td.n{font-family:var(--f-mono)}
+[id="10-lab-2"] tr.mal td.resp{color:var(--warm);font-weight:700}
+[id="10-lab-2"] tr.act{background:var(--accent-soft)}
+</style>
+<div class="c10l2-g"><span>Bits por peso</span>
+<div class="btns" role="group" aria-label="Bits por peso" id="c10l2-b">
+  <button type="button" data-b="16" aria-pressed="false">16</button>
+  <button type="button" data-b="8" aria-pressed="false">8</button>
+  <button type="button" data-b="6" aria-pressed="false">6</button>
+  <button type="button" data-b="4" aria-pressed="true">4</button>
+  <button type="button" data-b="3" aria-pressed="false">3</button>
+  <button type="button" data-b="2" aria-pressed="false">2</button>
+</div></div>
+<div class="c10l2-g"><span>Escalas</span>
+<div class="btns" role="group" aria-label="Tamaño del bloque" id="c10l2-bl">
+  <button type="button" data-k="128" aria-pressed="true">Una para toda la matriz</button>
+  <button type="button" data-k="32" aria-pressed="false">Una por bloque de 32</button>
+  <button type="button" data-k="8" aria-pressed="false">Una por bloque de 8</button>
+</div></div>
+<div class="btns" role="group" aria-label="Valor atípico">
+  <button type="button" id="c10l2-at" aria-pressed="false">Encender un valor atípico (en la fila de «␣el»)</button>
+</div>
+<div class="c10l2-top">
+  <canvas id="c10l2-cv" role="img" aria-label="Cada peso original frente al valor con que queda guardado"></canvas>
+  <div class="c10l2-dist" id="c10l2-dist" aria-label="Probabilidad del token que sigue a «El cielo es»"></div>
+</div>
+<div class="legend"><span><i style="background:var(--c-tra)"></i>un peso: original (horizontal) y guardado (vertical)</span><span><i style="background:var(--warm)"></i>el atípico</span><span><i style="background:var(--muted)"></i>16 bits</span><span><i style="background:var(--c-apl)"></i>bits elegidos</span></div>
+<div class="c10l2-kpis">
+  <div class="c10l2-k"><span>Bits por peso, con escalas</span><output id="c10l2-k1"></output></div>
+  <div class="c10l2-k"><span>Error medio por peso</span><output id="c10l2-k2"></output></div>
+  <div class="c10l2-k"><span>Error máximo</span><output id="c10l2-k3"></output></div>
+  <div class="c10l2-k"><span>Divergencia KL</span><output id="c10l2-k4"></output></div>
+</div>
+<div class="c10l2-tw"><table aria-label="El mismo modelo en 16, 8 y 4 bits">
+  <thead><tr><th>Precisión</th><th>P(␣azul)</th><th>Responde</th><th>Un modelo de 8B ocupa</th><th>En una portátil de 100 GB/s</th></tr></thead>
+  <tbody id="c10l2-tb"></tbody>
+</table></div>
+<div class="readout texto" id="c10l2-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En el navegador</span><h3>Cuánto pesa cada cuantización de un mismo modelo</h3></div><p>Los repositorios de modelos en formato GGUF publican el mismo modelo en muchas cuantizaciones. Vas a calcular cuántos bits por peso usa cada una. Solo necesitas el navegador y una calculadora.</p><ol class="steps"><li><span>Abre la <a href="https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/tree/main" target="_blank" rel="noopener">lista de archivos de Llama 3.2 3B en GGUF</a>, un repositorio público de la comunidad.</span></li><li><span>Anota el tamaño de los archivos <code>f16</code>, <code>Q8_0</code>, <code>Q6_K</code>, <code>Q4_K_M</code> y <code>Q3_K_L</code>.</span></li><li><span>El modelo tiene unos 3.210 millones de parámetros. Para cada archivo calcula: tamaño en GB × 8 ÷ 3,21 = bits por peso.</span></li><li><span>En la ficha del repositorio, busca la tabla donde el autor describe la calidad que espera de cada archivo.</span></li></ol><p><b>Qué observar:</b> el <code>f16</code> da 16 bits por peso y el <code>Q8_0</code> unos 8,5 (los 8 bits más la escala de cada bloque). El <code>Q4_K_M</code> da cerca de 5, no 4: las escalas por bloque y las capas que se dejan con más bits suman. Pasar de 16 a unos 5 bits divide el archivo por tres, y eso es lo que permite correr modelos en una portátil común.</p></div></section>
+<section><h2>Mezcla de expertos: muchos parámetros, pocos activos</h2><div class="prose"><p>Hasta aquí, cada token pasaba por <b>todos</b> los pesos del modelo. La <b>mezcla de expertos</b> (<i>mixture of experts</i>, MoE) rompe esa regla: reemplaza la red densa de cada bloque del Transformer (capítulo 3) por varias redes densas paralelas, los <b>expertos</b> (<i>experts</i>), y agrega un <b>enrutador</b> (<i>router</i>), una capa pequeña que, para cada token, elige cuáles pocos expertos lo procesan.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un hospital grande tiene decenas de especialistas, pero a ti te atienden dos: el que te asigna el triaje según tus síntomas. El hospital necesita espacio para todos los especialistas, aunque cada paciente use el tiempo de unos pocos. Así, puede saber mucho más que un consultorio de médico general sin que cada consulta tarde más.</p></div><figure class="fig fig-flujo" id="10-diagrama-3"><div class="lienzo"><svg viewBox="0 0 960 400" style="min-width:760px" role="img" aria-label="Un token en una capa de mezcla de expertos. El token cielo llega desde la atención; el enrutador calcula un puntaje para cada uno de los ocho expertos y elige los dos más altos, el 3 y el 6; el token pasa solo por esos dos y sus salidas se suman ponderadas por 0,62 y 0,38 hacia la capa siguiente. Abajo: todos los expertos ocupan memoria, pero cada token solo paga el cálculo de dos.">
+<defs><marker id="m10d3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="m10d3-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-red"/></marker></defs>
+<rect x="16" y="146" width="130" height="68" rx="12" class="caja" style="stroke-width:1.6"/>
+<text x="30" y="168" class="t t-xs t-b t-m">TOKEN</text><text x="30" y="188" class="t t-b t-mono">␣cielo</text><text x="30" y="204" class="t t-s t-m">viene de la atención</text>
+<line x1="146" y1="180" x2="182" y2="180" class="ln" style="stroke-width:2" marker-end="url(#m10d3-a)"/>
+<rect x="186" y="100" width="170" height="160" rx="12" class="c-red" style="stroke-width:1.6"/>
+<text x="200" y="122" class="t t-xs t-b k-red">① ENRUTADOR</text><text x="200" y="138" class="t t-s">un puntaje por experto</text>
+<rect x="204" y="212.4" width="12" height="17.6" rx="2" class="k-red" style="opacity:0.3"/>
+<text x="210" y="244" class="t t-s t-m" text-anchor="middle">1</text>
+<rect x="222" y="205.8" width="12" height="24.2" rx="2" class="k-red" style="opacity:0.3"/>
+<text x="228" y="244" class="t t-s t-m" text-anchor="middle">2</text>
+<rect x="240" y="161.8" width="12" height="68.2" rx="2" class="k-red" style="opacity:1"/>
+<text x="246" y="244" class="t t-s t-m" text-anchor="middle">3</text>
+<rect x="258" y="219.0" width="12" height="11.0" rx="2" class="k-red" style="opacity:0.3"/>
+<text x="264" y="244" class="t t-s t-m" text-anchor="middle">4</text>
+<rect x="276" y="214.6" width="12" height="15.4" rx="2" class="k-red" style="opacity:0.3"/>
+<text x="282" y="244" class="t t-s t-m" text-anchor="middle">5</text>
+<rect x="294" y="188.2" width="12" height="41.8" rx="2" class="k-red" style="opacity:1"/>
+<text x="300" y="244" class="t t-s t-m" text-anchor="middle">6</text>
+<rect x="312" y="210.2" width="12" height="19.8" rx="2" class="k-red" style="opacity:0.3"/>
+<text x="318" y="244" class="t t-s t-m" text-anchor="middle">7</text>
+<rect x="330" y="208.0" width="12" height="22.0" rx="2" class="k-red" style="opacity:0.3"/>
+<text x="336" y="244" class="t t-s t-m" text-anchor="middle">8</text>
+<text x="200" y="256" class="t t-s">② elige los 2 más altos</text>
+<rect x="470" y="24" width="150" height="32" rx="8" class="caja" style="opacity:.45"/>
+<text x="482" y="45" class="t t-s t-m">experto 1</text>
+<path d="M356 180 C 410 180 410 40 466 40" class="ln ln-d" style="opacity:.35"/>
+<rect x="470" y="66" width="150" height="32" rx="8" class="caja" style="opacity:.45"/>
+<text x="482" y="87" class="t t-s t-m">experto 2</text>
+<path d="M356 180 C 410 180 410 82 466 82" class="ln ln-d" style="opacity:.35"/>
+<rect x="470" y="108" width="150" height="32" rx="8" class="c-red" style="stroke-width:1.8"/>
+<text x="482" y="129" class="t t-b">experto 3 · red densa</text>
+<path d="M356 180 C 410 180 410 124 466 124" class="ln s-red" style="stroke-width:2.2" marker-end="url(#m10d3-r)"/>
+<rect x="470" y="150" width="150" height="32" rx="8" class="caja" style="opacity:.45"/>
+<text x="482" y="171" class="t t-s t-m">experto 4</text>
+<path d="M356 180 C 410 180 410 166 466 166" class="ln ln-d" style="opacity:.35"/>
+<rect x="470" y="192" width="150" height="32" rx="8" class="caja" style="opacity:.45"/>
+<text x="482" y="213" class="t t-s t-m">experto 5</text>
+<path d="M356 180 C 410 180 410 208 466 208" class="ln ln-d" style="opacity:.35"/>
+<rect x="470" y="234" width="150" height="32" rx="8" class="c-red" style="stroke-width:1.8"/>
+<text x="482" y="255" class="t t-b">experto 6 · red densa</text>
+<path d="M356 180 C 410 180 410 250 466 250" class="ln s-red" style="stroke-width:2.2" marker-end="url(#m10d3-r)"/>
+<rect x="470" y="276" width="150" height="32" rx="8" class="caja" style="opacity:.45"/>
+<text x="482" y="297" class="t t-s t-m">experto 7</text>
+<path d="M356 180 C 410 180 410 292 466 292" class="ln ln-d" style="opacity:.35"/>
+<rect x="470" y="318" width="150" height="32" rx="8" class="caja" style="opacity:.45"/>
+<text x="482" y="339" class="t t-s t-m">experto 8</text>
+<path d="M356 180 C 410 180 410 334 466 334" class="ln ln-d" style="opacity:.35"/>
+<text x="186" y="284" class="t t-s">③ el token solo pasa por dos expertos</text>
+<line x1="620" y1="124" x2="680" y2="172" class="ln s-red" style="stroke-width:2.2" marker-end="url(#m10d3-r)"/>
+<text x="648" y="118" class="t t-s t-mono k-red">× 0,62</text>
+<line x1="620" y1="250" x2="680" y2="188" class="ln s-red" style="stroke-width:2.2" marker-end="url(#m10d3-r)"/>
+<text x="648" y="268" class="t t-s t-mono k-red">× 0,38</text>
+<circle cx="700" cy="180" r="18" class="caja" style="stroke-width:1.8"/><text x="700" y="186" class="t t-b" text-anchor="middle" style="font-size:17px">Σ</text>
+<text x="694" y="218" class="t t-s" text-anchor="middle">④ suma</text>
+<line x1="718" y1="180" x2="768" y2="180" class="ln" style="stroke-width:2" marker-end="url(#m10d3-a)"/>
+<rect x="772" y="146" width="172" height="68" rx="12" class="caja" style="stroke-width:1.6"/><text x="786" y="174" class="t t-b">a la capa</text><text x="786" y="192" class="t t-b">siguiente</text>
+<rect x="16" y="352" width="928" height="40" rx="10" class="caja" style="stroke-dasharray:5 4"/>
+<text x="32" y="377" class="t t-s"><tspan class="t-b">La cuenta:</tspan> la memoria paga los 8 expertos; el cálculo de cada token, solo 2. Mixtral 8x7B: unos 47.000 millones de parámetros en total, 13.000 millones activos.</text>
+</svg></div><figcaption><b>Un token en una capa de mezcla de expertos.</b> El token llega desde la atención; ① el enrutador calcula un puntaje para cada uno de los 8 expertos; ② elige los 2 con puntaje más alto; ③ el token pasa solo por esos dos (los demás quedan apagados); ④ sus salidas se suman ponderadas por los puntajes del enrutador y siguen a la capa siguiente. Abajo, la cuenta: todos los expertos ocupan memoria, pero cada token solo paga el cálculo de dos.</figcaption></figure><div class="prose"><p>La idea se publicó en 2017 y se volvió práctica en los modelos de lenguaje con Switch Transformer (2021). Dos ejemplos públicos dan las proporciones: Mixtral 8x7B (diciembre de 2023) tiene unos 47.000 millones de parámetros en total y usa unos 13.000 millones por token; DeepSeek-V3 (diciembre de 2024) tiene 671.000 millones en total y 37.000 millones activos. Hoy la usan muchos modelos grandes.</p><p>La consecuencia para elegir es doble. La <b>memoria</b> la fijan los parámetros <b>totales</b>: los 47.000 millones de Mixtral tienen que estar cargados, porque cualquier token puede ir a cualquier experto. El <b>cálculo y la velocidad</b> los fijan los parámetros <b>activos</b>: cada token cuesta como un modelo de 13.000 millones. Es un modelo caro de alojar y barato de usar, ideal para un servidor con mucha memoria y mucha gente. Para una portátil, donde la memoria es lo escaso, un modelo denso del mismo costo por token suele convenir más. El precio: hay que entrenar al enrutador para que reparta la carga entre los expertos.</p></div></section>
+<section><h2>Destilación: un modelo pequeño que imita a uno grande</h2><div class="prose"><p>La tercera forma de achicar es entrenar un modelo pequeño para que imite a uno grande. La <b>destilación</b> (<i>knowledge distillation</i>) usa un modelo <b>maestro</b> (<i>teacher</i>) y un <b>estudiante</b> (<i>student</i>). La versión clásica (<a href="https://arxiv.org/abs/1503.02531" target="_blank" rel="noopener">Hinton y otros, 2015</a>) entrena al estudiante no solo con la respuesta correcta, sino con <b>toda la distribución de probabilidades</b> que produce el maestro. Si la frase es «el gato se subió al…», el maestro no dice solo «techo»: dice «techo» 40 %, «árbol» 30 %, «sofá» 15 %. Esas probabilidades, que Hinton llamó <i>conocimiento oscuro</i> (<i>dark knowledge</i>), enseñan qué alternativas son casi correctas, y el estudiante aprende más rápido y con menos datos. Para que las alternativas se vean, se suavizan con una temperatura alta, la misma idea del capítulo 6.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un aprendiz de cocina que solo prueba el plato terminado aprende despacio. Uno que mira al chef y lo escucha decir «podría ser comino, pero hoy va pimentón, y nunca canela» aprende también lo que casi funciona y lo que no funciona jamás.</p></div><div class="prose"><p>DistilBERT (2019) es el ejemplo de manual: un 40 % más chico y un 60 % más rápido que BERT, conservando, según sus autores, el 97 % de su desempeño en comprensión del lenguaje. En los modelos generativos actuales se usa sobre todo una versión más simple: el maestro genera cientos de miles de respuestas (incluidos razonamientos completos, en los modelos del capítulo 8) y el estudiante se ajusta con ellas. Así, en enero de 2025, <a href="https://arxiv.org/abs/2501.12948" target="_blank" rel="noopener">DeepSeek-R1</a> se publicó junto con seis versiones destiladas de entre 1.500 y 70.000 millones de parámetros, construidas sobre modelos abiertos de otras familias.</p><p>El estudiante hereda el estilo y buena parte de la habilidad del maestro, pero no todo su conocimiento: 3.000 millones de parámetros no guardan lo que guardan 300.000 millones. Funciona mejor cuanto más acotada es la tarea. Cuándo le conviene a un producto destilar o cuantizar, y qué dicen los términos de uso de los proveedores sobre entrenar con sus salidas, está en <a href="https://aaramirez.github.io/aplicaciones-con-ia/14-ajustar-un-modelo.html" target="_blank" rel="noopener">¿Ajustar un modelo?</a>, del curso Aplicaciones con IA.</p></div></section>
+<section><h2>Costo por token, latencia y dónde correrlo</h2><div class="prose"><p>Con un modelo que cabe, quedan dos preguntas: cuánto tarda y cuánto cuesta. Las dos se entienden mirando las dos fases de una respuesta.</p><p>Como viste en el capítulo 6, el <b>prellenado</b> (<i>prefill</i>) procesa todos los tokens de la entrada a la vez y fija el <b>tiempo hasta el primer token</b> (<i>time to first token</i>, TTFT); ahí manda el cálculo. La <b>decodificación</b> (<i>decode</i>) genera la respuesta token por token, y para cada token lee todos los pesos activos y la caché: ahí manda el <b>ancho de banda de memoria</b> (<i>memory bandwidth</i>), los gigabytes por segundo que la memoria puede entregar. La cota práctica es:</p><p><b>tokens por segundo (una conversación) ≈ ancho de banda ÷ bytes leídos por token</b></p><p>Un modelo de 8B en 16 bits pesa 16 GB: en una GPU con 1.000 GB/s da, como máximo, unos 60 tokens por segundo, la cuenta del capítulo 6. Cuantizado a unos 4,5 bits, unos 200. En una portátil con 100 GB/s, el de 4 bits da unos 20 tokens por segundo, una velocidad de lectura cómoda. Por eso las computadoras con <b>memoria unificada</b> (<i>unified memory</i>), compartida entre el procesador y la GPU y con mucho ancho de banda, se volvieron populares para correr modelos locales. El porqué del ancho de banda como límite, con el modelo <i>roofline</i>, está en <a href="https://aaramirez.github.io/computacion-paralela/temario.html" target="_blank" rel="noopener">Computación paralela y GPU</a>.</p><p>Un servidor no atiende a una persona: junta las peticiones de muchas en <b>lotes</b> (<i>batching</i>) y lee los pesos una sola vez para todas. Con números de ejemplo: si una conversación sola recibe 60 tokens por segundo, 32 conversaciones juntas pueden recibir cerca de 50 cada una, y el equipo produce más de 1.500 tokens por segundo en total. Servidores de inferencia como <a href="https://docs.vllm.ai/" target="_blank" rel="noopener">vLLM</a> o llama.cpp se dedican a eso: lotes continuos, una administración cuidadosa de la caché KV y cuantización.</p><p>El costo sigue de ahí:</p><ul><li><b>Por API</b>, se paga por millón de tokens, con un precio para los de entrada y otro, varias veces mayor, para los de salida (generar es más caro que leer). Muchos proveedores descuentan la entrada que se repite (caché del prompt) y los trabajos por lotes sin prisa. A fines de 2026 los precios van de centavos de dólar por millón de tokens en los modelos pequeños a decenas de dólares en los más grandes; cambian varias veces al año, así que consúltalos en la página del proveedor el día que decidas.</li><li><b>En equipo propio</b>, se paga por hora de GPU, se use o no. Con números de ejemplo: una GPU que cuesta 2 US$ por hora y produce 1.500 tokens por segundo en lotes genera 5,4 millones de tokens por hora, unos 0,37 US$ por millón. Pero eso es con el equipo ocupado todo el tiempo; si está ocupado el 20 % de las horas, el costo real por millón se multiplica por cinco. El <b>uso</b> (<i>utilization</i>) decide si el equipo propio conviene.</li></ul><p>Dónde correrlo, entonces, depende del caso:</p><ul><li><b>API en la nube</b>: para empezar, para volúmenes bajos o variables y cuando se necesita lo mejor de la frontera.</li><li><b>Servidor propio o nube con modelos abiertos</b>: volumen alto y constante, datos que no pueden salir, necesidad de ajustar el modelo. Cómo se opera, con su calculadora de API frente a servidor propio, está en <a href="https://aaramirez.github.io/mlops/temario.html" target="_blank" rel="noopener">MLOps</a>.</li><li><b>Portátil</b>: desarrollo, prototipos, uso personal y privado, con modelos de 3.000 a unos 30.000 millones de parámetros cuantizados.</li><li><b>Teléfono o dispositivo</b>: modelos de 1.000 a 4.000 millones de parámetros, en 4 bits, para tareas acotadas sin conexión (resumir una notificación, corregir un texto).</li></ul></div><div class="caso"><b>Un caso real</b><p><b>Bajar de modelo sin perder calidad.</b> Un equipo que extraía datos de formularios escaneados empezó, como casi todos, con el modelo cerrado más grande de su proveedor: funcionaba muy bien y costaba demasiado al volumen de producción. Con un conjunto de 300 formularios ya revisados por personas, probó hacia abajo: el modelo mediano del mismo proveedor perdió un punto; un modelo abierto de unos 30.000 millones de parámetros cuantizado a 4 bits, en un servidor con una sola GPU, perdió dos, que recuperó con un ajuste fino pequeño sobre sus propios formularios. Se quedó con el abierto para el volumen diario y dejó el grande como respaldo para los formularios que el pequeño marcaba con baja confianza.</p></div></section>
+<section><h2>Cerrar el círculo</h2><div class="prose"><p>Este capítulo cierra el curso. Empezaste con «¿De qué color es el cielo?» y la seguiste hacia adentro: 8 tokens (capítulo 1), un vector por token (capítulo 2) y la atención, capa tras capa (capítulo 3). Viste de dónde salen los pesos: el preentrenamiento (capítulo 4) y el ajuste que convierte al autocompletador en asistente (capítulo 5). Viste cómo sale «El cielo es azul.»: muestreando (capítulo 6), quitando ruido si la respuesta es una imagen (capítulo 7) y pensando antes de responder (capítulo 8). Al final, cómo se mide (capítulo 9) y cuánto cuesta cada pieza (capítulo 10).</p><p>Colibrí hizo todo ese recorrido con unos 530 parámetros. Un modelo de 70.000 millones hace las mismas operaciones; lo que cambia es la escala, y este capítulo la convirtió en gigabytes, tokens por segundo y dólares.</p></div><figure class="fig fig-mapa" id="10-diagrama-4"><div class="lienzo"><svg viewBox="0 0 960 470" style="min-width:760px" role="img" aria-label="El mapa del curso del capítulo 1, ahora con la cuenta de cada pieza. La pregunta ¿De qué color es el cielo? pasa por tokens, que se cobran; embeddings, una tabla que ocupa memoria; atención, cuya caché de claves y valores crece con el contexto; y generar, donde los tokens de salida son los más caros; sale El cielo es azul. Abajo, el entrenamiento fija los parámetros que se vuelven gigabytes, el razonamiento suma tokens de salida, y evaluar y elegir, ahora completo, devuelve una flecha a la pregunta: el círculo se cierra al elegir el modelo más pequeño que la responde bien.">
+<defs><marker id="m10d4-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="m10d4-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-tra"/></marker><marker id="m10d4-w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-warm"/></marker></defs>
+<path d="M858 54 V30 H282 V54" class="ln ln-d" style="stroke-width:1.6" marker-end="url(#m10d4-a)"/>
+<rect x="430" y="21" width="282" height="18" class="caja" style="stroke:none"/><text x="571" y="34" class="t t-s t-m" text-anchor="middle">cada token generado se agrega y vuelve a entrar</text>
+<rect x="16" y="92" width="150" height="76" rx="14" class="caja" style="stroke-width:2"/><text x="30" y="114" class="t t-xs t-b t-m">LA PREGUNTA</text><text x="30" y="137" class="t">¿De qué color</text><text x="30" y="155" class="t">es el cielo?</text>
+<line x1="166" y1="130" x2="192" y2="130" class="ln" style="stroke-width:2" marker-end="url(#m10d4-a)"/>
+<rect x="196" y="54" width="172" height="156" rx="12" class="c-fis" style="stroke-width:1.6"/>
+<text x="210" y="76" class="t t-xs t-b k-fis">1 · TOKENS</text>
+<text x="210" y="98" class="t t-s">8 pedazos con su id</text><text x="210" y="114" class="t t-s t-mono">[4, 8, 10, 11, 12, …]</text>
+<rect x="206" y="136" width="152" height="58" rx="8" class="caja" style="stroke:var(--warm)"/>
+<text x="216" y="152" class="t t-xs t-b k-warm">LA CUENTA</text><text x="216" y="168" class="t t-s">se cobran por millón</text><text x="216" y="183" class="t t-s">y llenan el contexto</text>
+<line x1="368" y1="130" x2="384" y2="130" class="ln" style="stroke-width:2" marker-end="url(#m10d4-a)"/>
+<rect x="388" y="54" width="172" height="156" rx="12" class="c-enl" style="stroke-width:1.6"/>
+<text x="402" y="76" class="t t-xs t-b k-enl">2 · EMBEDDINGS</text>
+<text x="402" y="98" class="t t-s">un vector de 4</text><text x="402" y="114" class="t t-s">números por token</text>
+<rect x="398" y="136" width="152" height="58" rx="8" class="caja" style="stroke:var(--warm)"/>
+<text x="408" y="152" class="t t-xs t-b k-warm">LA CUENTA</text><text x="408" y="168" class="t t-s">tabla: vocabulario ×</text><text x="408" y="183" class="t t-s">dimensión, en memoria</text>
+<line x1="560" y1="130" x2="576" y2="130" class="ln" style="stroke-width:2" marker-end="url(#m10d4-a)"/>
+<rect x="580" y="54" width="172" height="156" rx="12" class="c-red" style="stroke-width:1.6"/>
+<text x="594" y="76" class="t t-xs t-b k-red">3 · ATENCIÓN</text>
+<text x="594" y="98" class="t t-s">cada token mira a</text><text x="594" y="114" class="t t-s">los demás, por capas</text>
+<rect x="590" y="136" width="152" height="58" rx="8" class="caja" style="stroke:var(--warm)"/>
+<text x="600" y="152" class="t t-xs t-b k-warm">LA CUENTA</text><text x="600" y="168" class="t t-s">la caché KV crece</text><text x="600" y="183" class="t t-s">con cada token</text>
+<line x1="752" y1="130" x2="768" y2="130" class="ln" style="stroke-width:2" marker-end="url(#m10d4-a)"/>
+<rect x="772" y="54" width="172" height="156" rx="12" class="c-apl" style="stroke-width:1.6"/>
+<text x="786" y="76" class="t t-xs t-b k-apl">6 · GENERAR</text>
+<text x="786" y="98" class="t t-s">¿qué token sigue?</text><text x="786" y="114" class="t t-s">azul · gris · claro</text>
+<rect x="782" y="136" width="152" height="58" rx="8" class="caja" style="stroke:var(--warm)"/>
+<text x="792" y="152" class="t t-xs t-b k-warm">LA CUENTA</text><text x="792" y="168" class="t t-s">salida: el token</text><text x="792" y="183" class="t t-s">más caro</text>
+<line x1="858" y1="210" x2="858" y2="234" class="ln" style="stroke-width:2" marker-end="url(#m10d4-a)"/>
+<rect x="772" y="238" width="172" height="44" rx="14" class="caja" style="stroke-width:2"/><text x="858" y="265" class="t t-b" text-anchor="middle">El cielo es azul.</text>
+<rect x="16" y="318" width="168" height="66" rx="12" class="caja" style="stroke-dasharray:5 4"/><text x="30" y="340" class="t t-xs t-b t-m">7 · MULTIMODALES</text><text x="30" y="358" class="t t-s">imágenes y audio</text><text x="30" y="373" class="t t-s">también son tokens</text>
+<line x1="150" y1="318" x2="232" y2="214" class="ln ln-d" marker-end="url(#m10d4-a)"/>
+<rect x="196" y="318" width="364" height="66" rx="12" class="c-tra" style="stroke-width:1.6"/><text x="210" y="340" class="t t-xs t-b k-tra">4 · PREENTRENAMIENTO   5 · AJUSTE Y ALINEAMIENTO</text><text x="210" y="358" class="t t-s">fijan los pesos; <tspan class="k-warm t-b">la cuenta:</tspan> parámetros × bits</text><text x="210" y="373" class="t t-s">= gigabytes que hay que alojar</text>
+<line x1="474" y1="318" x2="474" y2="214" class="ln s-tra" style="stroke-width:2" marker-end="url(#m10d4-t)"/>
+<line x1="540" y1="318" x2="640" y2="214" class="ln s-tra" style="stroke-width:2" marker-end="url(#m10d4-t)"/>
+<rect x="580" y="318" width="172" height="66" rx="12" class="caja" style="stroke-dasharray:5 4"/><text x="594" y="340" class="t t-xs t-b t-m">8 · RAZONAMIENTO</text><text x="594" y="358" class="t t-s">piensa antes; <tspan class="k-warm t-b">la</tspan></text><text x="594" y="373" class="t t-s"><tspan class="k-warm t-b">cuenta:</tspan> más tokens</text>
+<line x1="700" y1="318" x2="790" y2="214" class="ln ln-d" marker-end="url(#m10d4-a)"/>
+<rect x="772" y="318" width="172" height="66" rx="12" class="caja" style="stroke:var(--warm);stroke-width:2.4;stroke-dasharray:5 4"/><text x="786" y="340" class="t t-xs t-b k-warm">9 · EVALUAR  10 · ELEGIR</text><text x="786" y="358" class="t t-s">¿qué tan bueno es?</text><text x="786" y="373" class="t t-s">¿cuánto cuesta y ocupa?</text>
+<line x1="858" y1="282" x2="858" y2="314" class="ln" style="stroke-width:2" marker-end="url(#m10d4-a)"/>
+<path d="M858 384 V412 H6 V130 H12" class="ln s-warm" style="stroke-width:2.4" marker-end="url(#m10d4-w)"/>
+<rect x="200" y="403" width="560" height="18" class="caja" style="stroke:none"/><text x="480" y="416" class="t t-s t-b k-warm" text-anchor="middle">el círculo se cierra: el modelo más pequeño que responde bien tu pregunta</text>
+<rect x="16" y="444" width="12" height="12" rx="3" class="c-fis"/><text x="34" y="455" class="t t-s">texto y tokens</text>
+<rect x="150" y="444" width="12" height="12" rx="3" class="c-enl"/><text x="168" y="455" class="t t-s">vectores</text>
+<rect x="250" y="444" width="12" height="12" rx="3" class="c-red"/><text x="268" y="455" class="t t-s">atención y capas</text>
+<rect x="392" y="444" width="12" height="12" rx="3" class="c-apl"/><text x="410" y="455" class="t t-s">salida y generación</text>
+<rect x="546" y="444" width="12" height="12" rx="3" class="c-tra"/><text x="564" y="455" class="t t-s">entrenamiento (pesos)</text>
+<rect x="724" y="444" width="12" height="12" rx="3" class="caja" style="stroke:var(--warm)"/><text x="742" y="455" class="t t-s">la cuenta de cada pieza</text>
+</svg></div><figcaption><b>El mapa del curso, con la cuenta de cada pieza.</b> Es el mismo mapa del capítulo 1, ahora con todas las estaciones recorridas. La fila de arriba sigue la pregunta: tokens, embeddings, atención y generación, cada una con lo que cuesta en la factura (los tokens se cobran, la tabla de embeddings ocupa memoria, la caché KV crece con el contexto, los tokens de salida son los más caros). La fila de abajo muestra lo que fija los pesos y lo que extiende al modelo. La caja de evaluar y elegir, la última que faltaba, ahora está resaltada en rojo, y su flecha vuelve a la pregunta: el círculo se cierra cuando eliges el modelo más pequeño que la responde bien.</figcaption></figure><div class="prose"><p>Cada pieza tiene su precio: los tokens del capítulo 1 son la unidad de cobro; la caché de claves y valores del capítulo 6 es la memoria que se come el contexto largo; la temperatura del capítulo 6 decide si tu evaluación se repite; el razonamiento del capítulo 8 multiplica los tokens de salida; y los parámetros que aprendió el capítulo 4 son los gigabytes que tienes que alojar. Elegir un modelo es juntar todas esas piezas en una decisión.</p></div><div class="ml"><b>En la práctica</b><p><b>Un orden para elegir modelo.</b> 1) Define la tarea y arma tu conjunto de evaluación (capítulo 9 y Aplicaciones con IA). 2) Elige de tres a cinco candidatos con las tablas públicas, leídas con su margen. 3) Descarta por licencia y por dónde pueden ir los datos. 4) Prueba primero el más pequeño; sube de tamaño solo si la evaluación lo pide. 5) Para el que gana, haz la cuenta de memoria, latencia y costo a tu volumen real, y repítela cuando cambie el volumen o salga un modelo nuevo.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Un modelo se elige por cinco números que se calculan, no por su posición en una tabla: la licencia que permite tu uso, la memoria (parámetros × bits, más la caché KV que crece con el contexto), la calidad medida en tu caso, la velocidad (que la fija el ancho de banda) y el costo por millón de tokens a tu nivel de uso. Cuantizar, mezclar expertos y destilar son tres formas de achicar el modelo o su costo. La regla que resume el curso: usar el modelo más pequeño que resuelva el caso, y subir solo cuando haga falta.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Cuánto ocupan los pesos de un modelo de 14.000 millones de parámetros en 16 bits y en 4 bits?</summary><p>En 16 bits, 14 × 2 = 28 GB; en 4 bits, unos 7 GB (en la práctica algo más, unos 8 GB, por las escalas de cada bloque y las capas que se dejan con más bits).</p></details><details><summary>¿Por qué la caché KV puede ocupar más memoria que los pesos?</summary><p>Porque crece con cada token del contexto y hay una por conversación: con contextos largos y varias conversaciones a la vez, puede superar a los pesos, que son fijos.</p></details><details><summary>¿Qué problema causan los valores atípicos al cuantizar y cómo se contiene?</summary><p>Estiran la escala, de modo que casi todos los demás pesos caen en pocos escalones y pierden precisión. Se contiene con escalas por bloques pequeños, para que el atípico solo afecte su bloque, y con métodos que protegen los pesos importantes.</p></details><details><summary>Un modelo de mezcla de expertos tiene 100.000 millones de parámetros totales y 10.000 millones activos. ¿Qué fija cada número?</summary><p>Los totales fijan la memoria (todos los expertos deben estar cargados); los activos fijan el cálculo y la velocidad por token.</p></details><details><summary>¿Por qué cuantizar un modelo lo hace generar más rápido?</summary><p>Porque al generar cada token hay que leer todos los pesos desde la memoria, y la velocidad la limita el ancho de banda: si los pesos ocupan menos bytes, se leen en menos tiempo.</p></details><details><summary>Una GPU propia cuesta lo mismo por hora y produce lo mismo por hora. ¿Por qué su costo por millón de tokens puede ser cinco veces el calculado?</summary><p>Porque se paga por hora aunque esté ociosa: si solo está ocupada el 20 % del tiempo, cada token producido carga con las horas sin uso.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Qué diferencia hay entre los formatos de número FP16, BF16, FP8 y FP4, y por qué las GPU recientes agregan soporte para los de 8 y 4 bits?<small>Pista: busca «FP8 E4M3 E5M2» y «microscaling formats MX».</small></li><li>¿Qué es la atención paginada (<i>PagedAttention</i>) y qué problema de la caché KV resuelve?<small>Pista: busca el artículo de vLLM.</small></li><li>¿Qué es la atención latente de varias cabezas (<i>multi-head latent attention</i>) y cómo reduce la caché KV?<small>Pista: busca «DeepSeek-V2 MLA».</small></li><li>¿Qué es la perplejidad (<i>perplexity</i>) y por qué se usa para comparar versiones cuantizadas de un modelo?<small>Pista: busca «llama.cpp perplexity quantization».</small></li><li>¿Cómo se entrena un modelo directamente en pocos bits, en lugar de cuantizarlo después?<small>Pista: busca «quantization-aware training» y «BitNet b1.58».</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/2401.04088" target="_blank" rel="noopener">Mixtral of Experts <small>el artículo de una mezcla de expertos abierta, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2208.07339" target="_blank" rel="noopener">LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale <small>los valores atípicos y la cuantización, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/1503.02531" target="_blank" rel="noopener">Distilling the Knowledge in a Neural Network <small>el artículo de la destilación, en inglés</small></a><a class="vid" href="https://huggingface.co/spaces/hf-accelerate/model-memory-usage" target="_blank" rel="noopener">La calculadora de memoria de modelos de Hugging Face <small>herramienta en línea, en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/modelos-de-ia" target="_blank" rel="noopener">github.com/aaramirez/modelos-de-ia</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const {$,tok,canvasWidget}=window.Lab;
+  // Arquitecturas públicas (config.json de cada modelo). P y A: parámetros totales y activos, en miles de millones.
+  const M={
+    l3:{nom:'Llama 3.2 3B',P:3.21,A:3.21,capas:28,kv:8,dim:128},
+    q7:{nom:'Qwen2.5 7B',P:7.62,A:7.62,capas:28,kv:4,dim:128},
+    l8:{nom:'Llama 3 8B',P:8.03,A:8.03,capas:32,kv:8,dim:128},
+    mx:{nom:'Mixtral 8x7B',P:46.7,A:12.9,capas:32,kv:8,dim:128},
+    l70:{nom:'Llama 3 70B',P:70.6,A:70.6,capas:80,kv:8,dim:128}
+  };
+  // Equipos de ejemplo: memoria (GB), ancho de banda (GB/s) y cálculo útil aproximado (billones de operaciones por segundo).
+  const E={tel:{nom:'teléfono',mem:8,bw:60,tf:4},p16:{nom:'portátil',mem:16,bw:100,tf:10},m64:{nom:'portátil con memoria unificada',mem:64,bw:400,tf:30},
+    g24:{nom:'GPU de escritorio',mem:24,bw:1000,tf:160},g80:{nom:'GPU de centro de datos',mem:80,bw:3350,tf:990}};
+  const CTX=[1024,2048,4096,8192,16384,32768,65536,131072];
+  let m='l8';
+  const es=(x,d=1)=>x.toLocaleString('es',{minimumFractionDigits:d,maximumFractionDigits:d});
+  function calc(conv,Nfijo){
+    const mo=M[m],eq=E[$('#c10l1-eq').value],bpw=+$('#c10l1-w').value,kvb=+$('#c10l1-kv').value,ctx=CTX[+$('#c10l1-c').value];
+    const W=mo.P*bpw/8, WA=mo.A*bpw/8;
+    const porTok=2*mo.capas*mo.kv*mo.dim*kvb/8; // bytes por token
+    const KV=porTok*ctx*conv/1e9;
+    const mar=0.08*W+0.5;
+    const tot=W+KV+mar, N=Nfijo||Math.max(1,Math.ceil(tot/eq.mem)), cabe=tot<=N*eq.mem;
+    // Cada paso de decodificación lee los pesos activos una vez y la caché de todas las conversaciones (cota con el contexto lleno).
+    const paso=(WA+KV)/(eq.bw*N);
+    const porMem=conv/paso, porCalc=0.5*eq.tf*1e12*N/(2*mo.A*1e9);
+    const tp=Math.min(porMem,porCalc);
+    return {mo,eq,W,KV,mar,tot,N,tp,porConv:tp/conv,porTok,ctx,limCalc:porCalc<porMem,cabe};
+  }
+  const memC=$('#c10l1-mem'),tpC=$('#c10l1-tp');
+  const dMem=canvasWidget(memC,w=>Math.min(.22,96/w),(ctx,w,h)=>{
+    const r=calc(+$('#c10l1-n').value),L=8,R=10,top=26,bh=30;
+    const max=Math.max(r.tot,r.eq.mem)*1.12;const X=v=>L+v/max*(w-L-R);
+    ctx.clearRect(0,0,w,h);
+    const seg=[[r.W,tok('--c-tra')],[r.KV,tok('--c-red')],[r.mar,tok('--muted')]];let x0=0;
+    seg.forEach(([v,c])=>{ctx.fillStyle=c;ctx.globalAlpha=.85;ctx.fillRect(X(x0),top,Math.max(1,X(x0+v)-X(x0)),bh);x0+=v;});ctx.globalAlpha=1;
+    ctx.strokeStyle=tok('--warm');ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.font='11px '+tok('--f-mono');ctx.fillStyle=tok('--warm');ctx.textBaseline='alphabetic';
+    for(let k=1;k*r.eq.mem<=max;k++){const x=X(k*r.eq.mem);ctx.beginPath();ctx.moveTo(x,top-8);ctx.lineTo(x,top+bh+8);ctx.stroke();ctx.textAlign=x>w-90?'right':'left';ctx.fillText(k===1?r.eq.mem+' GB':'×'+k,x+(x>w-90?-4:4),top-10);}
+    ctx.setLineDash([]);ctx.fillStyle=tok('--ink');ctx.textAlign='left';ctx.font='600 12px '+tok('--f-mono');
+    ctx.fillText(es(r.tot)+' GB en total',L,top+bh+24);
+  });
+  const dTp=canvasWidget(tpC,w=>Math.min(.42,190/w),(ctx,w,h)=>{
+    const n=+$('#c10l1-n').value,L=50,R=12,T=12,B=26;
+    const N0=calc(n).N;const pts=[];let corte=0;for(let c=1;c<=64;c++){const r=calc(c,N0);if(!r.cabe){corte=c;break;}pts.push([c,r.tp,r.porConv]);}
+    const ymax=Math.max(...pts.map(p=>p[1]))*1.1||1;
+    const X=c=>L+(c-1)/63*(w-L-R),Y=v=>T+(1-v/ymax)*(h-T-B);
+    ctx.clearRect(0,0,w,h);ctx.strokeStyle=tok('--grid');ctx.lineWidth=1;ctx.font='10px '+tok('--f-mono');ctx.fillStyle=tok('--muted');
+    for(let i=0;i<=4;i++){const v=ymax*i/4,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(w-R,y);ctx.stroke();ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(v>=1000?es(v/1000,1)+' k':Math.round(v),L-6,y);}
+    ctx.textAlign='center';ctx.textBaseline='top';[1,16,32,48,64].forEach(c=>ctx.fillText(c,X(c),h-B+6));
+    [[1,tok('--accent')],[2,tok('--c-apl')]].forEach(([j,c])=>{ctx.strokeStyle=c;ctx.lineWidth=2.2;ctx.beginPath();pts.forEach((p,i)=>{const x=X(p[0]),y=Y(p[j]);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();});
+    const r=calc(n);[[r.tp,tok('--accent')],[r.porConv,tok('--c-apl')]].forEach(([v,c])=>{ctx.beginPath();ctx.arc(X(n),Y(v),5,0,7);ctx.fillStyle=c;ctx.fill();});
+    ctx.fillStyle=tok('--muted');ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText('conversaciones a la vez →',L+4,T);
+    if(corte){const x=X(corte);ctx.strokeStyle=tok('--warm');ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,h-B);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=tok('--warm');ctx.textAlign=x>w-160?'right':'left';ctx.fillText('desde '+corte+' no cabe en '+N0+(N0>1?' equipos':' equipo'),x+(x>w-160?-4:4),T+16);}
+  });
+  function leer(){
+    const n=+$('#c10l1-n').value,r=calc(n),p=+$('#c10l1-p').value,u=+$('#c10l1-u').value/100;
+    $('#c10l1-c-o').textContent=es(r.ctx,0)+' tokens';$('#c10l1-n-o').textContent=n;
+    $('#c10l1-p-o').textContent='US$ '+es(p,2);$('#c10l1-u-o').textContent=Math.round(u*100)+' %';
+    const costo=p*r.N/(r.tp*3600*u)*1e6;
+    $('#c10l1-k1').textContent=es(r.tot)+' GB';
+    $('#c10l1-k2').textContent=r.N;$('#c10l1-kb2').className='c10l1-k '+(r.N>1?'mal':'bien');
+    $('#c10l1-k3').textContent=es(r.porConv,0);$('#c10l1-k4').textContent=es(r.tp,0);
+    $('#c10l1-k5').textContent=costo>=100?es(costo,0):es(costo,2);
+    let t='<span>'+r.mo.nom+': pesos '+es(r.W)+' GB'+(r.mo.A<r.mo.P?' (los '+es(r.mo.P)+' mil millones de parámetros cargados, aunque cada token use solo '+es(r.mo.A)+')':'')+'; caché KV '+es(r.porTok/1024,0)+' KB por token × '+es(r.ctx,0)+' tokens × '+n+' = '+es(r.KV)+' GB.</span>';
+    t+=r.N>1?'<span><b class="warn">No cabe en el equipo elegido ('+r.eq.nom+'): hacen falta '+r.N+' equipos con el modelo repartido entre ellos.</b> Prueba con menos bits o con un modelo más chico.</span>':'<span><b class="ok">Cabe en un solo equipo ('+r.eq.nom+').</b></span>';
+    if(r.KV>r.W)t+='<span><b class="warn">La caché ocupa más que los pesos:</b> con este contexto y estas conversaciones, la memoria se va en los «escritorios», no en la «biblioteca».</span>';
+    t+='<span>Cada conversación recibe unos '+es(r.porConv,0)+' tokens por segundo y el equipo produce '+es(r.tp,0)+' en total. '+(r.limCalc?'Aquí manda el cálculo: con tantas conversaciones juntas, la GPU ya no espera a la memoria.':'Aquí manda el ancho de banda: cada token obliga a leer los pesos activos y la caché.')+'</span>';
+    t+='<span>A US$ '+es(p,2)+' por hora por equipo, trabajando el '+Math.round(u*100)+' % de las horas, cada millón de tokens cuesta unos US$ '+(costo>=100?es(costo,0):es(costo,2))+'. '+(n<8?'Atender más conversaciones a la vez reparte la lectura de los pesos y baja mucho el costo.':u<.5?'El equipo pasa mucho tiempo ocioso: subir el uso baja el costo en la misma proporción.':'Con lotes grandes y buen uso, el costo propio puede competir con una API; compáralo con su precio por millón.')+'</span>';
+    $('#c10l1-out').innerHTML=t;dMem();dTp();
+  }
+  $('#c10l1-m').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;m=b.dataset.m;$('#c10l1-m').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));leer();});
+  ['#c10l1-c','#c10l1-n','#c10l1-p','#c10l1-u'].forEach(s=>$(s).addEventListener('input',leer));
+  ['#c10l1-w','#c10l1-kv','#c10l1-eq'].forEach(s=>$(s).addEventListener('change',leer));
+  leer();
+})();
+</script>
+<script>
+(function(){
+  const {$,tok,canvasWidget}=window.Lab;
+  function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function normal(r){let u=0,v=0;while(u===0)u=r();v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+  // El vocabulario de Colibrí (capítulo 1): 32 tokens.
+  const V=['<inicio>','<fin>','<usuario>','<asistente>','¿','?','.',',','De','El','␣qué','␣color','␣es','␣el','␣la','␣de','␣cielo','␣mar','␣nube','␣sol','␣noche','␣azul','␣gris','␣rojo','␣verde','␣claro','␣os','curo','␣cel','este','␣y','␣muy'];
+  const NOM={26:'␣os(curo)',28:'␣cel(este)'};
+  // Lo que la capa debe producir después de «El cielo es» (los mismos puntajes del capítulo 6 para los candidatos).
+  const META={21:6.0,28:3.6,22:2.9,31:2.2,25:2.0,26:1.5,23:0.1,24:-1.2};
+  const CAND=[21,28,22,31,25,26,23,24];
+  const r=rng(2026);
+  const H=[8,5,-4,-3]; // el vector final de «␣es»: apunta hacia «color» y «cielo» (columnas d1 y d2)
+  // La capa de salida comparte los pesos con la tabla de embeddings de Colibrí (capítulo 2): 32 filas × 4 columnas.
+  const W0=[[0, 0, 0.2, -0.3], [0, 0, 0.2, -0.6], [0, 0, 0.1, 0.5], [0, 0, 0.1, -0.5], [0, 0, 0.2, 0.9], [0, 0, 0.1, 1], [0, 0, 0.3, -0.7], [0, 0, 0.4, -0.2], [0, 0.1, 0.8, 0.3], [0, 0.1, 0.9, -0.2], [0.3, 0, 0.3, 0.8], [0.9, 0.2, 0, 0.3], [0.1, 0.1, 0.7, 0], [0, 0.1, 0.9, 0], [0, 0.1, 0.8, 0.1], [0, 0, 0.8, 0.2], [0.3, 0.9, 0, 0], [0.4, 0.8, 0, 0], [0.2, 0.9, 0.1, 0], [0.5, 0.8, 0, 0], [-0.3, 0.8, 0.1, 0], [1, 0.4, 0, 0], [0.8, 0.4, 0, 0], [0.9, -0.1, 0, 0], [0.9, 0.1, 0, 0], [0.6, 0.3, 0.2, 0], [0.1, 0, 0.2, 0], [0.4, 0.1, 0, 0], [0.4, 0.2, 0, 0], [0.1, 0, 0.3, 0], [0, 0, 0.6, 0], [0.1, 0, 0.5, 0]];
+  const OBJ=V.map((_,j)=>META[j]!==undefined?META[j]:-4+r()*2.5);
+  let bits=4,blk=128,atip=false;
+  function pesos(){const W=W0.map(f=>f.slice());if(atip)W[13][2]=3.6;return W;}
+  function cuantizar(W,b,k){const flat=W.flat();if(b>=16)return W.map(f=>f.slice());
+    const L=2**(b-1)-1,out=flat.slice();
+    for(let s=0;s<flat.length;s+=k){const bl=flat.slice(s,s+k);const mx=Math.max(...bl.map(Math.abs))||1;const e=mx/L;
+      for(let i=0;i<bl.length;i++)out[s+i]=Math.max(-L,Math.min(L,Math.round(bl[i]/e)))*e;}
+    return W.map((f,j)=>out.slice(j*4,j*4+4));}
+  function logits(W,bias){return W.map((f,j)=>f.reduce((s,w,k)=>s+w*H[k],0)+bias[j]);}
+  function softmax(z){const m=Math.max(...z),e=z.map(v=>Math.exp(v-m)),s=e.reduce((a,b)=>a+b,0);return e.map(v=>v/s);}
+  function evaluar(b,k){const W=pesos();
+    // El sesgo se fija para que en 16 bits la capa dé exactamente los puntajes META (también con el atípico).
+    const base=logits(W,Array(32).fill(0)),bias=OBJ.map((o,j)=>o-base[j]);
+    const p16=softmax(OBJ),Wq=cuantizar(W,b,k),pq=softmax(logits(Wq,bias));
+    const fo=W.flat(),fq=Wq.flat();let se=0,mx=0;fo.forEach((w,i)=>{const d=Math.abs(w-fq[i]);se+=d*d;mx=Math.max(mx,d);});
+    const kl=p16.reduce((s,p,j)=>s+(p>0?p*Math.log(p/Math.max(pq[j],1e-12)):0),0);
+    let top=0;pq.forEach((p,j)=>{if(p>pq[top])top=j;});
+    const bpw=b>=16?16:b+16/k;
+    return {W,Wq,p16,pq,rmse:Math.sqrt(se/fo.length),mx,kl,top,bpw};}
+  const es=(x,d)=>x.toLocaleString('es',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const tn=j=>NOM[j]||V[j];
+  const cv=$('#c10l2-cv');
+  const dib=canvasWidget(cv,w=>Math.min(1,250/w),(ctx,w,h)=>{
+    const R=evaluar(bits,blk),fo=R.W.flat(),fq=R.Wq.flat();
+    const lim=Math.max(...fo.map(Math.abs),...fq.map(Math.abs))*1.08;
+    const P=30,X=v=>P+(v+lim)/(2*lim)*(w-P-8),Y=v=>8+(1-(v+lim)/(2*lim))*(h-8-P);
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle=tok('--grid');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(X(-lim),Y(0));ctx.lineTo(X(lim),Y(0));ctx.moveTo(X(0),Y(-lim));ctx.lineTo(X(0),Y(lim));ctx.stroke();
+    ctx.strokeStyle=tok('--muted');ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(X(-lim),Y(-lim));ctx.lineTo(X(lim),Y(lim));ctx.stroke();ctx.setLineDash([]);
+    fo.forEach((v,i)=>{const at=atip&&i===54;ctx.beginPath();ctx.arc(X(v),Y(fq[i]),at?6:3.2,0,7);ctx.fillStyle=at?tok('--warm'):tok('--c-tra');ctx.globalAlpha=at?1:.75;ctx.fill();});ctx.globalAlpha=1;
+    ctx.font='10px '+tok('--f-mono');ctx.fillStyle=tok('--muted');ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText('peso original',X(0),h-P+12);ctx.save();ctx.translate(10,Y(0));ctx.rotate(-Math.PI/2);ctx.fillText('peso guardado',0,-6);ctx.restore();
+    ctx.textAlign='left';ctx.fillText('la diagonal: sin error',X(-lim)+4,8);
+  });
+  function leer(){
+    const R=evaluar(bits,blk);
+    $('#c10l2-k1').textContent=es(R.bpw,bits>=16?0:2);
+    $('#c10l2-k2').textContent=es(R.rmse,3);$('#c10l2-k3').textContent=es(R.mx,3);$('#c10l2-k4').textContent=es(R.kl,3);
+    $('#c10l2-dist').innerHTML='<div class="c10l2-row"><span></span><span style="color:var(--muted)">«El cielo es…»</span><span>16 · '+bits+'</span></div>'+CAND.map(j=>'<div class="c10l2-row"><span>'+tn(j)+'</span><span class="bb"><i class="r" style="width:'+(R.p16[j]*100).toFixed(1)+'%"></i><i class="q" style="width:'+(R.pq[j]*100).toFixed(1)+'%"></i></span><span>'+es(R.pq[j]*100,1)+' %</span></div>').join('');
+    // La tabla: el mismo modelo en 16, 8 y 4 bits con las escalas y el atípico elegidos.
+    $('#c10l2-tb').innerHTML=[16,8,4].map(b=>{const Q=evaluar(b,blk),gb=8*Q.bpw/8,ts=100/gb,mal=Q.top!==21;
+      return '<tr class="'+(mal?'mal':'')+(b===bits?' act':'')+'"><td>'+b+' bits</td><td class="n">'+es(Q.pq[21]*100,1)+' %</td><td class="resp">El cielo es'+tn(Q.top).replace('␣',' ')+'.</td><td class="n">'+es(gb,1)+' GB</td><td class="n">'+(gb>14?'no cabe en 16 GB':'unos '+es(ts,0)+' tokens/s')+'</td></tr>';}).join('');
+    let t='<span>Con '+bits+' bits y '+(blk===128?'una sola escala':'una escala por bloque de '+blk)+(atip?', con el valor atípico':'')+', cada peso se corre en promedio '+es(R.rmse,3)+' y el siguiente token cambia de distribución en '+es(R.kl,3)+' (divergencia KL: 0 es idéntica).</span>';
+    if(bits>=16)t+='<span>En 16 bits no se redondea nada: es la referencia.</span>';
+    else if(R.top!==21)t+='<span><b class="warn">El modelo ya no responde «azul»: dice «El cielo es'+tn(R.top).replace('␣',' ')+'.».</b> Con tan pocos escalones, el error de los pesos se suma en los puntajes y cambia la respuesta.</span>';
+    else if(R.kl>0.05)t+='<span><b class="warn">Todavía responde «azul», pero las probabilidades se movieron:</b> con temperatura mayor que cero, saldrían otras palabras más seguido que en el original.</span>';
+    else t+='<span><b class="ok">La distribución casi no cambia:</b> en la práctica, el modelo responde igual que en 16 bits.</span>';
+    if(atip&&blk===128&&bits<16)t+='<span>El atípico estira la única escala: casi todos los demás pesos caen en pocos escalones. Prueba con bloques de 32 o de 8.</span>';
+    else if(atip&&bits<16)t+='<span>Con bloques, el atípico solo estira la escala de su bloque; el resto queda bien. El precio es guardar más escalas: '+es(R.bpw,2)+' bits por peso en vez de '+bits+'.</span>';
+    t+='<span>La memoria y la velocidad de la tabla son para un modelo de 8B: leer menos bytes por token es generar más rápido.</span>';
+    $('#c10l2-out').innerHTML=t;dib();
+  }
+  $('#c10l2-b').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;bits=+b.dataset.b;$('#c10l2-b').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));leer();});
+  $('#c10l2-bl').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;blk=+b.dataset.k;$('#c10l2-bl').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));leer();});
+  $('#c10l2-at').addEventListener('click',()=>{atip=!atip;$('#c10l2-at').setAttribute('aria-pressed',atip);leer();});
+  leer();
+})();
+</script>
+</body>
+</html>

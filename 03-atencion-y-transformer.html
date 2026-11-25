@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atención y Transformer · Modelos de IA · Modelos de IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Cómo funciona por dentro un modelo de lenguaje: tokens, embeddings, atención y el Transformer, cómo se entrena y se alinea, cómo genera y razona, y cómo se evalúa y se elige.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="atencion-y-transformer">
+<header class="topbar"><a class="brand" href="index.html">Modelos de <b>IA</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 03 DE 10</span><h1>Atención y el Transformer</h1><p class="lede">Después del capítulo 2, cada token de «¿De qué color es el cielo?» es un vector, pero un vector aislado: el de «cielo» es el mismo en cualquier frase. La atención es el mecanismo que deja que cada token mire a los demás y se cargue de contexto. Apilada en decenas de capas, forma el Transformer, la arquitectura de todos los modelos de lenguaje actuales.</p></header>
+<section><div class="prose"><p>En el capítulo 2, la pregunta del curso, «¿De qué color es el cielo?», quedó convertida en ocho vectores, uno por token. Cada vector salió de una tabla: la fila de «cielo» es la misma en «el cielo está nublado» que en «cielo raso» o en «mi cielo, te extraño». Con eso el modelo sabe qué palabras hay, pero no qué dice la frase. Para responder «azul», el último token tiene que enterarse de que se pregunta por un <b>color</b> y de que el color es <b>del cielo</b>.</p><p>Este capítulo explica cómo se mezcla esa información, con Colibrí, el modelo de juguete del curso, y con un modelo real, Llama 3.2. La pieza central se llama <b>atención</b> (<i>attention</i>), y la arquitectura que la apila en capas se llama <b>Transformer</b> (<i>Transformer</i>, transformador; el nombre no se traduce). Todos los modelos de lenguaje que se usan hoy, abiertos o cerrados, son variantes de esta arquitectura, presentada en 2017 en el artículo «Attention Is All You Need».</p></div></section>
+<section><h2>El problema que dejaron las redes recurrentes</h2><div class="prose"><p>Antes del Transformer, el texto se procesaba con <b>redes recurrentes</b> (<i>recurrent neural networks</i>, RNN): una red que lee un token, actualiza un vector de memoria y pasa ese vector al paso siguiente. Para leer la pregunta del curso, la red da ocho pasos en fila, y todo lo que sabe al final está comprimido en un solo vector. Cómo funcionan por dentro, la memoria que se desvanece y las compuertas de las LSTM están en <a href="https://aaramirez.github.io/aprendizaje-profundo/temario.html" target="_blank" rel="noopener">Aprendizaje profundo</a>.</p></div><div class="analogia"><b>Imagínalo así</b><p>Una red recurrente es el juego del teléfono descompuesto: cada persona escucha solo a la anterior y le pasa el mensaje a la siguiente. Si la primera dijo «color», el último jugador lo recibe después de muchas bocas y mezclado con todo lo demás. La atención es una mesa redonda: cuando a alguien le toca hablar, puede preguntarle directamente a cualquiera de los presentes.</p></div><div class="prose"><p>Ese diseño tenía dos problemas:</p><ol class="steps"><li><span><b>El cuello de botella de la memoria.</b> Una frase larga tenía que caber en un vector de tamaño fijo. Lo que se leyó al principio se iba borrando, y la relación entre dos palabras lejanas era difícil de aprender.</span></li><li><span><b>El paso a paso.</b> Para calcular el paso 8 hacía falta el resultado del paso 7. No se podían procesar los tokens a la vez, y eso desperdiciaba las <b>GPU</b> (<i>Graphics Processing Units</i>, unidades de procesamiento gráfico), que son rápidas justamente porque hacen miles de cuentas en paralelo.</span></li></ol><p>La atención resuelve los dos: cada token mira directamente a todos los demás, sin intermediarios, y todos los tokens hacen ese cálculo al mismo tiempo.</p></div><figure class="fig fig-comparacion" id="03-diagrama-1"><div class="lienzo"><svg viewBox="0 0 920 430" style="min-width:720px" role="img" aria-label="Comparación entre una red recurrente y la atención con la pregunta ¿De qué color es el cielo?. Arriba, la red recurrente lee los ocho tokens uno por uno y pasa un único vector de memoria de un paso al siguiente: para llegar del token color al signo de cierre hay que atravesar cuatro pasos y todo se hace en ocho pasos en fila. Abajo, con atención, el último token mira directamente a todos los anteriores en un solo paso, y los ocho tokens se procesan a la vez.">
+<defs>
+<marker id="m3d1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="m3d1-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-red"/></marker>
+</defs>
+<text x="16" y="28" class="t t-xs t-b t-m">ANTES · RED RECURRENTE (RNN): UN PASO DETRÁS DE OTRO</text>
+<g class="t t-s t-mono" text-anchor="middle">
+<rect x="40" y="96" width="76" height="30" rx="6" class="c-fis"/><text x="78" y="115">¿</text>
+<rect x="146" y="96" width="76" height="30" rx="6" class="c-fis"/><text x="184" y="115">De</text>
+<rect x="252" y="96" width="76" height="30" rx="6" class="c-fis"/><text x="290" y="115">␣qué</text>
+<rect x="358" y="96" width="76" height="30" rx="6" class="c-fis"/><text x="396" y="115">␣color</text>
+<rect x="464" y="96" width="76" height="30" rx="6" class="c-fis"/><text x="502" y="115">␣es</text>
+<rect x="570" y="96" width="76" height="30" rx="6" class="c-fis"/><text x="608" y="115">␣el</text>
+<rect x="676" y="96" width="76" height="30" rx="6" class="c-fis"/><text x="714" y="115">␣cielo</text>
+<rect x="782" y="96" width="76" height="30" rx="6" class="c-fis"/><text x="820" y="115">?</text>
+</g>
+<g>
+<circle cx="78" cy="62" r="14" class="caja"/><circle cx="184" cy="62" r="14" class="caja"/><circle cx="290" cy="62" r="14" class="caja"/><circle cx="396" cy="62" r="14" class="caja" style="stroke-width:2.5"/>
+<circle cx="502" cy="62" r="14" class="caja"/><circle cx="608" cy="62" r="14" class="caja"/><circle cx="714" cy="62" r="14" class="caja"/><circle cx="820" cy="62" r="14" class="caja" style="stroke-width:2.5"/>
+<line x1="78" y1="94" x2="78" y2="80" class="ln" marker-end="url(#m3d1-a)"/><line x1="184" y1="94" x2="184" y2="80" class="ln" marker-end="url(#m3d1-a)"/><line x1="290" y1="94" x2="290" y2="80" class="ln" marker-end="url(#m3d1-a)"/><line x1="396" y1="94" x2="396" y2="80" class="ln" marker-end="url(#m3d1-a)"/>
+<line x1="502" y1="94" x2="502" y2="80" class="ln" marker-end="url(#m3d1-a)"/><line x1="608" y1="94" x2="608" y2="80" class="ln" marker-end="url(#m3d1-a)"/><line x1="714" y1="94" x2="714" y2="80" class="ln" marker-end="url(#m3d1-a)"/><line x1="820" y1="94" x2="820" y2="80" class="ln" marker-end="url(#m3d1-a)"/>
+<line x1="92" y1="62" x2="168" y2="62" class="ln" style="stroke-width:2" marker-end="url(#m3d1-a)"/><line x1="198" y1="62" x2="274" y2="62" class="ln" style="stroke-width:2" marker-end="url(#m3d1-a)"/><line x1="304" y1="62" x2="380" y2="62" class="ln" style="stroke-width:2" marker-end="url(#m3d1-a)"/><line x1="410" y1="62" x2="486" y2="62" class="ln" style="stroke-width:2" marker-end="url(#m3d1-a)"/>
+<line x1="516" y1="62" x2="592" y2="62" class="ln" style="stroke-width:2" marker-end="url(#m3d1-a)"/><line x1="622" y1="62" x2="698" y2="62" class="ln" style="stroke-width:2" marker-end="url(#m3d1-a)"/><line x1="728" y1="62" x2="804" y2="62" class="ln" style="stroke-width:2" marker-end="url(#m3d1-a)"/>
+</g>
+<text x="40" y="150" class="t t-s">Un solo vector de memoria pasa de mano en mano. Lo que dijo «color» llega al «?» después de 4 pasos, mezclado con todo lo demás.</text>
+<text x="40" y="168" class="t t-s t-m">8 tokens = 8 pasos en fila: no se pueden calcular a la vez.</text>
+<line x1="16" y1="192" x2="904" y2="192" class="ln ln-d"/>
+<text x="16" y="222" class="t t-xs t-b k-red">AHORA · ATENCIÓN: CADA TOKEN MIRA A TODOS LOS DEMÁS</text>
+<g class="ln s-red" style="stroke-width:1.6">
+<path d="M820 352 C 820 250, 78 250, 78 352" style="opacity:.35"/>
+<path d="M820 352 C 820 270, 184 270, 184 352" style="opacity:.35"/>
+<path d="M820 352 C 820 286, 290 286, 290 352" style="opacity:.5"/>
+<path d="M820 352 C 820 262, 396 262, 396 352" style="stroke-width:4"/>
+<path d="M820 352 C 820 300, 502 300, 502 352" style="opacity:.35"/>
+<path d="M820 352 C 820 312, 608 312, 608 352" style="opacity:.35"/>
+<path d="M820 352 C 820 312, 714 312, 714 352" style="stroke-width:3"/>
+</g>
+<g class="t t-s t-mono" text-anchor="middle">
+<rect x="40" y="352" width="76" height="30" rx="6" class="c-fis"/><text x="78" y="371">¿</text>
+<rect x="146" y="352" width="76" height="30" rx="6" class="c-fis"/><text x="184" y="371">De</text>
+<rect x="252" y="352" width="76" height="30" rx="6" class="c-fis"/><text x="290" y="371">␣qué</text>
+<rect x="358" y="352" width="76" height="30" rx="6" class="c-fis"/><text x="396" y="371">␣color</text>
+<rect x="464" y="352" width="76" height="30" rx="6" class="c-fis"/><text x="502" y="371">␣es</text>
+<rect x="570" y="352" width="76" height="30" rx="6" class="c-fis"/><text x="608" y="371">␣el</text>
+<rect x="676" y="352" width="76" height="30" rx="6" class="c-fis"/><text x="714" y="371">␣cielo</text>
+<rect x="782" y="352" width="76" height="30" rx="6" class="c-red"/><text x="820" y="371" class="k-red">?</text>
+</g>
+<text x="40" y="406" class="t t-s">El «?» mira directo a «color» y a «cielo» (líneas gruesas), sin intermediarios.</text>
+<text x="40" y="422" class="t t-s t-m">Los 8 tokens hacen su atención al mismo tiempo: un paso, ideal para una GPU.</text>
+</svg></div><figcaption><b>Red recurrente frente a atención.</b> Arriba, la red recurrente lee la pregunta un token por vez y pasa un único vector de memoria de un círculo al siguiente: lo que aportó «color» llega al signo «?» después de cuatro pasos. Abajo, con atención, el «?» se conecta directamente con todos los tokens anteriores; las líneas gruesas son las conexiones con más peso, hacia «color» y «cielo». Además, los ocho tokens calculan su atención a la vez.</figcaption></figure></section>
+<section><h2>La atención: cada token pregunta, los demás responden</h2><div class="prose"><p>La idea cabe en una frase: <b>el vector nuevo de cada token es un promedio ponderado de los vectores de los tokens que puede ver</b>, y los pesos dicen cuánto le interesa cada uno.</p></div><div class="analogia"><b>Imagínalo así</b><p>Imagina una reunión de trabajo donde cada persona tiene una duda distinta. La encargada de compras escucha a todos, pero presta más atención a quien sabe de proveedores; el de finanzas, a quien habla de precios. Al terminar, cada uno sale con un resumen propio de la reunión: el mismo grupo, distinta atención, distinto resumen.</p></div><div class="prose"><p>Toma el último token de «El cielo es…», justo antes de que el modelo escriba «azul». Para decidir qué viene, a «es» le sirve saber cuál es su sujeto. Si pudiera repartir 100 puntos de atención, pondría la mayoría en «cielo», algunos en «El» y casi nada en sí mismo. Su vector nuevo se arma con esas proporciones: mucho de lo que aporta «cielo», un poco de lo demás.</p><p>Tres detalles hacen que esto funcione en un modelo real:</p><ul><li><b>Los pesos se calculan, no se programan.</b> Salen de comparar vectores, y la forma de comparar se aprende en el entrenamiento (capítulo 4). Nadie le dice al modelo que un verbo debe mirar a su sujeto.</li><li><b>Los pesos suman 1.</b> Se obtienen con <b>softmax</b> (<i>softmax</i>), una función que convierte una lista de puntajes cualesquiera en números positivos que suman 1: los puntajes altos se llevan casi todo y los bajos casi nada. Softmax vuelve a aparecer en el capítulo 6, a la salida del modelo.</li><li><b>Al generar, nadie mira el futuro.</b> Mientras el modelo escribe, los tokens siguientes todavía no existen. Por eso, en los modelos que generan, cada token mira solo hacia atrás. A esa regla se le llama <b>máscara causal</b> (<i>causal mask</i>).</li></ul></div><div class="lab" id="03-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>El mapa de atención de la pregunta</h3></div><p class="hint">Cada fila es un token que pregunta y cada columna, un token que responde: el color de la celda es el peso, y cada fila suma 100 %. Elige una capa y una cabeza, toca un token y lee a quién atiende. Cambia la máscara a «bidireccional» y mira cómo se llenan las celdas de arriba a la derecha.</p><style>
+[id="03-lab-1"] .opciones{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+[id="03-lab-1"] .c3l1-toks{display:flex;flex-wrap:wrap;gap:4px}
+[id="03-lab-1"] .c3l1-toks button{font:500 .88rem var(--f-mono);padding:4px 7px;white-space:pre;background:var(--c-fis-s);border-color:var(--c-fis)}
+[id="03-lab-1"] .c3l1-toks button[aria-pressed="true"]{background:var(--c-red);border-color:var(--c-red);color:var(--card)}
+[id="03-lab-1"] .c3l1-desc{font:500 .88rem/1.45 var(--f-body);color:var(--muted);margin:0}
+</style>
+<div class="opciones">
+  <label>Capa y cabeza
+    <select id="c3l1-h">
+      <option value="0">Capa 1 · cabeza 1: el token anterior</option>
+      <option value="1">Capa 1 · cabeza 2: el primer token</option>
+      <option value="2" selected>Capa 2 · cabeza 1: de quién depende cada palabra</option>
+      <option value="3">Capa 2 · cabeza 2: la misma palabra antes</option>
+      <option value="4">Capa 3 · cabeza 1: de qué trata la pregunta</option>
+      <option value="5">Capa 3 · cabeza 2: dónde terminó la pregunta</option>
+    </select></label>
+  <label>Máscara
+    <select id="c3l1-m">
+      <option value="causal" selected>Causal: solo mira hacia atrás (GPT)</option>
+      <option value="bi">Bidireccional: mira a todos (BERT)</option>
+    </select></label>
+</div>
+<p class="c3l1-desc" id="c3l1-d"></p>
+<div class="c3l1-toks" role="group" aria-label="Elige el token que pregunta" id="c3l1-toks"></div>
+<canvas id="c3l1-c" role="img" aria-label="Matriz de atención: cada fila es un token que pregunta y cada columna un token que responde; el color indica el peso"></canvas>
+<div class="legend"><span><i style="background:var(--c-red)"></i>peso de atención (cada fila suma 100 %)</span><span><i style="background:var(--grid)"></i>tapado por la máscara</span></div>
+<div class="readout texto" id="c3l1-out" aria-live="polite"></div></div><div class="prose"><p>Fíjate en la cabeza «de qué trata la pregunta»: los tokens de la respuesta, «El cielo es», miran a «color» y a «cielo». Esa es la información que necesitan para elegir «azul» y no «grande» o «lejano». Los pesos de este laboratorio son de juguete, pero imitan patrones que los investigadores han encontrado en modelos entrenados: cabezas que miran al token anterior, cabezas que buscan la misma palabra más atrás y cabezas que descargan su atención en el primer token cuando no encuentran nada útil.</p></div></section>
+<section><h2>Consultas, claves y valores</h2><div class="prose"><p>¿Cómo calcula «es» que «cielo» le interesa más que «El»? Cada token produce, a partir de su vector, tres vectores más pequeños con funciones distintas.</p></div><div class="analogia"><b>Imagínalo así</b><p>Piensa en un buscador de una biblioteca. Tú escribes una <b>consulta</b>: «libros sobre el cielo». Cada libro tiene una <b>ficha</b> con su título y sus etiquetas. El buscador compara tu consulta con todas las fichas, y los libros cuyas fichas se parecen más suben en la lista. Pero lo que te llevas a casa no es la ficha: es el <b>contenido</b> del libro.</p></div><div class="prose"><ul><li>La <b>consulta</b> (<i>query</i>, q) es lo que el token busca: «necesito a mi sujeto».</li><li>La <b>clave</b> (<i>key</i>, k) es lo que cada token ofrece para ser encontrado: «soy un sustantivo».</li><li>El <b>valor</b> (<i>value</i>, v) es lo que cada token entrega si lo eligen.</li></ul><p>Cada uno se obtiene multiplicando el embedding <span class="math">x</span> del token (en Colibrí, su fila de 4 números del capítulo 2) por una matriz aprendida: <span class="math">q = x\,W_Q</span>, <span class="math">k = x\,W_K</span> y <span class="math">v = x\,W_V</span>. Después, el parecido entre la consulta de un token y la clave de otro se mide con el <b>producto punto</b> (<i>dot product</i>): se multiplican los números posición por posición y se suman. Si los dos vectores apuntan hacia el mismo lado, el resultado es grande; si apuntan a lados distintos, es pequeño o negativo. Qué es un producto punto y por qué mide parecido está en <a href="https://aaramirez.github.io/mate/" target="_blank" rel="noopener">Mate para ML</a>.</p><p>Con todos los tokens juntos, las consultas forman una matriz <span class="math">Q</span>, las claves una matriz <span class="math">K</span> y los valores una matriz <span class="math">V</span>, y la atención completa es una sola fórmula:</p><div class="math-display">\text{Atención}(Q,K,V)=\text{softmax}\!\left(\frac{QK^{\top}}{\sqrt{d_k}}\right)V</div><p>Se lee de adentro hacia afuera: <span class="math">QK^{\top}</span> compara cada consulta con cada clave; dividir por <span class="math">\sqrt{d_k}</span>, la raíz del tamaño de los vectores, evita que los puntajes crezcan demasiado cuando los vectores son largos; softmax convierte cada fila de puntajes en pesos; y multiplicar por <span class="math">V</span> hace el promedio ponderado de los valores.</p><p>¿Por qué hace falta la división? Con vectores de 128 números, un producto punto suma 128 términos, y su tamaño típico crece con la raíz de esa cantidad. Puntajes muy grandes hacen que softmax le dé casi el 100 % a un solo token, y entonces el entrenamiento casi no puede corregir los pesos. Dividir por <span class="math">\sqrt{d_k}</span> devuelve los puntajes a un rango donde softmax todavía reparte.</p></div><figure class="fig fig-flujo" id="03-diagrama-2"><div class="lienzo"><svg viewBox="0 0 940 420" style="min-width:760px" role="img" aria-label="Cálculo de la atención para el token es, en la frase El cielo es. Cada token tiene su embedding de 4 números de Colibrí. Multiplicado por tres matrices, da su consulta q, su clave k y su valor v. La consulta de es se compara con las tres claves por producto punto dividido por raíz de 2: El 0,18, cielo 1,11, es 0,20. Softmax los convierte en pesos: 22, 56 y 22 por ciento. La salida es la suma de los valores con esos pesos, (0,19; 0,55), dominada por el valor de cielo.">
+<defs>
+<marker id="m3d2-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="m3d2-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-red"/></marker>
+</defs>
+<text x="470" y="26" class="t t-b" text-anchor="middle">Atención(Q, K, V) = softmax(Q·Kᵀ / √dₖ) · V</text>
+
+<text x="20" y="62" class="t t-xs t-b k-enl">① EMBEDDINGS</text>
+<g class="t t-s t-mono">
+<rect x="20" y="74" width="150" height="54" rx="8" class="c-enl"/><text x="30" y="94" class="t-b">El</text><text x="30" y="114">0,0 0,1 0,9 −0,2</text>
+<rect x="20" y="146" width="150" height="54" rx="8" class="c-enl"/><text x="30" y="166" class="t-b">cielo</text><text x="30" y="186">0,3 0,9 0,0 0,0</text>
+<rect x="20" y="218" width="150" height="54" rx="8" class="c-enl" style="stroke-width:2.5"/><text x="30" y="238" class="t-b">es</text><text x="30" y="258">0,1 0,1 0,7 0,0</text>
+</g>
+<text x="20" y="300" class="t t-s t-m">Colibrí: color, cielo, gram., preg.</text>
+
+<text x="216" y="62" class="t t-xs t-b k-red">② × W_Q, W_K, W_V</text>
+<g class="t t-s t-mono">
+<rect x="216" y="74" width="196" height="54" rx="8" class="caja"/><text x="226" y="96">k (0,15; 0,90)</text><text x="226" y="116" class="k-enl">v (0,00; 0,10)</text>
+<rect x="216" y="146" width="196" height="54" rx="8" class="caja"/><text x="226" y="168">k (1,50; 0,00)</text><text x="226" y="188" class="k-enl">v (0,30; 0,90)</text>
+<rect x="216" y="218" width="196" height="76" rx="8" class="c-red" style="stroke-width:2.5"/><text x="226" y="240" class="k-red t-b">q (1,05; 0,10)</text><text x="226" y="260">k (0,20; 0,70)</text><text x="226" y="280" class="k-enl">v (0,10; 0,10)</text>
+</g>
+<line x1="170" y1="101" x2="212" y2="101" class="ln" marker-end="url(#m3d2-a)"/>
+<line x1="170" y1="173" x2="212" y2="173" class="ln" marker-end="url(#m3d2-a)"/>
+<line x1="170" y1="245" x2="212" y2="245" class="ln" marker-end="url(#m3d2-a)"/>
+<text x="216" y="320" class="t t-s t-m">q: qué busca · k: qué ofrece</text>
+<text x="216" y="336" class="t t-s t-m">v: qué entrega si lo eligen</text>
+
+<text x="458" y="62" class="t t-xs t-b k-red">③ q·k / √2</text>
+<g class="t t-s t-mono">
+<rect x="458" y="86" width="112" height="30" rx="6" class="caja"/><text x="468" y="106">El     0,18</text>
+<rect x="458" y="158" width="112" height="30" rx="6" class="caja"/><text x="468" y="178" class="t-b">cielo  1,11</text>
+<rect x="458" y="230" width="112" height="30" rx="6" class="caja"/><text x="468" y="250">es     0,20</text>
+</g>
+<path d="M412 240 C 436 240, 436 101, 454 101" class="ln s-red" style="stroke-width:1.6" marker-end="url(#m3d2-r)"/>
+<path d="M412 244 C 436 244, 436 173, 454 173" class="ln s-red" style="stroke-width:1.6" marker-end="url(#m3d2-r)"/>
+<line x1="412" y1="246" x2="454" y2="246" class="ln s-red" style="stroke-width:1.6" marker-end="url(#m3d2-r)"/>
+<text x="458" y="300" class="t t-s t-m">producto punto: parecido</text>
+<text x="458" y="316" class="t t-s t-m">entre lo que busca y</text>
+<text x="458" y="332" class="t t-s t-m">lo que ofrece cada uno</text>
+
+<text x="610" y="62" class="t t-xs t-b k-red">④ SOFTMAX → PESOS</text>
+<rect x="610" y="90" width="28" height="22" rx="4" class="k-red" style="opacity:.55"/><text x="645" y="106" class="t t-s t-mono">22 %</text>
+<rect x="610" y="162" width="73" height="22" rx="4" class="k-red"/><text x="690" y="178" class="t t-s t-mono t-b">56 %</text>
+<rect x="610" y="234" width="28" height="22" rx="4" class="k-red" style="opacity:.55"/><text x="645" y="250" class="t t-s t-mono">22 %</text>
+<line x1="570" y1="101" x2="606" y2="101" class="ln" marker-end="url(#m3d2-a)"/>
+<line x1="570" y1="173" x2="606" y2="173" class="ln" marker-end="url(#m3d2-a)"/>
+<line x1="570" y1="245" x2="606" y2="245" class="ln" marker-end="url(#m3d2-a)"/>
+<text x="610" y="300" class="t t-s t-m">positivos y suman 100 %</text>
+
+<text x="760" y="62" class="t t-xs t-b k-red">⑤ Σ PESO · v</text>
+<rect x="760" y="140" width="164" height="76" rx="10" class="c-red" style="stroke-width:2"/>
+<text x="772" y="164" class="t t-s">0,22·v(El) + 0,56·v(cielo)</text>
+<text x="772" y="182" class="t t-s">+ 0,22·v(es)</text>
+<text x="772" y="204" class="t t-mono t-b k-red">= (0,19; 0,55)</text>
+<line x1="736" y1="173" x2="756" y2="173" class="ln" style="stroke-width:2" marker-end="url(#m3d2-a)"/>
+<text x="760" y="240" class="t t-s">el nuevo vector de «es»</text>
+<text x="760" y="256" class="t t-s">ahora tiene mucho de</text>
+<text x="760" y="272" class="t t-s">«cielo» en la columna cielo</text>
+
+<rect x="20" y="360" width="904" height="44" rx="10" class="caja" style="stroke-dasharray:5 4"/>
+<text x="36" y="380" class="t t-s">En un modelo real todo esto se hace con matrices: las 3 filas de tokens se vuelven miles, las cabezas de 2 números (como en Colibrí) se vuelven de 64 o 128,</text>
+<text x="36" y="396" class="t t-s">y cada token calcula su fila de pesos al mismo tiempo que los demás. Las matrices W_Q, W_K y W_V se aprenden en el entrenamiento.</text>
+</svg></div><figcaption><b>La atención de «es», paso a paso.</b> ① Los tres tokens de «El cielo es», cada uno con su fila de la tabla de embeddings de Colibrí (color, cielo, gramatical, pregunta). ② Multiplicados por las matrices W_Q, W_K y W_V, dan su clave k y su valor v; «es», que es el que pregunta, también da su consulta q. ③ La consulta se compara con cada clave: el producto punto dividido por √2 da 0,18 para «El», 1,11 para «cielo» y 0,20 para «es». ④ Softmax los convierte en 22 %, 56 % y 22 %. ⑤ La salida es la suma de los valores con esos pesos: el vector nuevo de «es» queda con mucho de la columna «cielo»: ahora sabe de qué habla la frase.</figcaption></figure><div class="lab" id="03-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>La atención a mano, con tres tokens</h3></div><p class="hint">Las matrices <span class="math">X</span>, <span class="math">W_Q</span>, <span class="math">W_K</span> y <span class="math">W_V</span> están a la vista, y las cuentas se rehacen con cada cambio. Elige qué token pregunta. Sube la intensidad de la consulta y mira cómo la atención se concentra en un solo token; bájala a cero y se reparte por igual. Gira la consulta hasta que apunte a la clave de «El». Quita la división por <span class="math">\sqrt{d_k}</span> y compara.</p><style>
+[id="03-lab-2"] .c3l2-mats{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr));gap:8px}
+[id="03-lab-2"] .c3l2-m{border:1px solid var(--line);border-top:3px solid var(--c-red);border-radius:8px;padding:6px 8px;background:var(--card);overflow-x:auto}
+[id="03-lab-2"] .c3l2-m.emb{border-top-color:var(--c-enl);grid-column:span 2}
+@media (max-width:520px){[id="03-lab-2"] .c3l2-m.emb{grid-column:auto}}
+[id="03-lab-2"] .c3l2-m b{display:block;font:700 .72rem var(--f-display);letter-spacing:.05em;color:var(--muted);margin-bottom:3px}
+[id="03-lab-2"] .c3l2-m table{font:500 .76rem var(--f-mono);width:auto;border-collapse:collapse}
+[id="03-lab-2"] .c3l2-m td,[id="03-lab-2"] .c3l2-m th{padding:1px 6px;border:0;text-align:right;font-variant-numeric:tabular-nums}
+[id="03-lab-2"] .c3l2-m th{font:600 .7rem var(--f-mono);color:var(--muted);text-align:left}
+[id="03-lab-2"] .c3l2-m tr.on td{color:var(--c-red);font-weight:700}
+[id="03-lab-2"] .c3l2-m tr.off td{opacity:.4}
+</style>
+<div class="btns" role="group" aria-label="Token que pregunta">
+  <span class="hint" style="align-self:center">Pregunta:</span>
+  <button type="button" data-q="0" aria-pressed="false">El</button>
+  <button type="button" data-q="1" aria-pressed="false">␣cielo</button>
+  <button type="button" data-q="2" aria-pressed="true">␣es</button>
+</div>
+<div class="ctls">
+  <label class="ctl">Intensidad de la consulta <output id="c3l2-s-o"></output>
+    <input id="c3l2-s" type="range" min="0" max="4" step="0.1" value="1"></label>
+  <label class="ctl">Giro de la consulta <output id="c3l2-g-o"></output>
+    <input id="c3l2-g" type="range" min="-90" max="90" step="5" value="0"></label>
+</div>
+<div class="opciones">
+  <label>Escala
+    <select id="c3l2-raiz"><option value="1" selected>Dividir por √dk = √2</option><option value="0">Sin dividir</option></select></label>
+  <label>Máscara
+    <select id="c3l2-mask"><option value="1" selected>Causal: no mira hacia adelante</option><option value="0">Sin máscara</option></select></label>
+</div>
+<div class="c3l2-mats" id="c3l2-mats"></div>
+<canvas id="c3l2-c" role="img" aria-label="Dos planos: a la izquierda, la consulta del token elegido y las claves de los tres tokens con su peso; a la derecha, los valores y la salida, que es su promedio ponderado"></canvas>
+<div class="legend"><span><i style="background:var(--c-red)"></i>consulta q</span><span><i style="background:var(--muted)"></i>claves k</span><span><i style="background:var(--c-enl)"></i>valores v</span><span><i style="background:var(--warm)"></i>salida: Σ peso · v</span></div>
+<div class="readout texto" id="c3l2-out" aria-live="polite"></div></div><div class="prose"><p>Dos consecuencias importantes salen de este cálculo. La primera: la atención <b>no tiene parámetros propios por token</b>. Las mismas tres matrices sirven para cualquier frase de cualquier largo, y por eso un modelo entrenado con textos cortos puede leer textos largos (hasta cierto punto, como se ve al final del capítulo). La segunda: todo son multiplicaciones de matrices, la operación que las GPU hacen más rápido. Esa es buena parte de la razón por la que el Transformer reemplazó a las redes recurrentes.</p></div></section>
+<section><h2>Atención de varias cabezas</h2><div class="prose"><p>Una sola atención reparte un solo juego de pesos. Pero un token necesita varias cosas a la vez: su sujeto, la palabra anterior, de qué trata la pregunta, si hubo un signo de cierre. La solución es hacer varias atenciones en paralelo, cada una con sus propias matrices.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un comité que revisa un contrato no pone a una persona a leerlo todo. Una abogada busca las cláusulas de penalidad, un contador mira los montos y alguien de operaciones revisa los plazos. Cada uno lee el mismo documento con una pregunta distinta, y al final se juntan las notas de todos.</p></div><div class="prose"><p>Eso es la <b>atención de varias cabezas</b> (<i>multi-head attention</i>). Cada <b>cabeza</b> (<i>head</i>) tiene sus propias <span class="math">W_Q</span>, <span class="math">W_K</span> y <span class="math">W_V</span>, que producen vectores más cortos. Colibrí tiene 2 cabezas de 2 números cada una, como la del laboratorio anterior, y repite el bloque en 2 capas con un contexto de 16 tokens. En Llama 3.2 3B, el vector de cada token tiene 3.072 números y hay 24 cabezas de 128 números cada una (<span class="math">24 \times 128 = 3.072</span>). Cada cabeza calcula su atención; los 24 resultados se ponen uno al lado del otro y una matriz más, <span class="math">W_O</span>, los mezcla en un solo vector de 3.072.</p><p>Algunas cabezas de modelos reales tienen funciones reconocibles, como las del laboratorio 1. Las más estudiadas son las <b>cabezas de inducción</b> (<i>induction heads</i>), que encuentran una repetición en el texto y copian lo que vino después. Pero la mayoría no tiene una función tan limpia: hacen mezclas que todavía no sabemos describir con palabras.</p><p>Los modelos recientes ahorran memoria con un truco: varias cabezas de consulta comparten las mismas claves y valores. Se llama <b>atención de consultas agrupadas</b> (<i>grouped-query attention</i>, GQA). En Llama 3.2 3B, las 24 cabezas de consulta comparten 8 juegos de claves y valores: las consultas siguen siendo distintas, pero se guardan tres veces menos claves y valores. La razón de ese ahorro aparece al final del capítulo.</p></div><div class="practica"><div class="practica-title"><span class="tag">En el navegador</span><h3>Un Transformer real, abierto en el navegador</h3></div><p>Vas a mirar por dentro GPT-2 small, un modelo de 2019 con 12 capas y 12 cabezas por capa, que corre entero en tu navegador. Necesitas una computadora; en el celular la página se ve, pero es incómoda.</p><ol class="steps"><li><span>Abre el Transformer Explainer del Georgia Institute of Technology: <a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">poloclub.github.io/transformer-explainer</a>. Espera a que cargue el modelo.</span></li><li><span>Escribe una frase en inglés que termine a medias, por ejemplo <code>The color of the sky is</code> y pulsa <b>Generate</b>.</span></li><li><span>Haz clic en el bloque de atención y abre el detalle de consulta, clave y valor. Busca la matriz de pesos: es la misma de la fórmula de este capítulo.</span></li><li><span>Cambia de cabeza con el selector y compara los patrones: algunas miran al token anterior, otras al primero.</span></li><li><span>Mira al final la lista de tokens siguientes con su probabilidad.</span></li></ol><p><b>Qué observar:</b> la matriz de atención es triangular, porque el modelo solo mira hacia atrás. Cada cabeza tiene un patrón distinto, y en las primeras capas muchas cabezas descargan peso en el primer token. La predicción final sale del último token, como en el laboratorio 3 de este capítulo. El modelo es pequeño y viejo, así que sus respuestas son simples: lo que importa aquí es la mecánica.</p></div></section>
+<section><h2>La posición: codificaciones sinusoidales y rotatorias</h2><div class="prose"><p>Hay un problema escondido en la fórmula de la atención: no sabe de orden. Si se cambian de lugar los tokens, cada uno recibe exactamente los mismos pesos, porque el producto punto no depende de dónde está cada vector. Para la atención pura, «el perro mordió al hombre» y «el hombre mordió al perro» son el mismo conjunto de palabras.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un montón de fotos sueltas de un viaje no cuenta la historia: hace falta saber cuál fue primero. Una forma es escribir la fecha en el dorso de cada foto. Otra, más ingeniosa, es fijarse en las sombras: si sabes cómo gira el Sol, comparando dos sombras sabes cuántas horas pasaron entre una foto y otra.</p></div><div class="prose"><p>El Transformer de 2017 escribió «la fecha en el dorso». A cada embedding le sumó un vector que depende solo de la posición, hecho con senos y cosenos de distintas frecuencias: unos números cambian rápido de un token al siguiente y otros muy despacio, como las agujas de segundos, minutos y horas de un reloj. Se llama <b>codificación posicional sinusoidal</b> (<i>sinusoidal positional encoding</i>). Para la posición <span class="math">p</span> y el par de dimensiones <span class="math">i</span> de un vector de tamaño <span class="math">d</span>:</p><div class="math-display">PE_{(p,\,2i)}=\sin\!\left(\frac{p}{10000^{2i/d}}\right),\qquad PE_{(p,\,2i+1)}=\cos\!\left(\frac{p}{10000^{2i/d}}\right)</div><p>Los modelos actuales usan casi todos la segunda idea, la de las sombras: la <b>codificación posicional rotatoria</b> (<i>Rotary Position Embedding</i>, RoPE), propuesta en 2021. En lugar de sumar algo al embedding, gira la consulta y la clave de cada token un ángulo proporcional a su posición, dentro de cada capa. Como el producto punto entre dos vectores girados depende solo de la diferencia de ángulos, el puntaje entre dos tokens depende de <b>qué tan lejos están</b>, no de en qué posición absoluta cayeron. Esa propiedad ayuda a que el modelo trate igual una frase al principio o al final de un documento, y es la base de varias técnicas para estirar el contexto después del entrenamiento.</p></div></section>
+<section><h2>El bloque del Transformer: atención, red densa, residuos y normalización</h2><div class="prose"><p>La atención mezcla información entre tokens, pero no es todo. Un Transformer apila muchos <b>bloques</b> (<i>blocks</i>) iguales, y cada uno tiene cuatro piezas.</p></div><div class="analogia"><b>Imagínalo así</b><p>Imagina un expediente que pasa por 28 escritorios. En cada uno, primero se hace una reunión donde cada hoja del expediente pide datos a las demás (la atención). Después, cada hoja va sola donde un especialista que le agrega lo que sabe (la red densa). Nadie borra lo escrito antes: cada escritorio solo agrega notas al margen. Eso es el flujo residual.</p></div><div class="prose"><ol class="steps"><li><span><b>Atención de varias cabezas.</b> Mezcla información entre los tokens, como se vio arriba.</span></li><li><span><b>Red densa</b> (<i>feed-forward network</i>, FFN, o <i>multilayer perceptron</i>, MLP). Una red neuronal pequeña que procesa <b>cada token por separado</b>: en Llama 3.2 3B, lleva el vector de 3.072 números a 8.192 y lo devuelve a 3.072. Tiene unos dos tercios de los parámetros del bloque, y los estudios de interpretabilidad sugieren que buena parte de los datos que el modelo «sabe» (que el cielo de día es azul, que París está en Francia) se guarda en estas redes.</span></li><li><span><b>Conexión residual</b> (<i>residual connection</i>). La salida de la atención y la de la red densa no reemplazan al vector del token: <b>se le suman</b>. Así, el vector de cada token es un <b>flujo residual</b> (<i>residual stream</i>) que recorre todo el modelo y en el que cada pieza escribe un poco. Además, las sumas dejan que el entrenamiento llegue hasta las primeras capas sin que la señal se pierda (el porqué está en Aprendizaje profundo).</span></li><li><span><b>Normalización</b> (<i>layer normalization</i>). Antes de cada subcapa, el vector se reescala para que sus números tengan un tamaño parecido. Sin esto, los valores crecen o se achican de una capa a otra y el entrenamiento se vuelve inestable. Llama usa una variante más simple llamada RMSNorm, y la coloca antes de cada subcapa; el Transformer de 2017 la ponía después.</span></li></ol><p>El bloque se repite: 28 veces en Llama 3.2 3B, 32 en Llama 3.1 8B y 80 en Llama 3.1 70B. Abajo de todo está la tabla de embeddings del capítulo 2; arriba de todo, una última normalización y la capa de salida que da un puntaje por cada token del vocabulario (capítulo 6).</p><p>Con estas piezas queda fija la arquitectura de <b>Colibrí</b>, el modelo de juguete del curso, y se pueden contar todos sus números:</p><div class="tbl"><table><thead><tr><th>Pieza de Colibrí</th><th>Tamaño</th><th>Parámetros</th></tr></thead><tbody><tr><td>Tabla de embeddings</td><td>32 tokens × 4</td><td>128</td></tr><tr><td>Atención, por capa</td><td>2 cabezas de 2: <span class="math">W_Q</span>, <span class="math">W_K</span>, <span class="math">W_V</span> de 4 × 4, más <span class="math">W_O</span> de 4 × 4</td><td>64</td></tr><tr><td>Red densa, por capa</td><td>4 → 16 neuronas → 4</td><td>128</td></tr><tr><td>Normalizaciones, por capa</td><td>2 × 4</td><td>8</td></tr><tr><td>2 capas</td><td>2 × (64 + 128 + 8)</td><td>400</td></tr><tr><td>Normalización final</td><td>4</td><td>4</td></tr><tr><td>Salida</td><td>comparte la tabla de embeddings</td><td>0</td></tr><tr><td><b>Total</b></td><td></td><td><b>532</b></td></tr></tbody></table></div><p>La salida <b>comparte</b> (<i>weight tying</i>) la tabla de embeddings: para puntuar cada token del vocabulario, el modelo usa la misma fila de 4 números que lo representa a la entrada. Llama 3.2 hace lo mismo. Unos 530 parámetros contra 3.200 millones: la misma arquitectura, seis millones de veces más chica.</p></div><figure class="fig fig-arquitectura" id="03-diagrama-3"><div class="lienzo"><svg viewBox="0 0 920 560" style="min-width:720px" role="img" aria-label="El bloque del Transformer de un modelo de solo decodificador. De abajo hacia arriba: los tokens se convierten en embeddings; el flujo residual sube por la izquierda. En cada bloque, una normalización y la atención de varias cabezas escriben su resultado sumándolo al flujo; después, otra normalización y la red densa también suman su resultado. El bloque se repite 28 veces en Llama 3.2 3B. Arriba, una normalización final y la capa de salida dan una probabilidad para cada token del vocabulario. A la derecha, el detalle de la atención de varias cabezas: cada cabeza calcula su propia atención, los resultados se concatenan y se mezclan con la matriz W_O.">
+<defs>
+<marker id="m3d3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+</defs>
+
+<rect x="70" y="500" width="300" height="40" rx="8" class="c-fis"/>
+<text x="220" y="525" class="t t-s t-mono" text-anchor="middle">¿ De qué color es el cielo ?</text>
+<rect x="70" y="440" width="300" height="40" rx="8" class="c-enl"/>
+<text x="220" y="465" class="t t-s" text-anchor="middle">tabla de embeddings: un vector por token</text>
+<line x1="220" y1="500" x2="220" y2="484" class="ln" marker-end="url(#m3d3-a)"/>
+
+<text x="24" y="300" class="t t-s t-m" transform="rotate(-90 24 300)" text-anchor="middle">flujo residual: n × 3.072</text>
+
+<rect x="56" y="122" width="400" height="300" rx="14" class="caja" style="stroke-dasharray:6 4;stroke-width:1.6"/>
+<text x="440" y="142" class="t t-xs t-b t-m" text-anchor="end">BLOQUE × 28</text>
+<line x1="110" y1="440" x2="110" y2="78" class="ln" style="stroke-width:6;opacity:.5"/>
+
+<rect x="160" y="356" width="200" height="30" rx="7" class="caja"/>
+<text x="260" y="376" class="t t-s" text-anchor="middle">normalización</text>
+<rect x="160" y="300" width="200" height="40" rx="8" class="c-red" style="stroke-width:1.8"/>
+<text x="260" y="318" class="t t-s t-b k-red" text-anchor="middle">atención de varias cabezas</text>
+<text x="260" y="333" class="t t-s" text-anchor="middle">mezcla entre tokens</text>
+<path d="M110 371 H156" class="ln" marker-end="url(#m3d3-a)"/>
+<line x1="260" y1="356" x2="260" y2="344" class="ln" marker-end="url(#m3d3-a)"/>
+<path d="M260 300 V276 H124" class="ln" marker-end="url(#m3d3-a)"/>
+<circle cx="110" cy="276" r="12" class="caja" style="stroke-width:2"/><text x="110" y="281" class="t t-b" text-anchor="middle">+</text>
+
+<rect x="160" y="228" width="200" height="30" rx="7" class="caja"/>
+<text x="260" y="248" class="t t-s" text-anchor="middle">normalización</text>
+<rect x="160" y="168" width="200" height="44" rx="8" class="c-red" style="stroke-width:1.8"/>
+<text x="260" y="187" class="t t-s t-b k-red" text-anchor="middle">red densa</text>
+<text x="260" y="203" class="t t-s" text-anchor="middle">cada token solo: 3.072→8.192→3.072</text>
+<path d="M110 243 H156" class="ln" marker-end="url(#m3d3-a)"/>
+<path d="M260 168 V150 H124" class="ln" marker-end="url(#m3d3-a)"/>
+<circle cx="110" cy="150" r="12" class="caja" style="stroke-width:2"/><text x="110" y="155" class="t t-b" text-anchor="middle">+</text>
+
+<rect x="70" y="78" width="300" height="30" rx="7" class="caja"/>
+<text x="220" y="98" class="t t-s" text-anchor="middle">normalización final</text>
+<rect x="70" y="20" width="300" height="44" rx="8" class="c-apl"/>
+<text x="220" y="39" class="t t-s t-b k-apl" text-anchor="middle">salida: un logit por token</text>
+<text x="220" y="55" class="t t-s" text-anchor="middle">del vocabulario → softmax (cap. 6)</text>
+<line x1="220" y1="78" x2="220" y2="68" class="ln" marker-end="url(#m3d3-a)"/>
+
+<text x="160" y="414" class="t t-s t-m">cada subcapa lee el flujo, calcula y suma</text>
+
+<line x1="360" y1="320" x2="500" y2="320" class="ln ln-d"/>
+<rect x="500" y="122" width="404" height="300" rx="14" class="c-red" style="stroke-width:1.4"/>
+<text x="516" y="146" class="t t-xs t-b k-red">DETALLE · ATENCIÓN DE VARIAS CABEZAS</text>
+<g class="t t-s" text-anchor="middle">
+<rect x="520" y="296" width="84" height="56" rx="8" class="caja"/><text x="562" y="318">cabeza 1</text><text x="562" y="336" class="t-m">token previo</text>
+<rect x="614" y="296" width="84" height="56" rx="8" class="caja"/><text x="656" y="318">cabeza 2</text><text x="656" y="336" class="t-m">sujeto</text>
+<rect x="708" y="296" width="84" height="56" rx="8" class="caja"/><text x="750" y="318">cabeza 3</text><text x="750" y="336" class="t-m">la pregunta</text>
+<rect x="802" y="296" width="84" height="56" rx="8" class="caja"/><text x="844" y="318">… 24</text><text x="844" y="336" class="t-m">otras</text>
+</g>
+<text x="702" y="384" class="t t-s" text-anchor="middle">cada una con sus propias W_Q, W_K, W_V de 128 dimensiones</text>
+<text x="702" y="402" class="t t-s t-m" text-anchor="middle">24 × 128 = 3.072</text>
+<line x1="562" y1="296" x2="660" y2="248" class="ln" marker-end="url(#m3d3-a)"/>
+<line x1="656" y1="296" x2="680" y2="248" class="ln" marker-end="url(#m3d3-a)"/>
+<line x1="750" y1="296" x2="724" y2="248" class="ln" marker-end="url(#m3d3-a)"/>
+<line x1="844" y1="296" x2="744" y2="248" class="ln" marker-end="url(#m3d3-a)"/>
+<rect x="600" y="210" width="204" height="36" rx="8" class="caja" style="stroke-width:1.6"/>
+<text x="702" y="233" class="t t-s" text-anchor="middle">concatenar y mezclar con W_O</text>
+<line x1="702" y1="210" x2="702" y2="178" class="ln" marker-end="url(#m3d3-a)"/>
+<text x="702" y="170" class="t t-s t-b k-red" text-anchor="middle">un vector de 3.072 por token</text>
+</svg></div><figcaption><b>El bloque del Transformer.</b> Se lee de abajo hacia arriba. Los tokens (naranja) se vuelven embeddings (verde), y el flujo residual sube por la línea gruesa de la izquierda. Dentro del bloque punteado, que se repite 28 veces, cada subcapa lee el flujo, se normaliza, calcula (la atención y la red densa, en azul) y suma su resultado en los círculos «+». Arriba, la salida (rosa) da un logit por token. A la derecha, el detalle de la atención: 24 cabezas trabajan en paralelo, se concatenan y la matriz W_O las mezcla.</figcaption></figure><div class="lab" id="03-lab-3"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Recorre el Transformer con la pregunta del curso</h3></div><p class="hint">Avanza con «Siguiente» desde el texto hasta la salida. En cada etapa mira la forma de los datos: cuántos tokens y cuántos números por token. En las capas, la «lente de logits» muestra qué token saldría si el modelo terminara ahí. Cambia a «La pregunta + El cielo es» y mira en qué capa aparece «azul».</p><style>
+[id="03-lab-3"] .opciones{grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr))}
+[id="03-lab-3"] .c3l3-ruta{display:flex;flex-wrap:wrap;gap:4px}
+[id="03-lab-3"] .c3l3-ruta button{font:600 .76rem var(--f-display);padding:5px 8px;border-left-width:4px}
+[id="03-lab-3"] .c3l3-ruta .p-fis{border-left-color:var(--c-fis)}
+[id="03-lab-3"] .c3l3-ruta .p-enl{border-left-color:var(--c-enl)}
+[id="03-lab-3"] .c3l3-ruta .p-red{border-left-color:var(--c-red)}
+[id="03-lab-3"] .c3l3-ruta .p-apl{border-left-color:var(--c-apl)}
+[id="03-lab-3"] .c3l3-ruta .p-txt{border-left-color:var(--line)}
+[id="03-lab-3"] .c3l3-panel{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--card);display:grid;gap:8px}
+[id="03-lab-3"] .c3l3-panel h4{margin:0;font:700 .95rem var(--f-display)}
+[id="03-lab-3"] .c3l3-panel p{margin:0;font:500 .9rem/1.45 var(--f-body)}
+[id="03-lab-3"] .c3l3-toks{display:flex;flex-wrap:wrap;gap:3px}
+[id="03-lab-3"] .c3l3-toks span{font:500 .84rem var(--f-mono);padding:2px 6px;border-radius:5px;border:1px solid var(--c-fis);background:var(--c-fis-s);white-space:pre}
+[id="03-lab-3"] .c3l3-toks span.nuevo{border-color:var(--c-apl);background:var(--c-apl-s)}
+[id="03-lab-3"] .c3l3-sub{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr));gap:6px}
+[id="03-lab-3"] .c3l3-sub div{border:1px solid var(--line);border-top:3px solid var(--c-red);border-radius:7px;padding:5px 7px;font:500 .78rem/1.35 var(--f-display);background:var(--paper)}
+[id="03-lab-3"] .c3l3-sub div.res{border-top-color:var(--muted);border-top-style:dashed}
+[id="03-lab-3"] .c3l3-lente{display:grid;gap:4px}
+[id="03-lab-3"] .c3l3-b{display:grid;grid-template-columns:80px 1fr 44px;gap:8px;align-items:center;font:500 .82rem var(--f-mono)}
+[id="03-lab-3"] .c3l3-b div{height:14px;border-radius:4px;background:var(--paper);overflow:hidden}
+[id="03-lab-3"] .c3l3-b i{display:block;height:100%;background:var(--c-apl)}
+[id="03-lab-3"] .c3l3-forma{font:600 .8rem var(--f-mono);color:var(--muted)}
+</style>
+<div class="opciones">
+  <label>Qué se predice
+    <select id="c3l3-modo">
+      <option value="a" selected>La pregunta → el primer token de la respuesta</option>
+      <option value="b">La pregunta + «El cielo es» → la palabra clave</option>
+    </select></label>
+</div>
+<div class="c3l3-ruta" role="group" aria-label="Etapas del recorrido" id="c3l3-ruta"></div>
+<div class="btns">
+  <button type="button" id="c3l3-ant">← Anterior</button>
+  <button type="button" class="primary" id="c3l3-sig">Siguiente →</button>
+</div>
+<div class="c3l3-panel" id="c3l3-panel" aria-live="polite"></div></div><div class="prose"><p>La técnica que usa el laboratorio se llama <b>lente de logits</b> (<i>logit lens</i>): se toma el flujo residual a mitad de camino y se lo pasa directamente por la capa de salida. En modelos reales muestra un patrón parecido al del laboratorio: en las primeras capas la predicción es casi la de un modelo que solo mira la palabra anterior, y la respuesta aparece y se afirma en las capas intermedias y finales.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>La ficha técnica de un modelo real</h3></div><p>Vas a leer la arquitectura de Llama 3.2 1B, el modelo de las prácticas del curso, tal como la guarda Ollama, un programa gratuito y sin registro para correr modelos en tu computadora (instálalo desde <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a>). Si no lo descargaste en el capítulo 1, pesa 1,3 GB; cualquier otro modelo pequeño sirve.</p><div class="cmds"><div class="cmd-panel" data-so="win mac linux"><div class="cmd-l"><code>ollama pull llama3.2:1b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama show llama3.2:1b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama show llama3.2:1b --verbose</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama show llama3.2:3b --verbose</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Con <code>ollama show</code>, anota la arquitectura, los parámetros, el largo del contexto y el largo de los embeddings.</span></li><li><span>Con <code>--verbose</code>, busca las líneas <code>llama.block_count</code>, <code>llama.attention.head_count</code>, <code>llama.attention.head_count_kv</code>, <code>llama.feed_forward_length</code> y <code>llama.rope.freq_base</code>.</span></li><li><span>Divide el largo de los embeddings por la cantidad de cabezas: es el tamaño de cada cabeza.</span></li><li><span>Si tienes espacio para otros 2 GB, la última línea descarga la ficha de Llama 3.2 3B, el modelo que usa el texto de este capítulo, para comparar.</span></li></ol><p><b>Qué observar:</b> en Llama 3.2 1B, 16 bloques, 32 cabezas de consulta de 64 números y 8 de clave y valor (la atención de consultas agrupadas), embeddings de 2.048, red densa de 8.192 y una base de RoPE de 500.000; en el de 3B, 28 bloques, 24 cabezas, embeddings de 3.072. El contexto declarado es de 131.072 tokens. Son exactamente las piezas de este capítulo, con sus tamaños reales; Colibrí tendría 2 bloques, 2 cabezas y embeddings de 4. En otros modelos los nombres de las líneas cambian (<code>qwen2.block_count</code>, <code>gemma3.block_count</code>), pero las piezas son las mismas.</p></div></section>
+<section><h2>Codificador, decodificador y solo decodificador: BERT frente a GPT</h2><div class="prose"><p>El Transformer de 2017 se diseñó para traducir y tenía dos mitades. Un <b>codificador</b> (<i>encoder</i>) leía la frase original completa, con atención en todas las direcciones. Un <b>decodificador</b> (<i>decoder</i>) escribía la traducción token por token, con máscara causal, y además consultaba al codificador con una <b>atención cruzada</b> (<i>cross-attention</i>): sus consultas buscaban entre las claves y valores de la frase original.</p><p>Al año siguiente, en 2018, aparecieron dos modelos que se quedaron cada uno con una mitad:</p><ul><li><b>BERT</b> (<i>Bidirectional Encoder Representations from Transformers</i>), de Google, usó solo el codificador. Se entrenó tapando palabras al azar y adivinándolas mirando a los dos lados. Es excelente para entender: clasificar textos, detectar entidades y producir los embeddings de frases del capítulo 2. No sirve para generar texto largo.</li><li><b>GPT</b> (<i>Generative Pre-trained Transformer</i>), de OpenAI, usó solo el decodificador, sin atención cruzada. Se entrenó prediciendo el token siguiente, siempre mirando hacia atrás.</li></ul></div><figure class="fig fig-comparacion" id="03-diagrama-4"><div class="lienzo"><svg viewBox="0 0 940 400" style="min-width:740px" role="img" aria-label="Tres arquitecturas comparadas por su máscara de atención. Codificador, como BERT: cada token mira a todos, antes y después; sirve para entender, clasificar y producir embeddings. Solo decodificador, como GPT, Llama y casi todos los modelos de chat: cada token mira solo hacia atrás, la matriz es triangular; sirve para generar texto. Codificador y decodificador, como el Transformer original de 2017 y T5: el codificador lee toda la entrada y el decodificador genera mirando hacia atrás y además consulta al codificador con atención cruzada; se usó para traducir.">
+<defs>
+<pattern id="p3d4-on" width="1" height="1"><rect width="1" height="1"/></pattern>
+</defs>
+
+<rect x="16" y="16" width="288" height="368" rx="14" class="caja"/>
+<text x="32" y="42" class="t t-xs t-b t-m">CODIFICADOR</text>
+<text x="32" y="62" class="t t-b">BERT (2018)</text>
+<g transform="translate(70 84)">
+<g class="c-red" style="stroke-width:1">
+<rect x="0" y="0" width="28" height="28"/><rect x="30" y="0" width="28" height="28"/><rect x="60" y="0" width="28" height="28"/><rect x="90" y="0" width="28" height="28"/><rect x="120" y="0" width="28" height="28"/><rect x="150" y="0" width="28" height="28"/>
+<rect x="0" y="30" width="28" height="28"/><rect x="30" y="30" width="28" height="28"/><rect x="60" y="30" width="28" height="28"/><rect x="90" y="30" width="28" height="28"/><rect x="120" y="30" width="28" height="28"/><rect x="150" y="30" width="28" height="28"/>
+<rect x="0" y="60" width="28" height="28"/><rect x="30" y="60" width="28" height="28"/><rect x="60" y="60" width="28" height="28"/><rect x="90" y="60" width="28" height="28"/><rect x="120" y="60" width="28" height="28"/><rect x="150" y="60" width="28" height="28"/>
+<rect x="0" y="90" width="28" height="28"/><rect x="30" y="90" width="28" height="28"/><rect x="60" y="90" width="28" height="28"/><rect x="90" y="90" width="28" height="28"/><rect x="120" y="90" width="28" height="28"/><rect x="150" y="90" width="28" height="28"/>
+<rect x="0" y="120" width="28" height="28"/><rect x="30" y="120" width="28" height="28"/><rect x="60" y="120" width="28" height="28"/><rect x="90" y="120" width="28" height="28"/><rect x="120" y="120" width="28" height="28"/><rect x="150" y="120" width="28" height="28"/>
+<rect x="0" y="150" width="28" height="28"/><rect x="30" y="150" width="28" height="28"/><rect x="60" y="150" width="28" height="28"/><rect x="90" y="150" width="28" height="28"/><rect x="120" y="150" width="28" height="28"/><rect x="150" y="150" width="28" height="28"/>
+</g>
+</g>
+<text x="32" y="290" class="t t-s">Cada token mira a todos, antes</text>
+<text x="32" y="306" class="t t-s">y después. Se entrena tapando</text>
+<text x="32" y="322" class="t t-s">palabras y adivinándolas.</text>
+<text x="32" y="350" class="t t-s t-b">Sirve para: entender, clasificar,</text>
+<text x="32" y="366" class="t t-s t-b">embeddings para buscar.</text>
+
+<rect x="326" y="16" width="288" height="368" rx="14" class="caja" style="stroke-width:2.2"/>
+<text x="342" y="42" class="t t-xs t-b t-m">SOLO DECODIFICADOR</text>
+<text x="342" y="62" class="t t-b">GPT, Llama y los de chat</text>
+<g transform="translate(380 84)">
+<g class="c-red" style="stroke-width:1">
+<rect x="0" y="0" width="28" height="28"/>
+<rect x="0" y="30" width="28" height="28"/><rect x="30" y="30" width="28" height="28"/>
+<rect x="0" y="60" width="28" height="28"/><rect x="30" y="60" width="28" height="28"/><rect x="60" y="60" width="28" height="28"/>
+<rect x="0" y="90" width="28" height="28"/><rect x="30" y="90" width="28" height="28"/><rect x="60" y="90" width="28" height="28"/><rect x="90" y="90" width="28" height="28"/>
+<rect x="0" y="120" width="28" height="28"/><rect x="30" y="120" width="28" height="28"/><rect x="60" y="120" width="28" height="28"/><rect x="90" y="120" width="28" height="28"/><rect x="120" y="120" width="28" height="28"/>
+<rect x="0" y="150" width="28" height="28"/><rect x="30" y="150" width="28" height="28"/><rect x="60" y="150" width="28" height="28"/><rect x="90" y="150" width="28" height="28"/><rect x="120" y="150" width="28" height="28"/><rect x="150" y="150" width="28" height="28"/>
+</g>
+<g class="caja" style="stroke-dasharray:2 3">
+<rect x="30" y="0" width="28" height="28"/><rect x="60" y="0" width="28" height="28"/><rect x="90" y="0" width="28" height="28"/><rect x="120" y="0" width="28" height="28"/><rect x="150" y="0" width="28" height="28"/>
+<rect x="60" y="30" width="28" height="28"/><rect x="90" y="30" width="28" height="28"/><rect x="120" y="30" width="28" height="28"/><rect x="150" y="30" width="28" height="28"/>
+<rect x="90" y="60" width="28" height="28"/><rect x="120" y="60" width="28" height="28"/><rect x="150" y="60" width="28" height="28"/>
+<rect x="120" y="90" width="28" height="28"/><rect x="150" y="90" width="28" height="28"/>
+<rect x="150" y="120" width="28" height="28"/>
+</g>
+</g>
+<text x="342" y="290" class="t t-s">Máscara causal: cada token mira</text>
+<text x="342" y="306" class="t t-s">solo hacia atrás. Se entrena</text>
+<text x="342" y="322" class="t t-s">prediciendo el token siguiente.</text>
+<text x="342" y="350" class="t t-s t-b">Sirve para: generar texto,</text>
+<text x="342" y="366" class="t t-s t-b">conversar, escribir código.</text>
+
+<rect x="636" y="16" width="288" height="368" rx="14" class="caja"/>
+<text x="652" y="42" class="t t-xs t-b t-m">CODIFICADOR Y DECODIFICADOR</text>
+<text x="652" y="62" class="t t-b">Transformer de 2017, T5</text>
+<g transform="translate(664 92)">
+<g class="c-red" style="stroke-width:1">
+<rect x="0" y="0" width="22" height="22"/><rect x="24" y="0" width="22" height="22"/><rect x="48" y="0" width="22" height="22"/><rect x="72" y="0" width="22" height="22"/>
+<rect x="0" y="24" width="22" height="22"/><rect x="24" y="24" width="22" height="22"/><rect x="48" y="24" width="22" height="22"/><rect x="72" y="24" width="22" height="22"/>
+<rect x="0" y="48" width="22" height="22"/><rect x="24" y="48" width="22" height="22"/><rect x="48" y="48" width="22" height="22"/><rect x="72" y="48" width="22" height="22"/>
+<rect x="0" y="72" width="22" height="22"/><rect x="24" y="72" width="22" height="22"/><rect x="48" y="72" width="22" height="22"/><rect x="72" y="72" width="22" height="22"/>
+</g>
+<text x="47" y="112" class="t t-s t-m" text-anchor="middle">lee la entrada</text>
+<g transform="translate(140 0)">
+<g class="c-red" style="stroke-width:1">
+<rect x="0" y="0" width="22" height="22"/>
+<rect x="0" y="24" width="22" height="22"/><rect x="24" y="24" width="22" height="22"/>
+<rect x="0" y="48" width="22" height="22"/><rect x="24" y="48" width="22" height="22"/><rect x="48" y="48" width="22" height="22"/>
+<rect x="0" y="72" width="22" height="22"/><rect x="24" y="72" width="22" height="22"/><rect x="48" y="72" width="22" height="22"/><rect x="72" y="72" width="22" height="22"/>
+</g>
+<text x="47" y="112" class="t t-s t-m" text-anchor="middle">genera</text>
+</g>
+<path d="M98 47 C 116 30, 124 30, 136 47" class="ln s-red" style="stroke-width:2"/>
+<path d="M98 47 C 116 64, 124 64, 136 47" class="ln s-red" style="stroke-width:2"/>
+<text x="118" y="150" class="t t-s k-red" text-anchor="middle">atención cruzada</text>
+</g>
+<text x="652" y="290" class="t t-s">El decodificador genera mirando</text>
+<text x="652" y="306" class="t t-s">hacia atrás y además consulta</text>
+<text x="652" y="322" class="t t-s">toda la entrada ya leída.</text>
+<text x="652" y="350" class="t t-s t-b">Sirve para: traducir, resumir;</text>
+<text x="652" y="366" class="t t-s t-b">hoy se usa poco en chat.</text>
+</svg></div><figcaption><b>Tres arquitecturas, tres máscaras.</b> Cada cuadrícula es la matriz de atención de seis tokens: una celda llena significa que la fila puede mirar a esa columna. El codificador (BERT) llena toda la matriz. El solo decodificador (GPT, Llama y los modelos de chat) llena solo el triángulo de abajo: nadie mira el futuro. El de codificador y decodificador combina las dos y las une con atención cruzada.</figcaption></figure><div class="prose"><p>¿Por qué ganó el solo decodificador? Por tres razones prácticas. Su objetivo de entrenamiento, predecir el token siguiente, se puede aplicar a cualquier texto sin preparar nada, y escala bien con más datos y más cómputo (capítulo 4). El mismo modelo sirve para todas las tareas: traducir, resumir o clasificar se piden con instrucciones en el texto. Y la máscara causal permite reutilizar el trabajo ya hecho al generar, con la caché del capítulo 6. Los codificadores siguen vivos donde brillan: los modelos de embeddings y los clasificadores pequeños y rápidos suelen ser de tipo BERT.</p></div></section>
+<section><h2>La ventana de contexto: su costo cuadrático y la economía del contexto</h2><div class="prose"><p>La <b>ventana de contexto</b> (<i>context window</i>) es la cantidad máxima de tokens que el modelo puede mirar a la vez: la pregunta, la conversación anterior, los documentos pegados y la respuesta que va escribiendo. Llama 3.2 declara 131.072 tokens; algunos modelos comerciales anuncian un millón o más.</p></div><div class="analogia"><b>Imagínalo así</b><p>En una reunión de 4 personas, si cada una cruza unas palabras con cada otra, hay 6 conversaciones. Con 40 personas son 780, y con 400, casi 80.000. Agregar gente a la reunión no suma trabajo: lo multiplica.</p></div><div class="prose"><p>La atención compara cada token con todos los demás, así que con <span class="math">n</span> tokens hay <span class="math">n^2</span> pares por cabeza y por capa. Duplicar el contexto cuadruplica ese trabajo. Por eso se dice que la atención tiene <b>costo cuadrático</b> (<i>quadratic cost</i>). Además, para no recalcular, el modelo guarda las claves y los valores de cada token ya procesado en cada capa, y esa memoria crece en línea recta con el contexto. Para modelos grandes y contextos largos, esa memoria llega a ocupar más que el propio modelo; de ahí el ahorro de la atención de consultas agrupadas.</p></div><figure class="fig fig-comparacion" id="03-diagrama-5"><div class="lienzo"><svg viewBox="0 0 920 330" style="min-width:720px" role="img" aria-label="El costo cuadrático de la atención. Cuatro cuadrados representan la matriz de atención de una capa y una cabeza para contextos de 1.000, 4.000, 16.000 y 128.000 tokens: 1 millón, 16 millones, 256 millones y 16.384 millones de pares. Duplicar el contexto cuadruplica los pares. A la derecha, la memoria de claves y valores guardados crece en línea recta con el contexto.">
+<text x="16" y="28" class="t t-xs t-b k-red">PARES DE TOKENS QUE SE COMPARAN EN CADA CABEZA DE CADA CAPA</text>
+<g class="c-red" style="stroke-width:1.2">
+<rect x="30" y="232" width="8" height="8"/>
+<rect x="110" y="208" width="32" height="32"/>
+<rect x="210" y="112" width="128" height="128"/>
+</g>
+<rect x="400" y="52" width="188" height="188" class="c-red" style="stroke-width:1.2;stroke-dasharray:6 4"/>
+<text x="494" y="140" class="t t-s k-red" text-anchor="middle">no cabe a escala:</text>
+<text x="494" y="156" class="t t-s k-red" text-anchor="middle">8 veces más ancho</text>
+<text x="494" y="172" class="t t-s k-red" text-anchor="middle">que el anterior</text>
+<g class="t t-s" text-anchor="middle">
+<text x="34" y="262" class="t-b">1.000</text><text x="34" y="278" class="t-m">1 millón</text>
+<text x="126" y="262" class="t-b">4.000</text><text x="126" y="278" class="t-m">16 millones</text>
+<text x="274" y="262" class="t-b">16.000</text><text x="274" y="278" class="t-m">256 millones</text>
+<text x="494" y="262" class="t-b">128.000</text><text x="494" y="278" class="t-m">16.384 millones</text>
+</g>
+<text x="16" y="312" class="t t-s">tokens de contexto (arriba) y pares (abajo): el doble de contexto cuesta cuatro veces más.</text>
+<line x1="626" y1="40" x2="626" y2="300" class="ln ln-d"/>
+<text x="650" y="28" class="t t-xs t-b t-m">MEMORIA DE LA CACHÉ DE CLAVES Y VALORES</text>
+<line x1="670" y1="240" x2="900" y2="240" class="ln"/>
+<line x1="670" y1="240" x2="670" y2="60" class="ln"/>
+<line x1="670" y1="240" x2="890" y2="80" class="ln s-red" style="stroke-width:3"/>
+<circle cx="677" cy="235" r="4" class="k-red"/><circle cx="697" cy="220" r="4" class="k-red"/><circle cx="725" cy="200" r="4" class="k-red"/><circle cx="890" cy="80" r="4" class="k-red"/>
+<text x="780" y="262" class="t t-s t-m" text-anchor="middle">tokens de contexto →</text>
+<text x="660" y="70" class="t t-s t-m" text-anchor="end">GB</text>
+<text x="650" y="290" class="t t-s">Crece en línea recta: cada token nuevo</text>
+<text x="650" y="306" class="t t-s">guarda su k y su v en cada capa.</text>
+</svg></div><figcaption><b>El costo cuadrático de la atención.</b> A la izquierda, la matriz de atención de una cabeza para 1.000, 4.000, 16.000 y 128.000 tokens: cada vez que el contexto se multiplica por 4, los pares se multiplican por 16, y el último cuadrado no cabe en la figura. A la derecha, la memoria de claves y valores guardados, que crece en línea recta.</figcaption></figure><div class="prose"><p>Los ingenieros han atacado el problema por varios lados: implementaciones como FlashAttention, que calculan la misma atención sin guardar la matriz completa en la memoria lenta de la GPU; ventanas deslizantes, donde cada token mira solo a los últimos miles; y técnicas para estirar RoPE más allá del largo con que se entrenó el modelo. Ninguna elimina la idea básica: <b>cada token de contexto cuesta</b>, en tiempo y en memoria.</p><p>Eso tiene una consecuencia económica directa. Pegar un manual entero en cada pregunta hace que cada respuesta sea más lenta y más cara, y no garantiza que el modelo use bien lo que está en el medio de un texto largo. Cuánto cuesta cada token en un producto y cuándo conviene recuperar solo los fragmentos relevantes está en <a href="https://aaramirez.github.io/aplicaciones-con-ia/temario.html" target="_blank" rel="noopener">Aplicaciones con IA</a>; aquí basta con el porqué: el contexto es un recurso que se paga al cuadrado.</p></div><div class="ml"><b>En la práctica</b><p><b>El contexto no es gratis.</b> Un equipo prueba un asistente interno que responde preguntas sobre un reglamento de 200 páginas. La primera versión pega el reglamento completo, unos 100.000 tokens, en cada pregunta. Funciona, pero cada respuesta tarda varios segundos más y cuesta muchas veces lo que costaría la pregunta sola. La segunda versión busca primero las tres secciones relevantes y pega solo esas, unos 3.000 tokens. La respuesta sale más rápido, cuesta una fracción y, en sus pruebas, acierta igual o mejor, porque el modelo no tiene que encontrar la aguja en un pajar de 200 páginas.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>La atención: cada parte de la entrada decide a qué otras partes mirar. Cada token produce una consulta, una clave y un valor; compara su consulta con las claves de los demás, convierte los puntajes en pesos con softmax y se lleva un promedio de los valores. Varias cabezas hacen eso en paralelo, la posición entra girando consultas y claves, y el bloque de atención, red densa, residuos y normalización se repite decenas de veces. Esa es toda la arquitectura: lo que cambia entre modelos es el tamaño y lo que aprendieron.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Qué dos problemas de las redes recurrentes resuelve la atención?</summary><p>El cuello de botella de comprimir toda la frase en un vector de memoria (con atención, cada token mira directamente a todos) y el procesamiento paso a paso (con atención, todos los tokens se calculan a la vez, aprovechando la GPU).</p></details><details><summary>En la atención de «es» sobre «El cielo es», ¿qué papel cumplen la consulta, la clave y el valor?</summary><p>La consulta de «es» expresa lo que busca (su sujeto); las claves de los tres tokens dicen lo que cada uno ofrece; el producto punto entre consulta y claves da los puntajes; y el vector nuevo de «es» se arma con los valores, pesados por softmax de esos puntajes.</p></details><details><summary>¿Por qué se divide por <span class="math">\sqrt{d_k}</span> antes de softmax?</summary><p>Porque el producto punto de vectores largos tiende a dar números grandes; sin dividir, softmax le daría casi todo el peso a un solo token y el entrenamiento casi no podría corregir los pesos.</p></details><details><summary>Sin codificación posicional, ¿qué le pasaría a «el perro mordió al hombre» frente a «el hombre mordió al perro»?</summary><p>La atención daría los mismos pesos a las mismas palabras, porque el producto punto no depende del orden: el modelo no podría distinguir quién mordió a quién.</p></details><details><summary>¿Qué hace la red densa que no hace la atención?</summary><p>Procesa cada token por separado, transformando su vector; no mezcla información entre tokens. Tiene la mayor parte de los parámetros de cada bloque y guarda buena parte del conocimiento del modelo.</p></details><details><summary>Si un contexto pasa de 8.000 a 32.000 tokens, ¿cuánto crece el trabajo de la atención y cuánto la memoria de claves y valores?</summary><p>El trabajo de la atención crece 16 veces (el cuadrado de 4) y la memoria de claves y valores crece 4 veces (en línea recta).</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Qué es la función de activación SwiGLU que usan las redes densas de Llama y por qué tiene tres matrices en lugar de dos?<small>Pista: busca «GLU variants improve transformer».</small></li><li>¿En qué se diferencia RMSNorm de la normalización de capa original y por qué es más barata?<small>Pista: busca «Root Mean Square Layer Normalization».</small></li><li>¿Cómo logra FlashAttention dar exactamente el mismo resultado que la atención normal usando menos memoria?<small>Pista: busca «FlashAttention tiling IO-aware».</small></li><li>¿Por qué el Transformer original eligió 10.000 como base de las frecuencias y por qué Llama 3 subió la de RoPE a 500.000?<small>Pista: busca «RoPE base frequency long context».</small></li><li>¿Qué son las «cabezas de inducción» y qué relación tienen con que un modelo aprenda de los ejemplos que le das en el texto?<small>Pista: busca «In-context Learning and Induction Heads».</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need (Vaswani y otros, 2017) <small>artículo original, en inglés</small></a><a class="vid" href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">The Illustrated Transformer, de Jay Alammar <small>ilustraciones paso a paso, en inglés</small></a><a class="vid" href="https://www.3blue1brown.com/lessons/attention" target="_blank" rel="noopener">Attention in transformers, visually explained, de 3Blue1Brown <small>lección en video, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2104.09864" target="_blank" rel="noopener">RoFormer: la codificación rotatoria (Su y otros, 2021) <small>artículo original, en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/modelos-de-ia" target="_blank" rel="noopener">github.com/aaramirez/modelos-de-ia</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const {$,tok,fmt,canvasWidget,hexRgb,lerp}=window.Lab;
+  const T=['¿','De',' qué',' color',' es',' el',' cielo','?',' El',' cielo',' es'];
+  const W=T.map(t=>t.trim().toLowerCase());
+  const DEP={3:[2,4],6:[5,4],9:[8,4],4:[3,6],10:[9,8],2:[1,3],5:[6,4],8:[9,10]}; // núcleo y vecino del que depende cada palabra
+  const DESC=[
+    'Cada token mira sobre todo al que tiene justo antes. Es uno de los patrones más comunes en las primeras capas de los modelos reales: arma pares de palabras vecinas.',
+    'Casi todo el peso cae en el primer token. Los modelos reales lo usan como «lugar de descanso» cuando una cabeza no encuentra nada útil que mirar.',
+    'Cada palabra mira a la palabra con la que forma frase: «cielo» mira a «el», «color» mira a «qué», «es» mira a su sujeto. Así se arma la gramática.',
+    'Cada token busca si la misma palabra ya apareció. Es la base de las cabezas que copian: el segundo «cielo» encuentra al primero.',
+    'Después del signo «?», la respuesta mira a «color» y a «cielo»: lo que se pregunta y de qué. Esta es la información que hace falta para decir «azul».',
+    'Los tokens de la respuesta miran al «?» y al «¿»: saben que la pregunta terminó y que ahora toca responder.'
+  ];
+  function puntaje(h,i,j,bi){
+    const d=i-j;let s=0;
+    if(h===0){if(d===1)s=4;else if(bi&&d===-1)s=2.5;else if(d===0)s=1;}
+    else if(h===1){if(j===0)s=3.2;else if(d===0)s=1.4;}
+    else if(h===2){const p=DEP[i];if(p&&j===p[0])s=4;else if(p&&j===p[1])s=2;else if(d===0)s=2;}
+    else if(h===3){if(j!==i&&W[j]===W[i]&&(bi||j<i))s=4.5;else if(d===0)s=1;else if(j===0)s=.5;}
+    else if(h===4){if(i>=7){if(j===3)s=4;else if(j===6)s=2.6;else if(j===9)s=2;}else{if(d===0)s=1;if(j===3)s=1.5;}}
+    else{if(i>=7){if(j===7)s=3.6;else if(j===0)s=1.6;}else if(d===1)s=1;else if(bi&&j===7)s=2;}
+    return s;
+  }
+  let sel=10;
+  function pesos(){
+    const h=+$('#c3l1-h').value,bi=$('#c3l1-m').value==='bi';
+    return T.map((_,i)=>{const s=T.map((_,j)=>(!bi&&j>i)?-Infinity:puntaje(h,i,j,bi));
+      const m=Math.max(...s),e=s.map(x=>x===-Infinity?0:Math.exp(x-m)),Z=e.reduce((a,b)=>a+b,0);return e.map(x=>x/Z);});
+  }
+  const dibujar=canvasWidget($('#c3l1-c'),w=>Math.min(1,(T.length*Math.min(34,(w-70)/T.length)+90)/w),(ctx,w,h)=>{
+    const P=pesos(),bi=$('#c3l1-m').value==='bi',n=T.length;
+    const L=62,top=60,c=Math.min(34,(w-L-8)/n);
+    ctx.clearRect(0,0,w,h);
+    const base=hexRgb(tok('--card')),col=hexRgb(tok('--c-red'));
+    ctx.font='11px '+tok('--f-mono');
+    for(let i=0;i<n;i++){
+      ctx.fillStyle=i===sel?tok('--c-red'):tok('--muted');ctx.textAlign='right';ctx.textBaseline='middle';
+      ctx.fillText(T[i].trim(),L-6,top+i*c+c/2);
+      for(let j=0;j<n;j++){
+        const x=L+j*c,y=top+i*c;
+        if(!bi&&j>i){ctx.fillStyle=tok('--grid');ctx.globalAlpha=.45;ctx.fillRect(x+1,y+1,c-2,c-2);ctx.globalAlpha=1;continue;}
+        const v=P[i][j],rgb=lerp(base,col,Math.min(1,Math.sqrt(v)));
+        ctx.fillStyle='rgb('+rgb.join(',')+')';ctx.fillRect(x+1,y+1,c-2,c-2);
+        if(v>=.1&&c>=24){ctx.fillStyle=v>.45?tok('--card'):tok('--ink');ctx.textAlign='center';ctx.font='10px '+tok('--f-mono');ctx.fillText(Math.round(v*100),x+c/2,y+c/2);ctx.font='11px '+tok('--f-mono');}
+      }
+    }
+    ctx.strokeStyle=tok('--c-red');ctx.lineWidth=2;ctx.strokeRect(L,top+sel*c,n*c,c);
+    ctx.save();ctx.fillStyle=tok('--muted');ctx.textAlign='left';
+    for(let j=0;j<n;j++){ctx.save();ctx.translate(L+j*c+c/2,top-6);ctx.rotate(-Math.PI/3);ctx.fillText(T[j].trim(),0,0);ctx.restore();}
+    ctx.restore();
+  });
+  function botones(){
+    $('#c3l1-toks').innerHTML=T.map((t,i)=>'<button type="button" data-i="'+i+'" aria-pressed="'+(i===sel)+'" aria-label="Token '+(i+1)+': '+t.trim()+'">'+t.replace(' ','␣')+'</button>').join('');
+    document.querySelectorAll('[id="03-lab-1"] .c3l1-toks button').forEach(b=>b.addEventListener('click',()=>{sel=+b.dataset.i;leer();}));
+  }
+  function leer(){
+    const h=+$('#c3l1-h').value,bi=$('#c3l1-m').value==='bi',P=pesos();
+    $('#c3l1-d').textContent=DESC[h];botones();
+    const fila=P[sel].map((v,j)=>[v,j]).sort((a,b)=>b[0]-a[0]).filter(x=>x[0]>0.005).slice(0,4);
+    const vistos=bi?T.length:sel+1;
+    $('#c3l1-out').innerHTML='<span class="big">«'+T[sel].trim()+'» (token '+(sel+1)+') reparte su atención así:</span><span>'+
+      fila.map(([v,j])=>'«'+T[j].trim()+'» '+fmt(v*100,0)+' %').join(' · ')+'</span>'+
+      '<span>Puede mirar a '+vistos+' de '+T.length+' tokens'+(bi?' (también a los que vienen después).':': los siguientes están tapados, porque al generar todavía no existen.')+'</span>'+
+      '<span style="color:var(--muted)">Pesos de juguete: softmax sobre puntajes diseñados para imitar patrones que se han observado en modelos reales. Un modelo real tiene decenas de capas con decenas de cabezas cada una.</span>';
+    dibujar();
+  }
+  $('#c3l1-h').addEventListener('change',leer);$('#c3l1-m').addEventListener('change',leer);
+  leer();
+})();
+</script>
+<script>
+(function(){
+  const {$,tok,fmt,canvasWidget,arrow,dot}=window.Lab;
+  const TOK=['El','␣cielo','␣es'];
+  const X=[[0,0.1,0.9,-0.2],[0.3,0.9,0,0],[0.1,0.1,0.7,0]]; // filas de la tabla de embeddings de Colibrí (d1 color, d2 cielo, d3 gramatical, d4 pregunta)
+  const WQ=[[0,0],[0,1],[1.5,0],[0,0.5]],WK=[[0.5,0],[1.5,0],[0,1],[0,0]],WV=[[1,0],[0,1],[0,0],[0,0]];
+  const mul=(A,B)=>A.map(r=>B[0].map((_,j)=>r.reduce((s,x,k)=>s+x*B[k][j],0)));
+  const Q0=mul(X,WQ),K=mul(X,WK),V=mul(X,WV);
+  const n=v=>fmt(v,2).replace('.',',');
+  let qi=2;
+  function calcular(){
+    const s=+$('#c3l2-s').value,g=+$('#c3l2-g').value*Math.PI/180,raiz=$('#c3l2-raiz').value==='1',mask=$('#c3l2-mask').value==='1';
+    const [a,b]=Q0[qi],q=[s*(a*Math.cos(g)-b*Math.sin(g)),s*(a*Math.sin(g)+b*Math.cos(g))];
+    const vis=K.map((_,j)=>!mask||j<=qi);
+    const sc=K.map(k=>(k[0]*q[0]+k[1]*q[1])/(raiz?Math.SQRT2:1));
+    const m=Math.max(...sc.filter((_,j)=>vis[j])),e=sc.map((x,j)=>vis[j]?Math.exp(x-m):0),Z=e.reduce((x,y)=>x+y,0),p=e.map(x=>x/Z);
+    const out=[0,1].map(d=>p.reduce((acc,w,j)=>acc+w*V[j][d],0));
+    return {q,sc,p,out,vis,raiz};
+  }
+  const tabla=(t,M,cols,cls,marca)=>'<div class="c3l2-m '+(cls||'')+'"><b>'+t+'</b><table><tr><th></th>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr>'+
+    M.map((r,i)=>'<tr class="'+(marca?marca(i):'')+'"><th>'+(TOK[i]||'')+'</th>'+r.map(x=>'<td>'+n(x)+'</td>').join('')+'</tr>').join('')+'</table></div>';
+  const plano=(t,M,cols)=>'<div class="c3l2-m"><b>'+t+'</b><table><tr>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr>'+M.map(r=>'<tr>'+r.map(x=>'<td>'+n(x)+'</td>').join('')+'</tr>').join('')+'</table></div>';
+  const dibujar=canvasWidget($('#c3l2-c'),w=>w<520?1.25:0.36,(ctx,w,h)=>{
+    const R=calcular();ctx.clearRect(0,0,w,h);
+    const pila=w<520,pw=pila?w:w/2-8,ph=pila?h/2-8:h;
+    function panel(x0,y0,rx,ry,titulo,dib){
+      const m=24,u=Math.min((pw-2*m)/(rx[1]-rx[0]),(ph-2*m-14)/(ry[1]-ry[0]));
+      const ox=x0+m+(-rx[0])*u+((pw-2*m)-(rx[1]-rx[0])*u)/2,oy=y0+m+14+ry[1]*u;
+      const P=(x,y)=>[ox+x*u,oy-y*u];
+      ctx.strokeStyle=tok('--line');ctx.lineWidth=1;ctx.strokeRect(x0+.5,y0+.5,pw-1,ph-1);
+      ctx.strokeStyle=tok('--grid');ctx.beginPath();ctx.moveTo(x0+4,oy);ctx.lineTo(x0+pw-4,oy);ctx.moveTo(ox,y0+20);ctx.lineTo(ox,y0+ph-4);ctx.stroke();
+      ctx.fillStyle=tok('--muted');ctx.font='600 11px '+tok('--f-display');ctx.textAlign='left';ctx.fillText(titulo,x0+8,y0+14);
+      ctx.font='12px '+tok('--f-mono');dib(P,u);
+    }
+    panel(0,0,[-1.7,1.9],[-1.3,1.3],'CONSULTA Y CLAVES',(P,u)=>{
+      const desp=[[-10,-6],[6,16],[10,8]];
+      K.forEach((k,j)=>{const [x,y]=P(k[0],k[1]);ctx.globalAlpha=R.vis[j]?1:.3;arrow(ctx,P(0,0)[0],P(0,0)[1],x,y,tok('--muted'),2);
+        ctx.fillStyle=tok('--ink');ctx.textAlign=j===0?'right':'left';ctx.fillText('k '+TOK[j]+' '+Math.round(R.p[j]*100)+'%',x+desp[j][0],y+desp[j][1]);ctx.globalAlpha=1;});
+      const L=Math.hypot(R.q[0],R.q[1]),max=1.6,f=L>max?max/L:1;
+      const [qx,qy]=P(R.q[0]*f,R.q[1]*f);if(L>0.01)arrow(ctx,P(0,0)[0],P(0,0)[1],qx,qy,tok('--c-red'),3);
+      ctx.fillStyle=tok('--c-red');ctx.textAlign='left';ctx.fillText('q '+TOK[qi]+(f<1?' (×'+fmt(1/f,1).replace('.',',')+')':''),Math.min(qx+6,P(0.6,0)[0]),qy-8);
+    });
+    const x1=pila?0:pw+16,y1=pila?ph+16:0;
+    panel(x1,y1,[-0.1,0.6],[-0.1,1.0],'VALORES (COLOR, CIELO) Y SALIDA',(P)=>{
+      V.forEach((v,j)=>{const [x,y]=P(v[0],v[1]);ctx.globalAlpha=R.vis[j]?1:.3;dot(ctx,x,y,tok('--c-enl'),4+10*R.p[j]);ctx.fillStyle=tok('--c-enl');ctx.textAlign=j===2?'left':'right';ctx.fillText('v '+TOK[j],x+(j===2?12:-14),y+(j===0?-10:(j===2?16:4)));ctx.globalAlpha=1;});
+      const [sx,sy]=P(R.out[0],R.out[1]);ctx.beginPath();ctx.arc(sx,sy,7,0,7);ctx.fillStyle=tok('--warm');ctx.fill();ctx.strokeStyle=tok('--card');ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle=tok('--warm');ctx.textAlign='left';ctx.fillText('salida',sx+10,sy-8);
+    });
+  });
+  function leer(){
+    const R=calcular();
+    $('#c3l2-s-o').textContent='× '+n(+$('#c3l2-s').value);$('#c3l2-g-o').textContent=$('#c3l2-g').value+'°';
+    document.querySelectorAll('[id="03-lab-2"] [data-q]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.q===qi));
+    const mk=i=>i===qi?'on':'';
+    $('#c3l2-mats').innerHTML=tabla('X: embeddings de Colibrí',X,['color','cielo','gram.','preg.'],'emb',mk)+plano('W_Q (4×2)',WQ,['q1','q2'])+plano('W_K (4×2)',WK,['k1','k2'])+plano('W_V (4×2)',WV,['v1','v2'])+
+      tabla('Q = X·W_Q',Q0,['q1','q2'],'',mk)+tabla('K = X·W_K',K,['k1','k2'],'',i=>R.vis[i]?'':'off')+tabla('V = X·W_V',V,['v1','v2'],'',i=>R.vis[i]?'':'off');
+    const fila=TOK.map((t,j)=>R.vis[j]?'«'+t+'» '+n(R.sc[j]):'«'+t+'» tapado').join(' · ');
+    const top=R.p.indexOf(Math.max(...R.p));
+    $('#c3l2-out').innerHTML='<span>q de «'+TOK[qi]+'» = ('+n(R.q[0])+'; '+n(R.q[1])+')</span>'+
+      '<span>Puntajes q·k'+(R.raiz?'/√2':'')+': '+fila+'</span>'+
+      '<span class="big">Softmax: '+TOK.map((t,j)=>'«'+t+'» '+Math.round(R.p[j]*100)+' %').join(' · ')+'</span>'+
+      '<span>Salida = Σ peso · v = ('+n(R.out[0])+'; '+n(R.out[1])+'): el vector nuevo de «'+TOK[qi]+'» es sobre todo el valor de «'+TOK[top]+'».</span>'+
+      '<span style="color:var(--muted)">Sube la intensidad y la atención se concentra en un solo token; bájala a 0 y se reparte por igual. Gira la consulta para que apunte a otra clave.</span>';
+    dibujar();
+  }
+  document.querySelectorAll('[id="03-lab-2"] [data-q]').forEach(b=>b.addEventListener('click',()=>{qi=+b.dataset.q;leer();}));
+  ['#c3l2-s','#c3l2-g'].forEach(s=>$(s).addEventListener('input',leer));
+  ['#c3l2-raiz','#c3l2-mask'].forEach(s=>$(s).addEventListener('change',leer));
+  leer();
+})();
+</script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  const Q=['¿','De',' qué',' color',' es',' el',' cielo','?'],EXTRA=[' El',' cielo',' es'];
+  // «Lente de logits»: qué token sale si se cortara el modelo después de esa capa (números ilustrativos)
+  const LENTE={a:{1:[['de',6],['el',5],['la',4],['?',4],['y',3]],7:[['¿',7],['el',6],['El',5],['color',4],['es',3]],14:[['El',18],['Azul',9],['color',7],['Es',6],['el',5]],21:[['El',38],['Azul',15],['Es',10],['¡',4],['Depende',3]],28:[['El',52],['Azul',17],['Es',11],['¡',4],['Depende',3]]},
+               b:{1:[['es',8],['el',6],['de',5],['un',4],['muy',4]],7:[['muy',10],['un',8],['el',6],['azul',5],['grande',4]],14:[['azul',23],['muy',11],['celeste',8],['gris',6],['claro',5]],21:[['azul',54],['celeste',12],['gris',8],['muy',5],['claro',4]],28:[['azul',72],['celeste',9],['gris',6],['claro',3],['muy',2]]}};
+  const CAPAS=[1,7,14,21,28];
+  const PASOS=[{k:'txt',t:'Texto'},{k:'fis',t:'Tokens'},{k:'enl',t:'Embeddings'},{k:'enl',t:'Posición'}]
+    .concat(CAPAS.map(c=>({k:'red',t:'Capa '+c,capa:c}))).concat([{k:'apl',t:'Salida'}]);
+  let i=0;
+  const toks=()=>$('#c3l3-modo').value==='a'?Q:Q.concat(EXTRA);
+  const chips=t=>'<div class="c3l3-toks">'+t.map((x,j)=>'<span'+(j>=Q.length?' class="nuevo"':'')+'>'+x.replace(' ','␣')+'</span>').join('')+'</div>';
+  const lente=(c,fin)=>{const L=LENTE[$('#c3l3-modo').value][c];return '<div class="c3l3-lente">'+L.map(([t,p])=>'<div class="c3l3-b"><span>'+t+'</span><div><i style="width:'+p+'%"></i></div><span>'+p+' %</span></div>').join('')+'</div>';};
+  function panel(){
+    const p=PASOS[i],t=toks(),n=t.length,modo=$('#c3l3-modo').value;
+    let h='';
+    if(p.k==='txt')h='<h4>El texto de entrada</h4><p>«¿De qué color es el cielo?»'+(modo==='b'?' seguido del comienzo de la respuesta que el modelo ya generó: «El cielo es».':'.')+' El modelo todavía no ve nada: primero hay que convertir el texto en números.</p>';
+    else if(p.k==='fis'&&p.t==='Tokens')h='<h4>1 · Tokens (capítulo 1)</h4>'+chips(t)+'<p>'+n+' tokens. Cada uno se cambia por su número de identificación: en Colibrí, '+(modo==='a'?'[4, 8, 10, 11, 12, 13, 16, 5]':'[4, 8, 10, 11, 12, 13, 16, 5, 9, 16, 12]')+', en un vocabulario de 32; en Llama 3.2, el vocabulario tiene 128.256 entradas.</p><span class="c3l3-forma">forma: '+n+' números enteros</span>';
+    else if(p.t==='Embeddings')h='<h4>2 · Embeddings (capítulo 2)</h4><p>Cada identificador elige una fila de la tabla de embeddings. En Colibrí, el modelo de juguete del curso, la fila tiene 4 números (color, cielo, gramatical, pregunta); en Llama 3.2 3B, 3.072. Desde aquí, cada token es un vector, y esa fila de vectores es el <b>flujo residual</b> que recorre todas las capas.</p><span class="c3l3-forma">forma: '+n+' × 3.072 (juguete: '+n+' × 4)</span>';
+    else if(p.t==='Posición')h='<h4>La posición</h4><p>La atención, por sí sola, no sabe en qué orden vienen los tokens. Llama usa codificación rotatoria (RoPE): dentro de cada capa gira las consultas y las claves un ángulo que depende de la posición, así que el producto punto entre dos tokens depende de qué tan lejos están.</p><span class="c3l3-forma">forma: sin cambios, '+n+' × 3.072</span>';
+    else if(p.k==='red'){
+      const c=p.capa,fin=c===28;
+      h='<h4>Capa '+c+' de 28 (Colibrí tiene 2)</h4><div class="c3l3-sub"><div>Normalización</div><div>Atención: 24 cabezas de 128 dimensiones mezclan información entre los '+n+' tokens</div><div class="res">+ suma residual</div><div>Normalización</div><div>Red densa: cada token por separado, 3.072 → 8.192 → 3.072</div><div class="res">+ suma residual</div></div>'+
+        '<p><b>Si cortáramos el modelo aquí</b> y leyéramos el último token como si fuera la salida, ¿qué token predeciría? (lente de logits)</p>'+lente(c)+
+        '<p>'+(c===1?'En la primera capa la predicción es casi la de un modelo de pares de palabras: tokens frecuentes, sin relación con la pregunta.':c===7?'Todavía predice palabras de función. La información de la pregunta recién empieza a moverse hacia el último token.':c===14?'A media altura ya aparece la respuesta: las cabezas que miran a «color» y a «cielo» hicieron su trabajo.':c===21?'La respuesta se afirma: cada capa suma un poco al flujo residual y refina la predicción.':'La última capa deja la distribución casi lista.')+'</p><span class="c3l3-forma">forma: sin cambios, '+n+' × 3.072 · unos 100 millones de parámetros en esta capa</span>';
+    }else{
+      const L=LENTE[modo][28],gana=L[0][0];
+      h='<h4>Salida (capítulo 6)</h4><p>Solo importa el vector del último token. Se normaliza y se multiplica por la matriz de salida: sale un puntaje (<i>logit</i>) para cada uno de los 128.256 tokens del vocabulario, y softmax los convierte en probabilidades.</p>'+lente(28)+
+        '<p>Token elegido: <b>«'+gana+'»</b>. '+(modo==='a'?'Se agrega al final y todo el recorrido se repite para el siguiente token, hasta escribir «El cielo es azul.».':'Así se completa «El cielo es azul»; después vendrá el punto final.')+'</p><span class="c3l3-forma">forma: 1 × 128.256 probabilidades</span>';
+    }
+    $('#c3l3-panel').innerHTML=h+'<span style="color:var(--muted);font:500 .8rem var(--f-body)">Dimensiones reales de Llama 3.2 3B (ficha pública del modelo); las probabilidades por capa son ilustrativas.</span>';
+    $('#c3l3-ruta').innerHTML=PASOS.map((q,j)=>'<button type="button" class="p-'+q.k+'" data-j="'+j+'" aria-pressed="'+(j===i)+'">'+q.t+'</button>').join('');
+    document.querySelectorAll('[id="03-lab-3"] .c3l3-ruta button').forEach(b=>b.addEventListener('click',()=>{i=+b.dataset.j;panel();}));
+    $('#c3l3-ant').disabled=i===0;$('#c3l3-sig').disabled=i===PASOS.length-1;
+  }
+  $('#c3l3-ant').addEventListener('click',()=>{if(i>0){i--;panel();}});
+  $('#c3l3-sig').addEventListener('click',()=>{if(i<PASOS.length-1){i++;panel();}});
+  $('#c3l3-modo').addEventListener('change',panel);
+  panel();
+})();
+</script>
+</body>
+</html>

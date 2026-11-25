@@ -38,7 +38,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <section>
   <h2>Cómo usar este curso</h2>
   <div class="prose">
-    <p><b>Estado.</b> El curso está en preparación. La <a href="temario.html">tabla de contenido</a> ya tiene los 10 capítulos con sus secciones y sus laboratorios, y está en revisión.</p>
+    <p><b>Estado.</b> Curso completo: los 10 capítulos tienen sus laboratorios, diagramas y prácticas. Empieza por la <a href="temario.html">tabla de contenido</a> o por el primer capítulo.</p>
     <p><b>Para quién es.</b> Para desarrolladores, analistas y curiosos técnicos que usan modelos de lenguaje y quieren saber cómo funcionan. Conviene haber visto una red neuronal entrenarse (Aprendizaje profundo) y saber qué es un vector y un producto punto (Mate para ML). No hace falta programar para seguir los laboratorios.</p>
     <p><b>Cómo está hecho.</b> Una misma pregunta recorre el curso: se tokeniza, se convierte en vectores, pasa por las capas de atención y sale como una respuesta generada palabra por palabra. Cada capítulo sigue esa pregunta un paso más adentro del modelo. Los laboratorios corren en el navegador con modelos pequeños o con datos precalculados, y muestran tokens, vectores, mapas de atención y probabilidades reales.</p>
   </div>
@@ -52,36 +52,36 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <details class="stage" id="parte-1" open><summary><h2><span class="pn">Parte 1</span> Del texto a los números</h2><span class="cuenta" data-etapa-cuenta="1"></span></summary>
   <div class="mods">
-    <div class="mod soon" data-id="tokenizacion"><span class="n">01</span><b>Del texto a los números: tokenización</b><p>Cómo se parte el texto en tokens, por qué el español gasta más que el inglés y qué errores nacen ahí.</p></div>
-    <div class="mod soon" data-id="embeddings"><span class="n">02</span><b>Embeddings y espacios semánticos</b><p>Cada token y cada frase como un punto en un espacio donde lo parecido queda cerca.</p></div>
+    <a class="mod" data-id="tokenizacion" href="01-tokenizacion.html"><span class="n">01</span><b>Del texto a los números: tokenización</b><p>Cómo se parte el texto en tokens, por qué el español gasta más que el inglés y qué errores nacen ahí.</p></a>
+    <a class="mod" data-id="embeddings" href="02-embeddings.html"><span class="n">02</span><b>Embeddings y espacios semánticos</b><p>Cada token y cada frase como un punto en un espacio donde lo parecido queda cerca.</p></a>
   </div>
 </details>
 
 <details class="stage" id="parte-2" open><summary><h2><span class="pn">Parte 2</span> La arquitectura</h2><span class="cuenta" data-etapa-cuenta="2"></span></summary>
   <div class="mods">
-    <div class="mod soon" data-id="atencion-y-transformer"><span class="n">03</span><b>Atención y el Transformer</b><p>Consultas, claves y valores, varias cabezas y capas apiladas: la arquitectura de todos los modelos actuales.</p></div>
+    <a class="mod" data-id="atencion-y-transformer" href="03-atencion-y-transformer.html"><span class="n">03</span><b>Atención y el Transformer</b><p>Consultas, claves y valores, varias cabezas y capas apiladas: la arquitectura de todos los modelos actuales.</p></a>
   </div>
 </details>
 
 <details class="stage" id="parte-3" open><summary><h2><span class="pn">Parte 3</span> Cómo se entrena</h2><span class="cuenta" data-etapa-cuenta="3"></span></summary>
   <div class="mods">
-    <div class="mod soon" data-id="preentrenamiento"><span class="n">04</span><b>Preentrenamiento: predecir la siguiente palabra</b><p>Un objetivo simple, billones de tokens y las leyes de escala que guiaron la carrera de los modelos.</p></div>
-    <div class="mod soon" data-id="ajuste-y-alineamiento"><span class="n">05</span><b>Ajuste fino, instrucciones, RLHF y DPO</b><p>Cómo un modelo base se convierte en un asistente que sigue instrucciones y rechaza lo que no debe hacer.</p></div>
+    <a class="mod" data-id="preentrenamiento" href="04-preentrenamiento.html"><span class="n">04</span><b>Preentrenamiento: predecir la siguiente palabra</b><p>Un objetivo simple, billones de tokens y las leyes de escala que guiaron la carrera de los modelos.</p></a>
+    <a class="mod" data-id="ajuste-y-alineamiento" href="05-ajuste-y-alineamiento.html"><span class="n">05</span><b>Ajuste fino, instrucciones, RLHF y DPO</b><p>Cómo un modelo base se convierte en un asistente que sigue instrucciones y rechaza lo que no debe hacer.</p></a>
   </div>
 </details>
 
 <details class="stage" id="parte-4" open><summary><h2><span class="pn">Parte 4</span> Cómo genera y razona</h2><span class="cuenta" data-etapa-cuenta="4"></span></summary>
   <div class="mods">
-    <div class="mod soon" data-id="generar"><span class="n">06</span><b>Generar: temperatura, top-p y muestreo</b><p>Cómo se elige cada token de la respuesta y por qué la misma pregunta no da siempre la misma respuesta.</p></div>
-    <div class="mod soon" data-id="multimodales-y-difusion"><span class="n">07</span><b>Modelos multimodales e imágenes: los modelos de difusión</b><p>Modelos que ven, oyen y dibujan: imágenes como tokens y la imagen que aparece desde el ruido.</p></div>
-    <div class="mod soon" data-id="razonamiento"><span class="n">08</span><b>Razonamiento: cadenas de pensamiento y modelos que piensan antes de responder</b><p>Por qué escribir pasos intermedios mejora las respuestas y cómo se entrena a un modelo para pensar.</p></div>
+    <a class="mod" data-id="generar" href="06-generar.html"><span class="n">06</span><b>Generar: temperatura, top-p y muestreo</b><p>Cómo se elige cada token de la respuesta y por qué la misma pregunta no da siempre la misma respuesta.</p></a>
+    <a class="mod" data-id="multimodales-y-difusion" href="07-multimodales-y-difusion.html"><span class="n">07</span><b>Modelos multimodales e imágenes: los modelos de difusión</b><p>Modelos que ven, oyen y dibujan: imágenes como tokens y la imagen que aparece desde el ruido.</p></a>
+    <a class="mod" data-id="razonamiento" href="08-razonamiento.html"><span class="n">08</span><b>Razonamiento: cadenas de pensamiento y modelos que piensan antes de responder</b><p>Por qué escribir pasos intermedios mejora las respuestas y cómo se entrena a un modelo para pensar.</p></a>
   </div>
 </details>
 
 <details class="stage" id="parte-5" open><summary><h2><span class="pn">Parte 5</span> Evaluar y elegir</h2><span class="cuenta" data-etapa-cuenta="5"></span></summary>
   <div class="mods">
-    <div class="mod soon" data-id="evaluar-modelos"><span class="n">09</span><b>Evaluar modelos: benchmarks, contaminación, personas y jueces</b><p>Qué mide cada benchmark, por qué se satura y cómo leer una tabla de resultados con espíritu crítico.</p></div>
-    <div class="mod soon" data-id="abiertos-cerrados-y-costo"><span class="n">10</span><b>Modelos abiertos y cerrados, tamaños, cuantización y costo</b><p>Cómo elegir un modelo: licencia, tamaño, memoria, velocidad y precio.</p></div>
+    <a class="mod" data-id="evaluar-modelos" href="09-evaluar-modelos.html"><span class="n">09</span><b>Evaluar modelos: benchmarks, contaminación, personas y jueces</b><p>Qué mide cada benchmark, por qué se satura y cómo leer una tabla de resultados con espíritu crítico.</p></a>
+    <a class="mod" data-id="abiertos-cerrados-y-costo" href="10-abiertos-cerrados-y-costo.html"><span class="n">10</span><b>Modelos abiertos y cerrados, tamaños, cuantización y costo</b><p>Cómo elegir un modelo: licencia, tamaño, memoria, velocidad y precio.</p></a>
   </div>
 </details>
 

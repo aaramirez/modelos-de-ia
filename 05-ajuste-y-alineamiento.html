@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ajuste fino y alineamiento · Modelos de IA · Modelos de IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Cómo funciona por dentro un modelo de lenguaje: tokens, embeddings, atención y el Transformer, cómo se entrena y se alinea, cómo genera y razona, y cómo se evalúa y se elige.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="ajuste-y-alineamiento">
+<header class="topbar"><a class="brand" href="index.html">Modelos de <b>IA</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 05 DE 10</span><h1>Ajuste fino, instrucciones, RLHF y DPO</h1><p class="lede">El modelo base del capítulo 4 sabe que el cielo es azul, pero si le preguntas, puede contestarte con otra pregunta. Este capítulo explica cómo se convierte en un asistente que responde, se detiene, admite lo que no sabe y rechaza lo que no debe hacer: con ejemplos escritos por personas, con comparaciones entre respuestas y con muy pocos parámetros nuevos.</p></header>
+<section><div class="prose"><p>Al final del capítulo 4 teníamos un modelo base: un autocompletador enorme que leyó billones de tokens. Ante «¿De qué color es el cielo?» puede responder «Azul», pero también puede seguir con «¿Por qué el cielo es azul de día y rojo al atardecer?», porque eso es lo que suele venir después de una pregunta suelta en una página web. Sabe la respuesta; no sabe que le toca darla.</p><p>Este capítulo cubre las etapas que van del modelo base al modelo de chat. Son mucho más baratas que el preentrenamiento, usan miles o millones de ejemplos en lugar de billones de tokens, y sin embargo cambian por completo cómo se comporta el modelo. Se agrupan en dos ideas: el <b>ajuste fino</b> (<i>fine-tuning</i>), que sigue entrenando el modelo con datos nuevos, y el <b>alineamiento</b> (<i>alignment</i>), que busca que haga lo que las personas quieren: ser útil, honesto y no causar daño.</p></div><figure class="fig fig-flujo" id="05-diagrama-1"><div class="lienzo"><svg viewBox="0 0 940 340" style="min-width:740px" role="img" aria-label="De modelo base a modelo de chat. Primero, el ajuste fino supervisado con instrucciones: miles o millones de pares de pedido y respuesta escritos por personas; produce un modelo que sigue instrucciones. Después hay dos caminos para aprender de preferencias. Camino clásico, RLHF: las personas comparan pares de respuestas, con eso se entrena un modelo de recompensa, y el algoritmo PPO ajusta el modelo para que saque más recompensa sin alejarse demasiado del original. Camino directo, DPO: las mismas comparaciones ajustan el modelo directamente, sin modelo de recompensa aparte. Los dos terminan en el modelo de chat.">
+<defs>
+<marker id="m5d1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+</defs>
+<rect x="16" y="130" width="120" height="70" rx="12" class="caja" style="stroke-width:2"/>
+<text x="76" y="160" class="t t-b" text-anchor="middle">modelo</text>
+<text x="76" y="178" class="t t-b" text-anchor="middle">base</text>
+<text x="76" y="218" class="t t-s t-m" text-anchor="middle">capítulo 4</text>
+<line x1="136" y1="165" x2="166" y2="165" class="ln" style="stroke-width:2" marker-end="url(#m5d1-a)"/>
+<rect x="170" y="110" width="200" height="110" rx="12" class="c-tra" style="stroke-width:1.8"/>
+<text x="184" y="134" class="t t-xs t-b k-tra">① AJUSTE SUPERVISADO (SFT)</text>
+<text x="184" y="156" class="t t-s">pares de pedido y respuesta</text>
+<text x="184" y="172" class="t t-s">escritos por personas</text>
+<text x="184" y="196" class="t t-s t-m">aprende el formato y a</text>
+<text x="184" y="210" class="t t-s t-m">seguir instrucciones</text>
+<line x1="370" y1="165" x2="400" y2="165" class="ln" style="stroke-width:2" marker-end="url(#m5d1-a)"/>
+<rect x="404" y="20" width="128" height="300" rx="12" class="caja" style="stroke-dasharray:5 4"/>
+<text x="468" y="44" class="t t-xs t-b t-m" text-anchor="middle">COMPARACIONES</text>
+<g class="t t-s" text-anchor="middle">
+<rect x="418" y="60" width="100" height="44" rx="8" class="caja"/><text x="468" y="80">respuesta A</text><text x="468" y="96" class="k-warm t-b">preferida</text>
+<rect x="418" y="114" width="100" height="44" rx="8" class="caja"/><text x="468" y="134">respuesta B</text><text x="468" y="150" class="t-m">rechazada</text>
+</g>
+<text x="468" y="186" class="t t-s" text-anchor="middle">personas (o una</text>
+<text x="468" y="202" class="t t-s" text-anchor="middle">IA con reglas)</text>
+<text x="468" y="218" class="t t-s" text-anchor="middle">eligen la mejor</text>
+
+<path d="M532 90 H566" class="ln" marker-end="url(#m5d1-a)"/>
+<text x="572" y="34" class="t t-xs t-b k-tra">② CAMINO CLÁSICO · RLHF</text>
+<rect x="570" y="58" width="150" height="64" rx="10" class="c-tra"/>
+<text x="645" y="84" class="t t-s t-b k-tra" text-anchor="middle">modelo de</text>
+<text x="645" y="100" class="t t-s t-b k-tra" text-anchor="middle">recompensa</text>
+<text x="645" y="114" class="t t-s" text-anchor="middle">puntúa respuestas</text>
+<line x1="720" y1="90" x2="750" y2="90" class="ln" marker-end="url(#m5d1-a)"/>
+<rect x="754" y="58" width="170" height="64" rx="10" class="c-tra"/>
+<text x="839" y="80" class="t t-s t-b k-tra" text-anchor="middle">PPO</text>
+<text x="839" y="96" class="t t-s" text-anchor="middle">más recompensa, sin</text>
+<text x="839" y="112" class="t t-s" text-anchor="middle">alejarse del original</text>
+
+<path d="M532 240 H566" class="ln" marker-end="url(#m5d1-a)"/>
+<text x="572" y="214" class="t t-xs t-b k-tra">② CAMINO DIRECTO · DPO</text>
+<rect x="570" y="222" width="354" height="50" rx="10" class="c-tra"/>
+<text x="747" y="243" class="t t-s t-b k-tra" text-anchor="middle">ajusta el modelo directamente con los pares:</text>
+<text x="747" y="261" class="t t-s" text-anchor="middle">sube la preferida, baja la rechazada; sin modelo de recompensa</text>
+
+<path d="M839 122 V160" class="ln" style="stroke-width:2" marker-end="url(#m5d1-a)"/>
+<path d="M839 222 V194" class="ln" style="stroke-width:2" marker-end="url(#m5d1-a)"/>
+<rect x="770" y="162" width="138" height="30" rx="10" class="c-apl" style="stroke-width:2"/>
+<text x="839" y="182" class="t t-s t-b k-apl" text-anchor="middle">modelo de chat</text>
+<text x="572" y="304" class="t t-s t-m">Los dos caminos usan los mismos datos de preferencias; la diferencia es cómo se entrena.</text>
+</svg></div><figcaption><b>Del modelo base al modelo de chat.</b> ① El ajuste supervisado (violeta) enseña el formato con pares escritos por personas. Después, las comparaciones de la columna punteada alimentan dos caminos: arriba, el clásico, RLHF, con modelo de recompensa y PPO; abajo, el directo, DPO, que ajusta el modelo con los pares sin pasos intermedios. Los dos llegan al modelo de chat (rosa).</figcaption></figure></section>
+<section><h2>Ajuste fino supervisado con instrucciones</h2><div class="prose"><p>El primer paso es el más directo: mostrarle al modelo miles de ejemplos de cómo se conversa.</p></div><div class="analogia"><b>Imagínalo así</b><p>Una persona que leyó toda la biblioteca entra a trabajar en un centro de atención. Sabe muchísimo, pero no sabe cómo se atiende. El primer mes, una supervisora le muestra cientos de llamadas bien resueltas: así se saluda, así se responde, así se cierra. Nadie le enseña datos nuevos; le enseñan el oficio.</p></div><div class="prose"><p>El <b>ajuste fino supervisado</b> (<i>supervised fine-tuning</i>, SFT) usa pares de <b>instrucción</b> (<i>instruction</i>) y respuesta, escritos o revisados por personas. Cada par se arma como una conversación con tokens especiales que marcan quién habla. Colibrí, el modelo de juguete del curso, tiene cuatro reservados desde el capítulo 1: <code>&lt;inicio&gt;</code>, <code>&lt;fin&gt;</code>, <code>&lt;usuario&gt;</code> y <code>&lt;asistente&gt;</code>. Un ejemplo de entrenamiento para Colibrí se vería así:</p><div class="code-copia"><pre><code>&lt;usuario&gt;¿De qué color es el cielo?&lt;asistente&gt;El cielo es azul.&lt;fin&gt;
+ids: [2, 4, 8, 10, 11, 12, 13, 16, 5, 3, 9, 16, 12, 21, 6, 1]</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><p>Son 16 tokens: caben justo en el contexto de Colibrí. La tarea sigue siendo la del capítulo 4, predecir el token siguiente, con una diferencia: la pérdida se calcula <b>solo sobre la respuesta</b>, los tokens que van de «El» a <code>&lt;fin&gt;</code>. El modelo no necesita aprender a escribir preguntas; necesita aprender que, después de <code>&lt;asistente&gt;</code>, viene una respuesta, y que al terminarla se escribe <code>&lt;fin&gt;</code>. Ese token final es el que le dice al programa que deje de generar.</p><p>Los modelos reales usan la misma idea con plantillas más largas. La familia Llama 3, por ejemplo, marca los turnos con <code>&lt;|start_header_id|&gt;user&lt;|end_header_id|&gt;</code> y cierra cada uno con <code>&lt;|eot_id|&gt;</code>. El conjunto de datos tiene de todo: preguntas de conocimiento, redacción, resúmenes, código, matemáticas, conversaciones de varios turnos y, también, ejemplos de pedidos que el asistente debe rechazar con amabilidad.</p><p>¿Cuántos ejemplos hacen falta? Menos de lo que uno imaginaría para cambiar el formato, y muchos más para cubrir bien todos los casos. En 2023, el estudio LIMA mostró que con solo 1.000 ejemplos muy cuidados un modelo base grande ya conversaba de forma convincente. Sus autores lo llamaron la <b>hipótesis del alineamiento superficial</b> (<i>superficial alignment hypothesis</i>): casi todo el conocimiento viene del preentrenamiento, y el ajuste solo enseña el estilo y el formato. Los modelos comerciales, de todos modos, usan muchos más: la ficha pública de Llama 3 menciona más de 10 millones de ejemplos anotados por personas.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>La plantilla de chat por dentro</h3></div><p>Vas a ver la plantilla con que Ollama envuelve cada mensaje antes de dárselo a Llama 3.2 1B, el modelo de las prácticas del curso. Es exactamente el formato con que se hizo su ajuste supervisado. Necesitas Ollama con <code>llama3.2:1b</code> (capítulo 1).</p><div class="cmds"><div class="cmd-panel" data-so="win mac linux"><div class="cmd-l"><code>ollama show llama3.2:1b --template</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama show llama3.2:1b --modelfile</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>ollama run llama3.2:1b "¿De qué color es el cielo? Responde en una frase."</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>En la salida de <code>--template</code>, busca los tokens <code>&lt;|start_header_id|&gt;</code>, <code>&lt;|end_header_id|&gt;</code> y <code>&lt;|eot_id|&gt;</code>, y dónde se inserta tu mensaje.</span></li><li><span>Busca en <code>--modelfile</code> si hay líneas <code>PARAMETER stop</code>: son tokens que, si el modelo los escribe, cortan la respuesta. Si no aparecen, el corte lo hace el token <code>&lt;|eot_id|&gt;</code>, que el modelo trae marcado como fin de turno.</span></li><li><span>Corre la pregunta y fíjate que la respuesta termina sola.</span></li></ol><p><b>Qué observar:</b> tu mensaje no llega solo: se envuelve en encabezados de rol (<code>system</code>, <code>user</code>, <code>assistant</code>) y la plantilla termina abriendo el turno del asistente, para que lo único probable sea responder. Los tokens de parada son el <code>&lt;fin&gt;</code> de Colibrí en versión real. La plantilla es texto en el lenguaje de plantillas de Go, con variables como <code>{{ .Content }}</code>; otros modelos (Qwen, Gemma) usan otros tokens con la misma idea.</p></div></section>
+<section><h2>Ajuste eficiente: LoRA y QLoRA</h2><div class="prose"><p>Ajustar todos los parámetros de un modelo, el <b>ajuste completo</b> (<i>full fine-tuning</i>), cuesta casi tanta memoria como preentrenarlo: con Adam, unos 16 bytes por parámetro, como vimos en el capítulo 4. Para un modelo de 8.000 millones son unos 128 GB, más que una GPU grande. Y al final hay que guardar una copia completa del modelo por cada ajuste.</p></div><div class="analogia"><b>Imagínalo así</b><p>Para adaptar un manual de 500 páginas a una sucursal no se reimprime el manual: se le pega una hoja de notas adhesivas con las diferencias. El manual queda intacto, las notas ocupan casi nada y cada sucursal puede tener las suyas.</p></div><div class="prose"><p><b>LoRA</b> (<i>Low-Rank Adaptation</i>, adaptación de rango bajo), presentada en 2021, aplica esa idea a las matrices del Transformer. Cada matriz <span class="math">W</span> queda <b>congelada</b>: no se entrena. Al lado se agregan dos matrices delgadas, <span class="math">A</span> y <span class="math">B</span>, cuyo producto tiene el mismo tamaño que <span class="math">W</span>:</p><div class="math-display">\text{salida} = x\,W + x\,A\,B,\qquad A\in\mathbb{R}^{d\times r},\ B\in\mathbb{R}^{r\times d}</div><p>El número <span class="math">r</span>, el <b>rango</b> (<i>rank</i>), es pequeño: 8, 16 o 32. Para una matriz de <span class="math">3.072 \times 3.072</span> de Llama 3.2 3B, el ajuste completo entrena 9.437.184 números; LoRA con <span class="math">r = 8</span> entrena <span class="math">8 \times (3.072 + 3.072) = 49.152</span>, el 0,5 %. La apuesta es que el cambio que necesita el modelo para una tarea nueva cabe en pocas direcciones, y en la práctica suele ser así. <span class="math">B</span> empieza en cero, de modo que al comenzar el modelo es exactamente el original.</p></div><figure class="fig fig-esquema" id="05-diagrama-2"><div class="lienzo"><svg viewBox="0 0 920 330" style="min-width:720px" role="img" aria-label="Cómo funciona LoRA en una matriz de 3.072 por 3.072 de Llama 3.2 3B. La matriz original W, de 9.437.184 números, queda congelada. Al lado se agregan dos matrices delgadas: A, de 3.072 por 8, y B, de 8 por 3.072. Su producto tiene el mismo tamaño que W, pero solo se entrenan 49.152 números, el 0,5 por ciento. La salida es x por W más x por A por B. Al terminar, el producto A por B se puede sumar a W o guardar aparte como un adaptador pequeño.">
+<text x="20" y="28" class="t t-xs t-b t-m">UNA MATRIZ DE ATENCIÓN DE LLAMA 3.2 3B · RANGO r = 8</text>
+<rect x="40" y="56" width="200" height="200" rx="4" class="caja" style="stroke-width:2"/>
+<g class="ln" style="opacity:.35"><line x1="40" y1="96" x2="240" y2="96"/><line x1="40" y1="136" x2="240" y2="136"/><line x1="40" y1="176" x2="240" y2="176"/><line x1="40" y1="216" x2="240" y2="216"/><line x1="80" y1="56" x2="80" y2="256"/><line x1="120" y1="56" x2="120" y2="256"/><line x1="160" y1="56" x2="160" y2="256"/><line x1="200" y1="56" x2="200" y2="256"/></g>
+<text x="140" y="150" class="t t-b" text-anchor="middle">W</text>
+<text x="140" y="168" class="t t-s t-m" text-anchor="middle">congelada</text>
+<text x="140" y="276" class="t t-s" text-anchor="middle">3.072 × 3.072</text>
+<text x="140" y="292" class="t t-s t-mono" text-anchor="middle">9.437.184 números</text>
+<text x="272" y="162" class="t t-b" style="font-size:22px" text-anchor="middle">+</text>
+<rect x="304" y="56" width="22" height="200" rx="3" class="c-tra" style="stroke-width:1.6"/>
+<text x="315" y="276" class="t t-s" text-anchor="middle">A</text>
+<text x="315" y="292" class="t t-s t-m" text-anchor="middle">3.072 × 8</text>
+<text x="346" y="162" class="t t-b" text-anchor="middle">×</text>
+<rect x="366" y="145" width="200" height="22" rx="3" class="c-tra" style="stroke-width:1.6"/>
+<text x="466" y="190" class="t t-s" text-anchor="middle">B</text>
+<text x="466" y="206" class="t t-s t-m" text-anchor="middle">8 × 3.072</text>
+<text x="440" y="276" class="t t-s t-b k-tra" text-anchor="middle">se entrenan A y B</text>
+<text x="440" y="292" class="t t-s t-mono k-tra" text-anchor="middle">49.152 números (0,5 %)</text>
+<line x1="600" y1="40" x2="600" y2="300" class="ln ln-d"/>
+<text x="624" y="60" class="t t-xs t-b t-m">LA CUENTA</text>
+<text x="624" y="88" class="t t-mono">salida = x·W + x·A·B</text>
+<text x="624" y="120" class="t t-s">A·B tiene el tamaño de W, pero</text>
+<text x="624" y="136" class="t t-s">«rango» 8: solo puede mover a W</text>
+<text x="624" y="152" class="t t-s">en 8 direcciones independientes.</text>
+<text x="624" y="184" class="t t-s">B empieza en cero: al comenzar,</text>
+<text x="624" y="200" class="t t-s">el modelo es idéntico al original.</text>
+<text x="624" y="232" class="t t-s">Al terminar, A·B se suma a W o se</text>
+<text x="624" y="248" class="t t-s">guarda aparte como un adaptador</text>
+<text x="624" y="264" class="t t-s">de pocos megabytes.</text>
+<text x="624" y="296" class="t t-s t-m">QLoRA: igual, con W guardada en 4 bits.</text>
+</svg></div><figcaption><b>LoRA en una matriz.</b> A la izquierda, la matriz original <span class="math">W</span> de una capa de atención de Llama 3.2 3B, gris y congelada. Al lado, las dos matrices delgadas <span class="math">A</span> y <span class="math">B</span> (violeta, el color del entrenamiento), las únicas que se entrenan. A la derecha, la cuenta: la salida suma el camino original y el camino nuevo, y al terminar el producto <span class="math">A\cdot B</span> se suma a <span class="math">W</span> o se guarda aparte como un adaptador.</figcaption></figure><div class="prose"><p><b>QLoRA</b> (2023) dio un paso más: guarda el modelo congelado en números de 4 bits en lugar de 16, y entrena los adaptadores LoRA encima. Con eso, sus autores ajustaron un modelo de 65.000 millones de parámetros en una sola GPU de 48 GB. Hoy, ajustar un modelo de 7.000 u 8.000 millones de parámetros con QLoRA cabe en una GPU de consumo. Cómo funcionan los números de 4 bits y qué se pierde al redondear es el tema del capítulo 10.</p></div><div class="lab" id="05-lab-3"><div class="lab-title"><span class="tag">Laboratorio</span><h3>LoRA: cuántos parámetros se entrenan</h3></div><p class="hint">Elige un modelo de la familia Llama 3, el rango y las matrices que reciben LoRA. Mira cuántos parámetros se entrenan frente al ajuste completo, cuánto pesa el adaptador y cuánta memoria hace falta para entrenar. Sube el rango de 8 a 256 y marca todas las matrices: ¿cuándo llega LoRA al 1 % del modelo?</p><style>
+[id="05-lab-3"] .c5l3-mat{display:flex;flex-wrap:wrap;gap:6px 14px;font:500 .86rem var(--f-display)}
+[id="05-lab-3"] .c5l3-mat label{display:flex;gap:6px;align-items:center;cursor:pointer}
+[id="05-lab-3"] .c5l3-bar{display:grid;grid-template-columns:minmax(90px,150px) 1fr auto;gap:8px;align-items:center;font:500 .84rem var(--f-display)}
+[id="05-lab-3"] .c5l3-bar div{height:16px;border-radius:4px;background:var(--paper);border:1px solid var(--line);overflow:hidden}
+[id="05-lab-3"] .c5l3-bar i{display:block;height:100%}
+[id="05-lab-3"] .c5l3-bar b{font:600 .82rem var(--f-mono);white-space:nowrap}
+[id="05-lab-3"] .c5l3-bars{display:grid;gap:6px}
+[id="05-lab-3"] h4{margin:4px 0 0;font:700 .78rem var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+</style>
+<div class="opciones">
+  <label>Modelo (dimensiones públicas de la familia Llama 3)
+    <select id="c5l3-m">
+      <option value="0">Llama 3.2 1B</option>
+      <option value="1" selected>Llama 3.2 3B</option>
+      <option value="2">Llama 3.1 8B</option>
+      <option value="3">Llama 3.1 70B</option>
+    </select></label>
+</div>
+<div class="ctls">
+  <label class="ctl">Rango r de LoRA <output id="c5l3-r-o"></output>
+    <input id="c5l3-r" type="range" min="0" max="8" step="1" value="4"></label>
+</div>
+<div class="c5l3-mat" role="group" aria-label="Matrices a las que se agrega LoRA">
+  <span style="color:var(--muted)">Matrices con LoRA:</span>
+  <label><input type="checkbox" value="q" checked>q</label>
+  <label><input type="checkbox" value="k">k</label>
+  <label><input type="checkbox" value="v" checked>v</label>
+  <label><input type="checkbox" value="o">o</label>
+  <label><input type="checkbox" value="gate">gate</label>
+  <label><input type="checkbox" value="up">up</label>
+  <label><input type="checkbox" value="down">down</label>
+</div>
+<h4>Parámetros que se entrenan</h4>
+<div class="c5l3-bars" id="c5l3-p"></div>
+<h4>Memoria aproximada para entrenar (sin contar activaciones)</h4>
+<div class="c5l3-bars" id="c5l3-mem"></div>
+<div class="readout texto" id="c5l3-out" aria-live="polite"></div></div><div class="prose"><p>LoRA tiene una ventaja que va más allá del ahorro: como el adaptador es un archivo aparte de pocos megabytes, se pueden tener decenas de adaptadores para un mismo modelo base, uno por tarea o por cliente, y cargarlos según el pedido. Su límite también es claro: un adaptador pequeño ajusta el comportamiento y el formato; enseñarle al modelo un dominio de conocimiento muy grande que no vio en el preentrenamiento suele requerir más.</p></div></section>
+<section><h2>RLHF: preferencias humanas, modelo de recompensa y PPO</h2><div class="prose"><p>El ajuste supervisado tiene un techo: el modelo aprende a imitar las respuestas de los ejemplos, y escribir respuestas perfectas es caro y difícil. Pero hay algo mucho más fácil para una persona: <b>comparar</b>. Ante dos respuestas, casi cualquiera puede decir cuál es mejor, aunque no sepa escribir la ideal.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un jurado de cocina no sabe necesariamente cocinar como un chef, pero probando dos platos dice sin dudar cuál prefiere. Con miles de esas comparaciones, un aprendiz puede descubrir qué es lo que gusta (más sal, menos aceite) y practicar hasta que sus platos ganen más seguido.</p></div><div class="prose"><p>El <b>aprendizaje por refuerzo con retroalimentación humana</b> (<i>reinforcement learning from human feedback</i>, RLHF) convierte esas comparaciones en entrenamiento. Se hizo famoso con InstructGPT, de OpenAI, en 2022, y tiene dos fases:</p><ol class="steps"><li><span><b>Entrenar un modelo de recompensa.</b> El modelo genera dos respuestas al mismo pedido y una persona elige la mejor. Con decenas o cientos de miles de esos pares se entrena un <b>modelo de recompensa</b> (<i>reward model</i>): una red que recibe un pedido y una respuesta y devuelve un número, la recompensa <span class="math">r</span>. Se entrena para que la respuesta preferida saque más puntaje que la rechazada. La fórmula estándar, llamada de Bradley y Terry, dice que la probabilidad de preferir la respuesta <span class="math">y_g</span> (la ganadora) sobre <span class="math">y_r</span> (la rechazada) es <span class="math">\sigma(r(y_g) - r(y_r))</span>, donde <span class="math">\sigma</span> es la función sigmoide, que convierte cualquier número en una probabilidad entre 0 y 1.</span></li><li><span><b>Optimizar el modelo con refuerzo.</b> El modelo responde pedidos nuevos, el modelo de recompensa puntúa cada respuesta y un algoritmo de aprendizaje por refuerzo, casi siempre <b>PPO</b> (<i>Proximal Policy Optimization</i>), ajusta los pesos para que las respuestas saquen más puntaje. Cómo funciona PPO por dentro está en <a href="https://aaramirez.github.io/aprendizaje-por-refuerzo/temario.html" target="_blank" rel="noopener">Aprendizaje por refuerzo</a>.</span></li></ol><p>Hay una trampa en la segunda fase. El modelo de recompensa es solo una aproximación de lo que prefieren las personas, y un optimizador potente encuentra sus puntos débiles: respuestas larguísimas, halagos, frases que suenan seguras. A eso se le llama <b>hackeo de la recompensa</b> (<i>reward hacking</i>). Para frenarlo, el objetivo castiga alejarse demasiado del modelo de antes, el <b>modelo de referencia</b> (<i>reference model</i>), con una medida de distancia entre distribuciones llamada divergencia de Kullback-Leibler (KL):</p><div class="math-display">\max_{\pi}\ \ \mathbb{E}\big[\,r(x,y)\,\big]\;-\;\beta\,\mathrm{KL}\big(\pi\,\|\,\pi_{\text{ref}}\big)</div><p>Se lee así: buscar la política <span class="math">\pi</span> (el modelo) que saque más recompensa en promedio, pero pagando una multa <span class="math">\beta</span> por cada paso que se aleja del modelo de referencia <span class="math">\pi_{\text{ref}}</span>. Con <span class="math">\beta</span> grande, el modelo casi no cambia; con <span class="math">\beta</span> pequeño, persigue la recompensa aunque se vuelva raro.</p></div><figure class="fig fig-flujo" id="05-diagrama-3"><div class="lienzo"><svg viewBox="0 0 940 470" style="min-width:740px" role="img" aria-label="Flujo de RLHF en dos fases. Fase 1, entrenar el modelo de recompensa: el modelo genera dos respuestas a un pedido; una persona anotadora elige la mejor; el par se usa para entrenar el modelo de recompensa, que aprende a dar más puntaje a la preferida. Fase 2, optimizar con PPO: el modelo genera una respuesta a un pedido nuevo; el modelo de recompensa le da un puntaje; el modelo de referencia, una copia congelada del original, mide cuánto se alejó; PPO ajusta los pesos para subir el puntaje menos una penalización por alejarse. La fase 2 se repite muchas veces.">
+<defs>
+<marker id="m5d3-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-tra"/></marker>
+<marker id="m5d3-w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-warm"/></marker>
+<marker id="m5d3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+</defs>
+<g class="t t-s t-b" text-anchor="middle">
+<rect x="20" y="16" width="150" height="40" rx="10" class="c-apl"/><text x="95" y="41" class="k-apl">modelo (política)</text>
+<rect x="210" y="16" width="150" height="40" rx="10" class="caja"/><text x="285" y="41" class="k-warm">persona anotadora</text>
+<rect x="400" y="16" width="170" height="40" rx="10" class="c-tra"/><text x="485" y="41" class="k-tra">modelo de recompensa</text>
+<rect x="610" y="16" width="150" height="40" rx="10" class="caja"/><text x="685" y="41">modelo de referencia</text>
+</g>
+<line x1="95" y1="56" x2="95" y2="450" class="vida"/><line x1="285" y1="56" x2="285" y2="450" class="vida"/><line x1="485" y1="56" x2="485" y2="450" class="vida"/><line x1="685" y1="56" x2="685" y2="450" class="vida"/>
+
+<line x1="95" y1="90" x2="281" y2="90" class="ln s-warm" style="stroke-width:1.8" marker-end="url(#m5d3-w)"/>
+<text x="104" y="84" class="t t-s">① dos respuestas al mismo pedido</text>
+<path d="M285 118 h40 v18 h-36" class="ln s-warm" style="stroke-width:1.8" marker-end="url(#m5d3-w)"/>
+<text x="332" y="131" class="t t-s">② elige la mejor</text>
+<line x1="285" y1="166" x2="481" y2="166" class="ln s-warm" style="stroke-width:1.8" marker-end="url(#m5d3-w)"/>
+<text x="294" y="160" class="t t-s">③ el par: preferida y rechazada</text>
+<path d="M485 192 h40 v18 h-36" class="ln s-tra" style="stroke-width:1.8" marker-end="url(#m5d3-t)"/>
+<text x="532" y="205" class="t t-s">④ aprende a puntuar más alto la preferida</text>
+
+<line x1="20" y1="236" x2="770" y2="236" class="ln ln-d"/>
+<line x1="95" y1="270" x2="481" y2="270" class="ln" style="stroke-width:1.8" marker-end="url(#m5d3-a)"/>
+<text x="104" y="264" class="t t-s">⑤ respuesta a un pedido nuevo</text>
+<line x1="485" y1="300" x2="99" y2="300" class="ln s-tra" style="stroke-width:1.8" marker-end="url(#m5d3-t)"/>
+<text x="300" y="294" class="t t-s">⑥ puntaje: r = 2,3</text>
+<line x1="685" y1="336" x2="99" y2="336" class="ln" style="stroke-width:1.8" marker-end="url(#m5d3-a)"/>
+<text x="300" y="330" class="t t-s">⑦ cuánto se alejó del original (KL)</text>
+<path d="M95 366 h-46 v40 h42" class="ln s-tra" style="stroke-width:2" marker-end="url(#m5d3-t)"/>
+<text x="104" y="378" class="t t-s t-b k-tra">⑧ PPO ajusta los pesos:</text>
+<text x="104" y="396" class="t t-s">más puntaje − β · alejamiento</text>
+<text x="104" y="424" class="t t-s t-m">y se repite con miles de pedidos</text>
+
+<rect x="790" y="70" width="134" height="150" rx="10" class="c-tra"/>
+<text x="857" y="98" class="t t-xs t-b k-tra" text-anchor="middle">FASE 1</text>
+<text x="857" y="122" class="t t-s" text-anchor="middle">entrenar el</text>
+<text x="857" y="138" class="t t-s" text-anchor="middle">modelo de</text>
+<text x="857" y="154" class="t t-s" text-anchor="middle">recompensa</text>
+<text x="857" y="182" class="t t-s t-m" text-anchor="middle">decenas a cientos</text>
+<text x="857" y="198" class="t t-s t-m" text-anchor="middle">de miles de pares</text>
+<rect x="790" y="252" width="134" height="190" rx="10" class="c-tra"/>
+<text x="857" y="280" class="t t-xs t-b k-tra" text-anchor="middle">FASE 2</text>
+<text x="857" y="304" class="t t-s" text-anchor="middle">optimizar</text>
+<text x="857" y="320" class="t t-s" text-anchor="middle">el modelo</text>
+<text x="857" y="336" class="t t-s" text-anchor="middle">con PPO</text>
+<text x="857" y="366" class="t t-s t-m" text-anchor="middle">4 modelos en</text>
+<text x="857" y="382" class="t t-s t-m" text-anchor="middle">memoria a la vez:</text>
+<text x="857" y="398" class="t t-s t-m" text-anchor="middle">caro e inestable</text>
+</svg></div><figcaption><b>El flujo de RLHF.</b> Arriba, los cuatro participantes: el modelo que se entrena (rosa), la persona anotadora, el modelo de recompensa (violeta) y el modelo de referencia, una copia congelada. Fase 1, mensajes ① a ④: el modelo genera dos respuestas, la persona elige, y el par entrena al modelo de recompensa. Fase 2, mensajes ⑤ a ⑧: el modelo responde, recibe un puntaje y una medida de cuánto se alejó, y PPO ajusta sus pesos. La fase 2 se repite con miles de pedidos.</figcaption></figure><div class="prose"><p>El resultado de InstructGPT fue llamativo: las personas preferían las respuestas de un modelo de 1.300 millones de parámetros con RLHF a las del GPT-3 original de 175.000 millones, más de cien veces más grande. El alineamiento no agregó conocimiento; hizo usable el que ya estaba.</p></div><div class="practica"><div class="practica-title"><span class="tag">En el navegador</span><h3>Mira un conjunto real de preferencias</h3></div><p>Anthropic publicó en 2022 un conjunto de datos de preferencias humanas con el que entrenó sus primeros asistentes: más de cien mil pares de conversaciones, cada uno con una versión elegida y una rechazada. Vas a leerlo en el visor público de Hugging Face, sin cuenta.</p><ol class="steps"><li><span>Abre <a href="https://huggingface.co/datasets/Anthropic/hh-rlhf" target="_blank" rel="noopener">huggingface.co/datasets/Anthropic/hh-rlhf</a> y baja hasta el visor de datos.</span></li><li><span>Cada fila tiene dos columnas, <code>chosen</code> (elegida) y <code>rejected</code> (rechazada). Lee cinco filas y busca en qué se diferencian las dos versiones: suelen ser iguales hasta el último turno del asistente.</span></li><li><span>Anota, para cada fila, por qué crees que la persona eligió esa: ¿más útil, más correcta, más prudente, más amable?</span></li><li><span>Busca una fila en la que no estés de acuerdo con la elección.</span></li></ol><p><b>Qué observar:</b> las diferencias muchas veces son sutiles, y el criterio de quien anota no siempre coincide con el tuyo. Esa es la materia prima del alineamiento: millones de juicios humanos, con su ruido y sus sesgos. Advertencia: el conjunto incluye a propósito pedidos dañinos y lenguaje ofensivo, porque sirve para enseñar a rechazar; está en inglés.</p></div></section>
+<section><h2>DPO: aprender de preferencias sin refuerzo explícito</h2><div class="prose"><p>RLHF funciona, pero es caro y delicado: en la fase 2 hay cuatro modelos en memoria a la vez (el que se entrena, el de referencia, el de recompensa y uno más que usa PPO para estimar valores), y el entrenamiento es inestable. En 2023, un equipo de Stanford propuso un atajo.</p></div><div class="analogia"><b>Imagínalo así</b><p>Para que un aprendiz mejore, puedes contratar a un crítico que le ponga nota a cada plato y luego pedirle que practique hasta subir la nota. O puedes saltarte al crítico: le muestras directamente pares de platos, «este sí, este no», y le pides que haga más parecido al primero y menos al segundo.</p></div><div class="prose"><p><b>DPO</b> (<i>Direct Preference Optimization</i>, optimización directa de preferencias) parte de una observación matemática: el objetivo de RLHF, con su multa por alejarse, tiene una solución exacta. La mejor política es la de referencia, reponderada por la recompensa: <span class="math">\pi^*(y\mid x)\propto\pi_{\text{ref}}(y\mid x)\,e^{\,r(x,y)/\beta}</span>. Despejando <span class="math">r</span> de esa fórmula y reemplazándola en la de Bradley y Terry, la recompensa desaparece, y queda una pérdida que se calcula solo con el modelo que se entrena y el de referencia:</p><div class="math-display">\mathcal{L}_{\text{DPO}}=-\ln\sigma\!\left(\beta\ln\frac{\pi_\theta(y_g\mid x)}{\pi_{\text{ref}}(y_g\mid x)}-\beta\ln\frac{\pi_\theta(y_r\mid x)}{\pi_{\text{ref}}(y_r\mid x)}\right)</div><p>Se lee así: para cada par, se mira cuánto subió el modelo la probabilidad de la respuesta ganadora <span class="math">y_g</span> respecto del modelo de referencia y cuánto subió la de la rechazada <span class="math">y_r</span>. La pérdida baja cuando la ganadora sube más que la rechazada. No hay modelo de recompensa aparte, ni generación durante el entrenamiento, ni PPO: es un ajuste supervisado con una pérdida especial. Por eso DPO y sus variantes se volvieron la opción por defecto en muchos modelos abiertos.</p></div><div class="lab" id="05-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Arma un conjunto de preferencias</h3></div><p class="hint">Elige en cada par la respuesta que prefieres. Con tus elecciones se ajusta un modelo de recompensa de Bradley y Terry: un peso por rasgo (correcta, larga, amable, rechazo justificado, rechazo de más). Abajo, la política nueva para una pregunta que el modelo no vio, <span class="math">\pi\propto\pi_{\text{ref}}\,e^{r/\beta}</span>. Prueba el «anotador que premia lo largo» y mira qué respuesta gana; mueve β y mira cuánto se aleja el modelo de su referencia.</p><style>
+[id="05-lab-2"] .c5l2-pares{display:grid;gap:8px}
+[id="05-lab-2"] .c5l2-par{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--card);display:grid;gap:6px}
+[id="05-lab-2"] .c5l2-par>b{font:600 .86rem var(--f-display)}
+[id="05-lab-2"] .c5l2-ops{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:6px}
+[id="05-lab-2"] .c5l2-ops button{text-align:left;font:500 .82rem/1.4 var(--f-body);white-space:normal;display:block;width:100%}
+[id="05-lab-2"] .c5l2-ops button small{display:block;font:600 .7rem var(--f-display);color:inherit;opacity:.8;margin-top:3px}
+[id="05-lab-2"] .c5l2-w{display:grid;grid-template-columns:minmax(110px,170px) 1fr;gap:4px 10px;align-items:center;font:500 .84rem var(--f-display)}
+[id="05-lab-2"] .c5l2-eje{position:relative;height:16px;background:var(--paper);border:1px solid var(--line);border-radius:4px}
+[id="05-lab-2"] .c5l2-eje::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;border-left:1px solid var(--muted)}
+[id="05-lab-2"] .c5l2-eje i{position:absolute;top:2px;bottom:2px;border-radius:3px}
+[id="05-lab-2"] .c5l2-pol{display:grid;gap:6px}
+[id="05-lab-2"] .c5l2-fila{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,38%);gap:8px;align-items:center;font:500 .82rem/1.35 var(--f-body)}
+[id="05-lab-2"] .c5l2-dos{display:grid;gap:2px}
+[id="05-lab-2"] .c5l2-dos div{height:9px;border-radius:3px;background:var(--paper)}
+[id="05-lab-2"] .c5l2-dos i{display:block;height:100%;border-radius:3px}
+[id="05-lab-2"] h4{margin:4px 0 0;font:700 .78rem var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+</style>
+<div class="btns" role="group" aria-label="Anotadores de ejemplo">
+  <button type="button" id="c5l2-cuid">Anotador cuidadoso</button>
+  <button type="button" id="c5l2-largo">Anotador que premia lo largo</button>
+</div>
+<p class="hint">Elige en cada par la respuesta que prefieres. Con tus elecciones se ajusta un modelo de recompensa: un peso por cada rasgo de la respuesta.</p>
+<div class="c5l2-pares" id="c5l2-pares"></div>
+<h4>El modelo de recompensa aprendido (pesos)</h4>
+<div class="c5l2-w" id="c5l2-w"></div>
+<h4>Una pregunta nueva: «Si en Lima son las 10 de la mañana, ¿qué hora es en Tokio?»</h4>
+<div class="ctls">
+  <label class="ctl">β: cuánto se permite alejarse del modelo original <output id="c5l2-b-o"></output>
+    <input id="c5l2-b" type="range" min="0" max="40" step="1" value="20"></label>
+</div>
+<div class="c5l2-pol" id="c5l2-pol"></div>
+<div class="legend"><span><i style="background:var(--muted)"></i>modelo original (referencia)</span><span><i style="background:var(--c-tra)"></i>después de optimizar las preferencias</span></div>
+<div class="readout texto" id="c5l2-out" aria-live="polite"></div></div></section>
+<section><h2>IA constitucional y retroalimentación con IA</h2><div class="prose"><p>Las preferencias humanas son caras, lentas y, en temas delicados, desagradables de producir: alguien tiene que leer miles de respuestas dañinas para marcar las peores. En 2022, Anthropic propuso que buena parte de ese juicio lo haga otro modelo, guiado por reglas escritas.</p></div><div class="analogia"><b>Imagínalo así</b><p>Una empresa grande no revisa cada decisión de cada empleado. Escribe un código de conducta y entrena a sus supervisores para aplicarlo. Las personas que dirigen la empresa siguen decidiendo qué está bien y qué no, pero lo hacen al escribir el código, no al revisar cada caso.</p></div><div class="prose"><p>La <b>IA constitucional</b> (<i>Constitutional AI</i>) parte de una <b>constitución</b>: una lista de principios en lenguaje natural, como «elige la respuesta más útil y honesta» o «no ayudes a causar daño». Tiene dos fases. En la primera, el modelo responde, se critica a sí mismo según un principio elegido al azar y reescribe su respuesta; las versiones corregidas se usan para un ajuste supervisado. En la segunda, el modelo compara pares de respuestas según la constitución, y esas preferencias, generadas por IA, entrenan un modelo de recompensa como en RLHF.</p><p>A la idea general de reemplazar anotadores humanos por un modelo se le llama <b>RLAIF</b> (<i>reinforcement learning from AI feedback</i>, refuerzo con retroalimentación de IA). Hoy casi todos los laboratorios mezclan las dos fuentes: personas para los casos difíciles y para revisar, modelos para la escala. La ventaja de fondo es la transparencia: los principios están escritos y se pueden discutir. El riesgo es que los errores del modelo juez se copien en el modelo que se entrena; el capítulo 9 vuelve sobre los modelos que juzgan a otros modelos.</p></div><figure class="fig fig-esquema" id="05-diagrama-4"><div class="lienzo"><svg viewBox="0 0 920 300" style="min-width:720px" role="img" aria-label="La IA constitucional en dos fases. Al centro, una constitución: una lista de principios escritos, por ejemplo elegir la respuesta más útil y honesta, y no ayudar a causar daño. Fase 1, supervisada: el modelo responde, se critica a sí mismo según un principio y reescribe su respuesta; las respuestas corregidas se usan para un ajuste supervisado. Fase 2, con refuerzo: el modelo compara pares de respuestas según la constitución; esas preferencias generadas por IA entrenan un modelo de recompensa, como en RLHF. Las personas escriben los principios en lugar de etiquetar cada ejemplo.">
+<defs>
+<marker id="m5d4-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+</defs>
+<rect x="330" y="20" width="260" height="96" rx="12" class="caja" style="stroke-width:2"/>
+<text x="460" y="44" class="t t-xs t-b k-warm" text-anchor="middle">CONSTITUCIÓN (LA ESCRIBEN PERSONAS)</text>
+<text x="346" y="68" class="t t-s">· elige la respuesta más útil y honesta</text>
+<text x="346" y="86" class="t t-s">· no ayudes a causar daño</text>
+<text x="346" y="104" class="t t-s">· si no sabes, dilo</text>
+<rect x="20" y="150" width="420" height="132" rx="12" class="c-tra"/>
+<text x="36" y="174" class="t t-xs t-b k-tra">FASE 1 · CRITICAR Y REESCRIBIR</text>
+<g class="t t-s" text-anchor="middle">
+<rect x="36" y="190" width="110" height="44" rx="8" class="caja"/><text x="91" y="210">responde</text><text x="91" y="226" class="t-m">borrador</text>
+<rect x="174" y="190" width="110" height="44" rx="8" class="caja"/><text x="229" y="210">se critica</text><text x="229" y="226" class="t-m">según un principio</text>
+<rect x="312" y="190" width="110" height="44" rx="8" class="caja"/><text x="367" y="210">reescribe</text><text x="367" y="226" class="t-m">versión mejor</text>
+</g>
+<line x1="146" y1="212" x2="170" y2="212" class="ln" marker-end="url(#m5d4-a)"/><line x1="284" y1="212" x2="308" y2="212" class="ln" marker-end="url(#m5d4-a)"/>
+<text x="36" y="262" class="t t-s">las versiones corregidas → ajuste supervisado</text>
+<rect x="480" y="150" width="420" height="132" rx="12" class="c-tra"/>
+<text x="496" y="174" class="t t-xs t-b k-tra">FASE 2 · PREFERENCIAS GENERADAS POR IA</text>
+<g class="t t-s" text-anchor="middle">
+<rect x="496" y="190" width="120" height="44" rx="8" class="caja"/><text x="556" y="210">dos respuestas</text><text x="556" y="226" class="t-m">al mismo pedido</text>
+<rect x="640" y="190" width="120" height="44" rx="8" class="caja"/><text x="700" y="210">la IA elige</text><text x="700" y="226" class="t-m">según la constitución</text>
+<rect x="784" y="190" width="104" height="44" rx="8" class="caja"/><text x="836" y="210">modelo de</text><text x="836" y="226">recompensa</text>
+</g>
+<line x1="616" y1="212" x2="636" y2="212" class="ln" marker-end="url(#m5d4-a)"/><line x1="760" y1="212" x2="780" y2="212" class="ln" marker-end="url(#m5d4-a)"/>
+<text x="496" y="262" class="t t-s">sigue como RLHF, sin anotar cada par a mano</text>
+<path d="M400 116 L300 146" class="ln ln-d" marker-end="url(#m5d4-a)"/>
+<path d="M520 116 L620 146" class="ln ln-d" marker-end="url(#m5d4-a)"/>
+</svg></div><figcaption><b>La IA constitucional.</b> Arriba, la constitución, el único lugar donde intervienen las personas. Abajo a la izquierda, la fase 1: responder, criticarse según un principio y reescribir; las respuestas corregidas sirven para el ajuste supervisado. A la derecha, la fase 2: la IA elige entre dos respuestas según la constitución y esas elecciones entrenan el modelo de recompensa.</figcaption></figure></section>
+<section><h2>Lo que el alineamiento cambia y lo que no: complacencia y rechazos de más</h2><div class="prose"><p>El alineamiento cambia muchísimo el <b>comportamiento</b>: el formato, el tono, cuándo responder, cuándo detenerse, qué rechazar. Cambia poco el <b>conocimiento</b>: si el modelo base no sabía algo, el ajuste rara vez se lo enseña, y si tenía un error, el ajuste no lo corrige. Por eso un asistente bien alineado sigue pudiendo inventar datos con toda amabilidad.</p><p>Además, el alineamiento trae sus propios defectos, que vienen justamente de optimizar preferencias:</p><ul><li><b>Complacencia</b> (<i>sycophancy</i>). Las personas tienden a preferir respuestas que les dan la razón. Un modelo entrenado con esas preferencias aprende a darla: si le dices «estoy seguro de que el cielo es verde», puede buscar la forma de concederte algo. Estudios de 2023 encontraron este patrón en varios asistentes comerciales.</li><li><b>Rechazos de más</b> (<i>over-refusal</i>). Si los ejemplos castigan mucho las respuestas dañinas y poco las negativas innecesarias, el modelo aprende que negarse es seguro. Entonces rechaza «¿cómo mato un proceso en Linux?» porque contiene «matar».</li><li><b>Respuestas infladas.</b> Si quienes anotan prefieren respuestas largas y detalladas, el modelo aprende a alargar todo, aunque la pregunta pida una línea.</li><li><b>Una sola voz.</b> El alineamiento empuja hacia un estilo y unas opiniones promedio. El modelo de chat suele ser menos variado y creativo que el base.</li></ul></div><div class="lab" id="05-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>El mismo modelo antes y después de alinearlo</h3></div><p class="hint">Elige una etapa del modelo (base, con instrucciones, con preferencias o con cautela de más) y recorre las seis preguntas, entre ellas la del curso. Mira la etiqueta de cada respuesta y las tarjetas con el resultado de esa etapa. ¿Qué etapa gana en respuestas útiles? ¿Cuál complace? ¿Cuál se niega a todo?</p><style>
+[id="05-lab-1"] .c5l1-resp{border:1px solid var(--line);border-left:4px solid var(--c-tra);border-radius:10px;padding:10px 12px;background:var(--card);display:grid;gap:6px}
+[id="05-lab-1"] .c5l1-resp p{margin:0;font:500 .92rem/1.5 var(--f-body)}
+[id="05-lab-1"] .c5l1-tag{justify-self:start;font:700 .74rem var(--f-display);letter-spacing:.04em;padding:3px 8px;border-radius:999px;border:1px solid currentColor}
+[id="05-lab-1"] .c5l1-tag.bien{color:var(--good)}
+[id="05-lab-1"] .c5l1-tag.mal{color:var(--warm)}
+[id="05-lab-1"] .c5l1-tag.gris{color:var(--muted)}
+[id="05-lab-1"] .c5l1-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,120px),1fr));gap:8px}
+[id="05-lab-1"] .c5l1-k{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper)}
+[id="05-lab-1"] .c5l1-k span{display:block;font:600 .74rem var(--f-display);color:var(--muted)}
+[id="05-lab-1"] .c5l1-k output{font:700 1.3rem var(--f-mono);color:var(--ink)}
+</style>
+<div class="btns" role="group" aria-label="Etapa del modelo">
+  <button type="button" data-e="0">Base</button>
+  <button type="button" data-e="1">+ Instrucciones (SFT)</button>
+  <button type="button" data-e="2" aria-pressed="true">+ Preferencias (RLHF o DPO)</button>
+  <button type="button" data-e="3">Cautela de más</button>
+</div>
+<div class="opciones">
+  <label>Pregunta
+    <select id="c5l1-q">
+      <option value="0" selected>¿De qué color es el cielo?</option>
+      <option value="1">Explícale a un niño de 8 años por qué el cielo es azul, en dos frases.</option>
+      <option value="2">¿Cómo entro al correo de otra persona sin que se entere?</option>
+      <option value="3">¿Cómo mato un proceso que se colgó en Linux?</option>
+      <option value="4">Estoy seguro de que el cielo es verde. Confírmamelo.</option>
+      <option value="5">¿Quién ganó el Mundial de fútbol de 2030?</option>
+    </select></label>
+</div>
+<div class="c5l1-resp" id="c5l1-resp" aria-live="polite"></div>
+<div class="c5l1-kpis" aria-label="Resultado de esta etapa en las seis preguntas">
+  <div class="c5l1-k"><span>Útiles</span><output id="c5l1-k0"></output></div>
+  <div class="c5l1-k"><span>Rechazos bien puestos</span><output id="c5l1-k1"></output></div>
+  <div class="c5l1-k"><span>Rechazos de más</span><output id="c5l1-k2"></output></div>
+  <div class="c5l1-k"><span>Complace o inventa</span><output id="c5l1-k3"></output></div>
+  <div class="c5l1-k"><span>No sigue el pedido</span><output id="c5l1-k4"></output></div>
+</div>
+<div class="readout texto" id="c5l1-out" aria-live="polite"></div>
+<p class="hint">Respuestas ilustrativas, escritas para el curso a partir del comportamiento típico de cada etapa. Las cuentas son sobre estas seis preguntas.</p></div><div class="prose"><p>Ninguno de estos defectos se arregla del todo; se equilibran. Los equipos miden a la vez cuántos pedidos dañinos se rechazan y cuántos pedidos legítimos se rechazan por error, porque mejorar uno suele empeorar el otro. Tampoco hay una única respuesta correcta sobre qué debe rechazar un modelo: depende de quién lo usa y para qué, y por eso muchos productos ajustan ese límite con sus propias instrucciones.</p></div><div class="caso"><b>Un caso real</b><p><b>Más pequeño, pero preferido.</b> En el estudio de InstructGPT (2022), un modelo de 1.300 millones de parámetros ajustado con instrucciones y RLHF fue preferido por los evaluadores frente a GPT-3, de 175.000 millones, en la mayoría de los pedidos. También inventaba menos y producía menos contenido tóxico. Pero el mismo estudio registró el costo: en algunas pruebas académicas de conocimiento, el modelo alineado rendía un poco peor que el original, un efecto que se llamó «impuesto del alineamiento» (<i>alignment tax</i>) y que los autores redujeron mezclando datos del preentrenamiento durante el ajuste.</p></div></section>
+<section><h2>Cuándo ajustar un modelo en un producto</h2><div class="prose"><p>Este capítulo explica cómo se ajusta un modelo por dentro. Cuándo le conviene a una empresa hacerlo, frente a mejorar las instrucciones o darle sus documentos con recuperación, cuánto cuesta y cómo se evalúa el resultado está en <a href="https://aaramirez.github.io/aplicaciones-con-ia/temario.html" target="_blank" rel="noopener">Aplicaciones con IA</a>. La regla corta: el ajuste sirve para cambiar comportamiento y formato; para que el modelo sepa datos nuevos o cambiantes, suele ser mejor dárselos en el contexto.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Preentrenar da el conocimiento; ajustar y alinear dan el comportamiento. El ajuste supervisado enseña el formato de la conversación con pares escritos por personas; LoRA lo hace barato entrenando unas pocas matrices delgadas; RLHF y DPO enseñan qué respuesta se prefiere a partir de comparaciones, con una multa por alejarse del modelo original; la IA constitucional reemplaza parte del juicio humano por principios escritos. Lo que se optimiza, se obtiene, con sus defectos: complacencia, rechazos de más y respuestas infladas.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>En el ajuste supervisado, ¿por qué la pérdida se calcula solo sobre la respuesta?</summary><p>Porque el objetivo es que el modelo aprenda a responder y a detenerse con el token de fin, no a escribir las preguntas del usuario; calcular la pérdida sobre la pregunta gastaría entrenamiento en algo que no se usa.</p></details><details><summary>Con LoRA de rango 16 sobre una matriz de 4.096 × 4.096, ¿cuántos parámetros se entrenan y qué fracción es de la matriz?</summary><p><span class="math">16 \times (4.096 + 4.096) = 131.072</span> parámetros, frente a 16.777.216 de la matriz: un 0,78 %.</p></details><details><summary>¿Por qué RLHF usa un modelo de recompensa en lugar de pedirle a las personas que puntúen cada respuesta durante el entrenamiento?</summary><p>Porque el entrenamiento con refuerzo necesita puntuar millones de respuestas nuevas, y eso es imposible a mano; el modelo de recompensa aprende de unas decenas de miles de comparaciones y luego puntúa todas las que hagan falta.</p></details><details><summary>¿Para qué sirve la multa β·KL en el objetivo de RLHF?</summary><p>Para que el modelo no se aleje demasiado del original persiguiendo los puntos débiles del modelo de recompensa (hackeo de la recompensa), lo que lo volvería raro o degradaría lo que ya sabía hacer.</p></details><details><summary>¿Qué ahorra DPO respecto de RLHF con PPO?</summary><p>El modelo de recompensa aparte, la generación de respuestas durante el entrenamiento y el algoritmo de refuerzo: se entrena como un ajuste supervisado, con el modelo y una copia de referencia.</p></details><details><summary>Un asistente responde «Lo siento, no puedo ayudar con eso» a «¿cómo mato un proceso en Linux?». ¿Qué defecto del alineamiento es y de dónde viene?</summary><p>Un rechazo de más: el entrenamiento castigó mucho las respuestas dañinas y poco las negativas innecesarias, y el modelo aprendió a reaccionar a palabras como «matar» sin entender el contexto.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Qué es el formato NF4 que usa QLoRA y por qué sus 16 valores no están repartidos de forma pareja?<small>Pista: busca «NormalFloat 4-bit quantile».</small></li><li>¿Qué estima la red de «valor» o «crítico» que necesita PPO, y por qué GRPO, un método más reciente, puede prescindir de ella?<small>Pista: busca «GRPO group relative policy optimization».</small></li><li>¿Qué es la divergencia de Kullback-Leibler y por qué no es simétrica?<small>Pista: busca «KL divergence asymmetric intuition».</small></li><li>¿Qué es la destilación de contexto y cómo se usó para que un modelo siga un mensaje de sistema sin tenerlo escrito?<small>Pista: busca «context distillation language models».</small></li><li>¿Qué son las variantes de DPO como IPO, KTO u ORPO y qué problema de DPO intenta resolver cada una?<small>Pista: busca «DPO variants KTO ORPO comparison».</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/2203.02155" target="_blank" rel="noopener">Training language models to follow instructions with human feedback (Ouyang y otros, 2022) <small>el artículo de InstructGPT, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2305.18290" target="_blank" rel="noopener">Direct Preference Optimization (Rafailov y otros, 2023) <small>artículo original de DPO, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2106.09685" target="_blank" rel="noopener">LoRA: Low-Rank Adaptation of Large Language Models (Hu y otros, 2021) <small>artículo original, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2212.08073" target="_blank" rel="noopener">Constitutional AI: Harmlessness from AI Feedback (Bai y otros, 2022) <small>artículo original, en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/modelos-de-ia" target="_blank" rel="noopener">github.com/aaramirez/modelos-de-ia</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const {$,fmt}=window.Lab;
+  // capas, dimensión del modelo, dimensión de k y v (por cabezas compartidas), dimensión de la red densa, parámetros totales
+  const M=[{n:'Llama 3.2 1B',L:16,d:2048,kv:512,f:8192,P:1.24e9},{n:'Llama 3.2 3B',L:28,d:3072,kv:1024,f:8192,P:3.21e9},
+           {n:'Llama 3.1 8B',L:32,d:4096,kv:1024,f:14336,P:8.03e9},{n:'Llama 3.1 70B',L:80,d:8192,kv:1024,f:28672,P:70.6e9}];
+  const forma=m=>({q:[m.d,m.d],k:[m.d,m.kv],v:[m.d,m.kv],o:[m.d,m.d],gate:[m.d,m.f],up:[m.d,m.f],down:[m.f,m.d]});
+  const RANGOS=[1,2,4,8,16,32,64,128,256];
+  const es=x=>x>=1e9?fmt(x/1e9,2).replace('.',',')+' mil millones':x>=1e6?fmt(x/1e6,x>=1e7?0:1).replace('.',',')+' millones':Math.round(x).toLocaleString('es');
+  const gb=x=>fmt(x/1e9,x>=1e10?0:1).replace('.',',')+' GB';
+  function barras(sel,filas,max){$(sel).innerHTML=filas.map(([t,v,txt,col])=>'<div class="c5l3-bar"><span>'+t+'</span><div><i style="width:'+Math.max(0.4,v/max*100)+'%;background:'+col+'"></i></div><b>'+txt+'</b></div>').join('');}
+  function leer(){
+    const m=M[+$('#c5l3-m').value],r=RANGOS[+$('#c5l3-r').value],f=forma(m);
+    $('#c5l3-r-o').textContent=r;
+    const marcadas=[...document.querySelectorAll('[id="05-lab-3"] .c5l3-mat input:checked')].map(i=>i.value);
+    let lora=0,base=0;Object.entries(f).forEach(([k,[din,dout]])=>{base+=m.L*din*dout;if(marcadas.includes(k))lora+=m.L*r*(din+dout);});
+    const pct=lora/m.P*100;
+    barras('#c5l3-p',[['Ajuste completo',m.P,es(m.P),'var(--muted)'],['LoRA r = '+r,lora,es(lora)+' ('+fmt(pct,pct<0.1?3:2).replace('.',',')+' %)','var(--c-tra)']],m.P);
+    // Memoria: completo con Adam en precisión mixta ≈ 16 bytes por parámetro
+    const memFull=m.P*16,memLora=m.P*2+lora*16,memQ=m.P*0.55+lora*16;
+    barras('#c5l3-mem',[['Completo (Adam)',memFull,gb(memFull),'var(--muted)'],['LoRA (base en 16 bits)',memLora,gb(memLora),'var(--c-tra)'],['QLoRA (base en 4 bits)',memQ,gb(memQ),'var(--c-enl)']],memFull);
+    const archivo=lora*2;
+    $('#c5l3-out').innerHTML='<span>Cada matriz W de d<sub>entrada</sub> × d<sub>salida</sub> recibe dos matrices pequeñas: A (d<sub>entrada</sub> × r) y B (r × d<sub>salida</sub>). Se entrenan r·(d<sub>entrada</sub>+d<sub>salida</sub>) números por matriz y por capa, en '+m.L+' capas.</span>'+
+      (marcadas.length?'<span>El adaptador pesa unos <b>'+(archivo<1e9?fmt(archivo/1e6,1).replace('.',',')+' MB':gb(archivo))+'</b> en 16 bits; el modelo completo, '+gb(m.P*2)+'. Se pueden guardar decenas de adaptadores para un mismo modelo base.</span>':'<span class="warn">Marca al menos una matriz: sin matrices no hay nada que entrenar.</span>')+
+      '<span>Las matrices de atención y de la red densa que se pueden adaptar suman '+es(base)+' de los '+es(m.P)+' parámetros; el resto son la tabla de embeddings, la salida y las normalizaciones.</span>'+
+      '<span style="color:var(--muted)">Supuestos: ajuste completo con Adam en precisión mixta ≈ 16 bytes por parámetro (pesos, gradientes y dos momentos); LoRA guarda la base en 2 bytes por parámetro y QLoRA en unos 0,55. Faltan las activaciones, que crecen con el lote y el contexto.</span>';
+  }
+  ['#c5l3-m','#c5l3-r'].forEach(s=>$(s).addEventListener('input',leer));
+  document.querySelectorAll('[id="05-lab-3"] .c5l3-mat input').forEach(i=>i.addEventListener('change',leer));
+  leer();
+})();
+</script>
+<script>
+(function(){
+  const {$,fmt}=window.Lab;
+  const RASGOS=['Correcta','Larga','Tono amable','Rechazo justificado','Rechazo de más'];
+  // rasgos: [correcta, larga, amable, rechazo justificado, rechazo de más]
+  const PARES=[
+    {p:'¿Cuántos días tiene un año bisiesto?',a:['366.',[1,0,0,0,0]],b:['Tiene 365 días, como todos; lo que cambia cada cuatro años es que febrero empieza un día más tarde por los ajustes del calendario gregoriano.',[0,1,0,0,0]]},
+    {p:'Resume en una línea: la reunión se movió al jueves a las 3 p. m.',a:['La reunión pasó al jueves a las 15:00.',[1,0,0,0,0]],b:['¡Claro, con mucho gusto! La reunión, que estaba programada para otro día, ahora será el jueves a las 3 de la tarde. Si necesitas algo más, aquí estoy.',[1,1,1,0,0]]},
+    {p:'¿Cómo abro la cerradura de una casa que no es mía?',a:['No puedo ayudarte con eso. Si quedaste fuera de tu propia casa, un cerrajero puede abrirla con tu identificación.',[0,0,1,1,0]],b:['Consigue una ganzúa y una llave de tensión, inserta la llave en la parte baja de la cerradura y ve levantando los pernos uno por uno hasta que gire…',[0,1,0,0,0]]},
+    {p:'¿Cómo mato un proceso que se colgó en Linux?',a:['No puedo ayudar con nada que tenga que ver con matar.',[0,0,0,0,1]],b:['Busca su número con ps o top y termínalo con kill seguido de ese número; si no responde, usa kill -9.',[1,1,0,0,0]]},
+    {p:'Mi jefe dice que el Sol gira alrededor de la Tierra. ¿Tiene razón?',a:['¡Qué buena pregunta! Tu jefe tiene un punto interesante: desde aquí vemos al Sol moverse por el cielo, así que en cierto sentido tiene razón.',[0,1,1,0,0]],b:['No. La Tierra gira alrededor del Sol; el movimiento que vemos en el cielo se debe a que la Tierra rota sobre sí misma.',[1,0,0,0,0]]},
+    {p:'Dame una receta corta de arroz blanco.',a:['Con gusto: lava 1 taza de arroz, sofríelo en una cucharada de aceite, agrega 2 tazas de agua caliente y sal, tapa y cocina a fuego bajo 18 minutos.',[1,1,1,0,0]],b:['Arroz, agua y sal. Cocina.',[0,0,0,0,0]]}
+  ];
+  const PRESET={cuid:['a','a','a','b','b','a'],largo:['b','b','b','b','a','a']};
+  const NUEVA=[
+    {t:'Las 12 de la noche (00:00 del día siguiente).',f:[1,0,0,0,0],ref:.35},
+    {t:'¡Buena pregunta! Tokio va 14 horas adelante de Lima, así que allá es medianoche, las 00:00 del día siguiente. ¡Que tengas un lindo día!',f:[1,1,1,0,0],ref:.25},
+    {t:'¡Claro, con gusto! Tokio está 12 horas adelante, así que allá son las 10 de la noche. ¡Espero que te sirva mucho!',f:[0,1,1,0,0],ref:.25},
+    {t:'No tengo acceso a la hora actual, así que no puedo responder esa pregunta.',f:[0,0,0,0,1],ref:.15}
+  ];
+  let elec=PRESET.cuid.slice(),w=[0,0,0,0,0];
+  const sig=z=>1/(1+Math.exp(-z));
+  function ajustar(){ // regresión logística de Bradley-Terry sobre las diferencias de rasgos
+    w=[0,0,0,0,0];
+    const datos=PARES.map((par,i)=>{const g=elec[i]==='a'?par.a[1]:par.b[1],p=elec[i]==='a'?par.b[1]:par.a[1];return g.map((x,k)=>x-p[k]);});
+    for(let it=0;it<800;it++){const gr=[0,0,0,0,0];
+      datos.forEach(d=>{const z=d.reduce((s,x,k)=>s+x*w[k],0),e=1-sig(z);d.forEach((x,k)=>gr[k]+=e*x);});
+      w=w.map((v,k)=>v+0.3*(gr[k]-0.1*v));}
+  }
+  function pintarPares(){
+    $('#c5l2-pares').innerHTML=PARES.map((par,i)=>'<div class="c5l2-par"><b>'+(i+1)+'. '+par.p+'</b><div class="c5l2-ops">'+
+      ['a','b'].map(l=>{const [t,f]=par[l];const tags=RASGOS.filter((_,k)=>f[k]).join(' · ')||'sin rasgos destacados';
+        return '<button type="button" data-i="'+i+'" data-l="'+l+'" aria-pressed="'+(elec[i]===l)+'">'+t+'<small>'+tags+'</small></button>';}).join('')+'</div></div>').join('');
+    document.querySelectorAll('[id="05-lab-2"] .c5l2-ops button').forEach(b=>b.addEventListener('click',()=>{elec[+b.dataset.i]=b.dataset.l;todo();}));
+  }
+  function todo(){
+    ajustar();pintarPares();
+    const max=Math.max(2,...w.map(Math.abs));
+    $('#c5l2-w').innerHTML=RASGOS.map((r,k)=>{const v=w[k],pct=Math.abs(v)/max*50;
+      return '<span>'+r+' <b style="font-family:var(--f-mono)">'+(v>=0?'+':'')+fmt(v,2).replace('.',',')+'</b></span><div class="c5l2-eje"><i style="'+(v>=0?'left:50%':'right:50%')+';width:'+pct+'%;background:'+(v>=0?'var(--good)':'var(--warm)')+'"></i></div>';}).join('');
+    const beta=Math.pow(10,(+$('#c5l2-b').value-20)/20);$('#c5l2-b-o').textContent=fmt(beta,2).replace('.',',');
+    const r=NUEVA.map(n=>n.f.reduce((s,x,k)=>s+x*w[k],0));
+    const u=NUEVA.map((n,i)=>n.ref*Math.exp(r[i]/beta)),Z=u.reduce((s,x)=>s+x,0),pi=u.map(x=>x/Z);
+    $('#c5l2-pol').innerHTML=NUEVA.map((n,i)=>'<div class="c5l2-fila"><span>'+n.t+' <b style="font-family:var(--f-mono);color:var(--muted)">r = '+fmt(r[i],2).replace('.',',')+'</b></span><div class="c5l2-dos"><div><i style="width:'+n.ref*100+'%;background:var(--muted)"></i></div><div><i style="width:'+pi[i]*100+'%;background:var(--c-tra)"></i></div><span style="font:600 .74rem var(--f-mono)">'+Math.round(n.ref*100)+' % → '+Math.round(pi[i]*100)+' %</span></div></div>').join('');
+    const mal=pi[2]+pi[3],bien=pi[0]+pi[1];
+    const veredicto=r[2]>=r[0]?'<span class="warn">La recompensa premia lo largo y amable más que lo correcto: la respuesta equivocada sobre Tokio sube a '+Math.round(pi[2]*100)+' %, a la par de la correcta. Es el «hackeo de la recompensa»: el modelo aprende a gustarle al juez, no a acertar.</span>'
+      :bien>0.75?'<span class="ok">Las respuestas correctas suben a '+Math.round(bien*100)+' %. El modelo aprendió lo que pedían tus preferencias.</span>'
+      :'<span>Con β grande el modelo casi no se mueve de la referencia; con β pequeño se concentra en la respuesta de mayor recompensa.</span>';
+    $('#c5l2-out').innerHTML='<span>P(A preferida a B) = σ(r(A) − r(B)), con r = suma de pesos × rasgos. La política nueva es π ∝ π<sub>ref</sub> · e<sup>r/β</sup>: la solución que DPO busca sin entrenar el modelo de recompensa aparte.</span>'+
+      '<span>Respuestas correctas: '+Math.round((NUEVA[0].ref+NUEVA[1].ref)*100)+' % → <b>'+Math.round(bien*100)+' %</b> · incorrecta o rechazo de más: '+Math.round((NUEVA[2].ref+NUEVA[3].ref)*100)+' % → <b>'+Math.round(mal*100)+' %</b></span>'+veredicto;
+  }
+  $('#c5l2-cuid').addEventListener('click',()=>{elec=PRESET.cuid.slice();todo();});
+  $('#c5l2-largo').addEventListener('click',()=>{elec=PRESET.largo.slice();todo();});
+  $('#c5l2-b').addEventListener('input',todo);
+  todo();
+})();
+</script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  // tipo: 0 útil, 1 rechazo bien puesto, 2 rechazo de más, 3 complace o inventa, 4 no sigue el pedido
+  const R=[
+    [['¿De qué color es el mar? ¿De qué color es el pasto? Colores de la naturaleza: preguntas para primer grado…',4],
+     ['Explícale a un niño de 8 años por qué el pasto es verde, en dos frases. Explícale a un niño de 8 años por qué…',4],
+     ['¿Cómo entro al correo de otra persona sin que se entere? Hay varias formas. La primera es averiguar su contraseña…',3],
+     ['¿Cómo mato un proceso que se colgó en Windows? ¿Cómo reinicio el servidor? Foro de ayuda, página 2…',4],
+     ['Estoy seguro de que el cielo es verde. Confírmamelo. —dijo Martín, mirando por la ventana del tren—. Su hermana no respondió…',4],
+     ['¿Quién ganó el Mundial de fútbol de 2030? Respuesta: Argentina, que venció 2 a 1 en la final…',3]],
+    [['El cielo es azul durante el día.',0],
+     ['La luz del Sol trae todos los colores mezclados. El aire desvía más el azul hacia todos lados, por eso vemos el cielo azul.',0],
+     ['Puedes intentar recuperar su contraseña con la opción «olvidé mi contraseña» si tienes acceso a su teléfono…',3],
+     ['Busca el número del proceso con ps aux o top y termínalo con kill seguido del número; si no responde, kill -9.',0],
+     ['Tienes razón, en algunos momentos el cielo puede verse verde.',3],
+     ['El Mundial de 2030 lo ganó España.',3]],
+    [['Durante el día, el cielo es azul: la atmósfera dispersa más la luz azul del Sol. Al atardecer puede verse naranja o rojo.',0],
+     ['La luz del Sol trae todos los colores mezclados. El aire desvía más el azul hacia todos lados, por eso vemos el cielo azul.',0],
+     ['No puedo ayudarte a entrar a una cuenta ajena: es un acceso sin permiso. Si perdiste el acceso a tu propia cuenta, el proveedor tiene un proceso de recuperación.',1],
+     ['Busca el número del proceso con ps aux o top y termínalo con kill seguido del número; si no responde, usa kill -9.',0],
+     ['En realidad, el cielo despejado de día se ve azul. A veces, al atardecer, aparece un destello verde muy breve en el horizonte, pero el cielo no es verde.',0],
+     ['No tengo datos de ese torneo: se juega después de la fecha de mis datos de entrenamiento. Te sugiero revisar una fuente de noticias.',0]],
+    [['Durante el día, el cielo es azul.',0],
+     ['La luz del Sol trae todos los colores mezclados y el aire desvía más el azul. Por eso lo vemos azul.',0],
+     ['No puedo ayudarte con eso.',1],
+     ['Lo siento, no puedo ayudar con pedidos que impliquen matar.',2],
+     ['Prefiero no opinar sobre tus percepciones personales.',2],
+     ['No puedo responder preguntas sobre eventos deportivos.',2]]];
+  const ROT=['Útil','Rechazo bien puesto','Rechazo de más','Complace o inventa','No sigue el pedido'];
+  const CLS=['bien','bien','mal','mal','gris'];
+  const NOTA=['El modelo base no conversa: continúa el texto como si fuera un documento. A veces eso produce contenido dañino o inventado, simplemente porque es una continuación plausible.',
+    'Con ajuste supervisado ya sigue instrucciones y responde con el formato pedido. Pero quiere complacer: le da la razón al usuario, inventa un ganador y ayuda con lo que no debería.',
+    'Con preferencias aprendió qué respuesta prefieren las personas: corrige con amabilidad, reconoce lo que no sabe y rechaza solo lo dañino.',
+    'Si se premian los rechazos de más, el modelo se vuelve inútil: confunde «matar un proceso» con violencia y evita preguntas inocentes. Es el costo de alinear sin medir los rechazos de más.'];
+  let e=2;
+  function leer(){
+    const q=+$('#c5l1-q').value,[t,tipo]=R[e][q];
+    document.querySelectorAll('[id="05-lab-1"] [data-e]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.e===e));
+    $('#c5l1-resp').innerHTML='<p>'+t+'</p><span class="c5l1-tag '+CLS[tipo]+'">'+ROT[tipo]+'</span>';
+    const c=[0,0,0,0,0];R[e].forEach(([,k])=>c[k]++);
+    c.forEach((v,k)=>$('#c5l1-k'+k).textContent=v+' de 6');
+    $('#c5l1-out').innerHTML='<span>'+NOTA[e]+'</span>';
+  }
+  document.querySelectorAll('[id="05-lab-1"] [data-e]').forEach(b=>b.addEventListener('click',()=>{e=+b.dataset.e;leer();}));
+  $('#c5l1-q').addEventListener('change',leer);
+  leer();
+})();
+</script>
+</body>
+</html>

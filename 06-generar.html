@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Generar · Modelos de IA · Modelos de IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Cómo funciona por dentro un modelo de lenguaje: tokens, embeddings, atención y el Transformer, cómo se entrena y se alinea, cómo genera y razona, y cómo se evalúa y se elige.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="generar">
+<header class="topbar"><a class="brand" href="index.html">Modelos de <b>IA</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 06 DE 10</span><h1>Generar: temperatura, top-p y muestreo</h1><p class="lede">Al final de todas las capas, el modelo no escribe una palabra: entrega una lista de probabilidades para cada token posible. Este capítulo sigue la pregunta del curso hasta ese último paso y muestra cómo se convierte la lista en «azul», por qué a veces sale «celeste» o «gris» y cómo se controla.</p></header>
+<section><h2>De los <i>logits</i> a una distribución sobre el vocabulario</h2><div class="prose"><p>En los capítulos anteriores seguimos la pregunta «¿De qué color es el cielo?» desde el texto hasta los tokens, los vectores, la atención y el entrenamiento. Colibrí, el modelo de juguete del curso, ya escribió «El cielo es» (los ids 9, 16 y 12) y está por escribir la palabra que importa. Aquí termina el viaje: el último vector de la última capa tiene que convertirse en un token concreto, y la respuesta completa, «El cielo es azul.», va a salir token por token: <code>[9, 16, 12, 21, 6]</code> y después el 1, <code>&lt;fin&gt;</code>.</p><p>Lo que sale del Transformer no es una palabra. Es una lista de números, uno por cada token del vocabulario, que se llaman <b>logits</b> (<i>logits</i>, puntajes sin normalizar): cuanto más alto el número, más le «gusta» ese token al modelo como continuación. En Colibrí, con su vocabulario de 32 tokens, la lista tiene 32 números; en Llama 3, con 128.000 tokens, tiene 128.000. Después de «␣es», unos pocos dominan: «␣azul» (id 21) con 6,0, «␣cel» (28, el comienzo de «celeste») con 3,6, «␣gris» (22) con 2,9, «␣muy» con 2,2 y «␣claro» (25) con 2,0. Muy abajo quedan «␣rojo» (23) con 0,1 y los tokens que no tienen nada que hacer ahí, como «␣noche» o «¿», con −3.</p></div><div class="analogia"><b>Imagínalo así</b><p>Piensa en un jurado que califica a todos los candidatos de un concurso, incluso a los que no tienen nada que ver. Los logits son esas calificaciones en bruto: sirven para ordenar, pero no dicen «qué tan seguro» está el jurado. Para eso hay que convertirlas en porcentajes que sumen 100.</p></div><div class="prose"><p>Esa conversión la hace la función <b>softmax</b> (<i>softmax</i>, máximo suave): eleva <i>e</i> (el número 2,718…) a cada logit y divide cada resultado por la suma de todos. Así cada valor queda entre 0 y 1 y la lista completa suma 1: es una <b>distribución de probabilidad</b> (<i>probability distribution</i>) sobre el vocabulario. Con los logits de arriba, «␣azul» queda con 84 %, «␣cel» con 8 %, «␣gris» con 4 % y «␣muy» con 2 %. La exponencial exagera las diferencias: dos puntos de logit de ventaja se vuelven unas siete veces más probabilidad.</p><p>Lo importante es lo que el modelo <b>no</b> decide. Él entrega la distribución completa; elegir un token de ella es trabajo de otra pieza, el <b>decodificador</b> o <b>muestreador</b> (<i>decoder</i>, <i>sampler</i>), que es código común y corriente fuera de la red neuronal. Todo lo que sigue en este capítulo (codicioso, haz, temperatura, top-k, top-p) son reglas de ese muestreador. El mismo modelo, con otra regla, escribe textos distintos.</p></div><figure class="fig fig-esquema" id="06-diagrama-1"><div class="lienzo"><svg viewBox="0 0 940 430" style="min-width:760px" role="img" aria-label="El bucle de la generación: el contexto entra al Transformer, que da un logit por cada token del vocabulario; los logits se dividen por la temperatura y pasan por softmax para volverse probabilidades; top-k y top-p recortan la lista; se sortea un token, azul, que se agrega al contexto, y el ciclo se repite hasta el token de fin o el tope de tokens">
+<defs>
+<marker id="g6d1-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="g6d1-f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-fis"/></marker>
+</defs>
+<text x="20" y="26" class="t t-xs t-b t-m">UN PASO DE LA GENERACIÓN (SE REPITE UNA VEZ POR TOKEN)</text>
+
+<rect x="20" y="44" width="250" height="120" rx="12" class="c-fis"/>
+<text x="36" y="68" class="t t-b k-fis">① Contexto</text>
+<text x="36" y="92" class="t t-s t-m">todo lo escrito hasta ahora:</text>
+<text x="36" y="114" class="t t-s t-mono">¿De qué color es el cielo?</text>
+<text x="36" y="134" class="t t-s t-mono">El cielo es</text>
+<text x="36" y="154" class="t t-s t-m">(ya convertido en tokens)</text>
+<line x1="272" y1="104" x2="326" y2="104" class="ln" style="stroke-width:2" marker-end="url(#g6d1-m)"/>
+<rect x="330" y="44" width="250" height="120" rx="12" class="c-red"/>
+<text x="346" y="68" class="t t-b k-red">② Transformer</text>
+<text x="346" y="92" class="t t-s">embeddings, atención y capas</text>
+<text x="346" y="112" class="t t-s">(capítulos 1 a 3)</text>
+<text x="346" y="138" class="t t-s t-m">mira solo el último token para</text>
+<text x="346" y="154" class="t t-s t-m">decidir el siguiente</text>
+<line x1="582" y1="104" x2="636" y2="104" class="ln" style="stroke-width:2" marker-end="url(#g6d1-m)"/>
+<rect x="640" y="44" width="280" height="120" rx="12" class="c-apl"/>
+<text x="656" y="68" class="t t-b k-apl">③ Logits</text>
+<text x="656" y="88" class="t t-s">un puntaje por cada token del</text>
+<text x="656" y="104" class="t t-s">vocabulario (en Colibrí, 32)</text>
+<g class="t-mono">
+<rect x="656" y="114" width="96" height="9" rx="2" class="k-apl"/><text x="760" y="123" class="t t-s">␣azul 6,0</text>
+<rect x="656" y="128" width="62" height="9" rx="2" class="k-apl"/><text x="726" y="137" class="t t-s">␣cel 3,6</text>
+<rect x="656" y="142" width="56" height="9" rx="2" class="k-apl"/><text x="720" y="151" class="t t-s">␣gris 2,9 … ␣noche −3</text>
+</g>
+
+<path d="M780 166 V196" class="ln" style="stroke-width:2" marker-end="url(#g6d1-m)"/>
+
+<rect x="640" y="200" width="280" height="130" rx="12" class="c-apl"/>
+<text x="656" y="224" class="t t-b k-apl">④ ÷ temperatura y softmax</text>
+<text x="656" y="244" class="t t-s">e<tspan dy="-5" class="t-xs">logit ÷ T</tspan><tspan dy="5"> y se divide por la suma:</tspan></text>
+<text x="656" y="262" class="t t-s">todo queda entre 0 y 1 y suma 1</text>
+<rect x="656" y="274" width="150" height="9" rx="2" class="k-apl"/><text x="814" y="283" class="t t-s t-mono">␣azul 84 %</text>
+<rect x="656" y="288" width="14" height="9" rx="2" class="k-apl"/><text x="680" y="297" class="t t-s t-mono">␣cel 8 %</text>
+<rect x="656" y="302" width="8" height="9" rx="2" class="k-apl"/><text x="675" y="311" class="t t-s t-mono">␣gris 4 % · ␣muy 2 % …</text>
+<line x1="638" y1="265" x2="584" y2="265" class="ln" style="stroke-width:2" marker-end="url(#g6d1-m)"/>
+<rect x="330" y="200" width="250" height="130" rx="12" class="c-apl"/>
+<text x="346" y="224" class="t t-b k-apl">⑤ Recortar</text>
+<text x="346" y="248" class="t t-s">top-k: solo los k mejores</text>
+<text x="346" y="268" class="t t-s">top-p: los mejores hasta sumar p</text>
+<text x="346" y="292" class="t t-s t-m">lo que queda se vuelve a</text>
+<text x="346" y="308" class="t t-s t-m">normalizar para que sume 1</text>
+<line x1="328" y1="265" x2="274" y2="265" class="ln" style="stroke-width:2" marker-end="url(#g6d1-m)"/>
+<rect x="20" y="200" width="250" height="130" rx="12" class="c-apl"/>
+<text x="36" y="224" class="t t-b k-apl">⑥ Sortear</text>
+<text x="36" y="248" class="t t-s">un número al azar entre 0 y 1</text>
+<text x="36" y="268" class="t t-s">elige según las probabilidades</text>
+<text x="36" y="292" class="t t-s t-m">(con temperatura 0, siempre</text>
+<text x="36" y="308" class="t t-s t-m">el más probable: codicioso)</text>
+
+<path d="M145 332 V362" class="ln s-fis" style="stroke-width:2" marker-end="url(#g6d1-f)"/>
+<rect x="20" y="366" width="250" height="46" rx="12" class="c-fis"/>
+<text x="36" y="394" class="t t-b k-fis">⑦ Sale «␣azul» (21)</text>
+<path d="M20 389 H12 Q6 389 6 383 V110 Q6 104 12 104 H16" class="ln s-fis ln-d" style="stroke-width:2" marker-end="url(#g6d1-f)"/>
+<text x="290" y="384" class="t t-s k-fis">↺ se agrega al contexto y el ciclo se repite,</text>
+<text x="290" y="402" class="t t-s k-fis">hasta el token de fin o el tope de tokens</text>
+</svg></div><figcaption><b>El bucle de la generación.</b> Se lee en el orden de los números. ① El contexto, ya en tokens, entra al ② Transformer, que entrega ③ un logit por cada token del vocabulario. ④ Los logits se dividen por la temperatura y pasan por softmax para volverse probabilidades. ⑤ Top-k y top-p recortan la lista, ⑥ se sortea un token y ⑦ sale « azul». Los colores son los del mapa del curso: naranja para el texto y los tokens, azul para las capas, rosa para la salida. La flecha punteada de la izquierda lo agrega al contexto y el ciclo empieza otra vez: un paso completo por cada token de la respuesta.</figcaption></figure><div class="prose"><p>Ese bucle se llama <b>generación autorregresiva</b> (<i>autoregressive generation</i>): cada token nuevo se apoya en todos los anteriores, incluidos los que el propio modelo acaba de escribir. Se detiene cuando sale un token especial de fin (el capítulo 1 los presentó) o cuando se llega al tope de tokens que fijó quien hizo la llamada.</p></div></section>
+<section><h2>Codicioso y búsqueda en haz</h2><div class="prose"><p>La regla más simple es tomar siempre el token más probable. Se llama <b>decodificación codiciosa</b> (<i>greedy decoding</i>): en cada paso, el primero de la lista. Es rápida, no tiene azar y da siempre la misma respuesta para la misma entrada. Colibrí escribiría «El cielo es azul.» todas las veces: «␣azul» es el favorito después de «␣es», el punto es el favorito después de «␣azul» y <code>&lt;fin&gt;</code> es casi seguro después del punto.</p><p>El problema es que elegir lo mejor en cada paso no garantiza la mejor frase completa. La probabilidad de una secuencia es el producto de las probabilidades de sus tokens, y a veces un primer paso un poco peor abre un camino mucho mejor.</p></div><figure class="fig fig-esquema" id="06-diagrama-2"><div class="lienzo"><svg viewBox="0 0 900 380" style="min-width:720px" role="img" aria-label="Árbol de decisión de dos pasos después de azul porque. El codicioso elige la, con 0,50, y luego atmósfera, con 0,35: la secuencia vale 0,175. La búsqueda en haz con ancho 2 guarda la y el; el seguida de aire vale 0,30 por 0,90, igual a 0,27, y gana. Las queda podado en el primer paso">
+<defs>
+<marker id="g6d2-w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-warm"/></marker>
+<marker id="g6d2-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-enl"/></marker>
+<marker id="g6d2-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+</defs>
+<text x="20" y="24" class="t t-xs t-b t-m">PASO 1</text>
+<text x="330" y="24" class="t t-xs t-b t-m">PASO 2</text>
+<text x="640" y="24" class="t t-xs t-b t-m">PROBABILIDAD DE LA SECUENCIA</text>
+
+<rect x="20" y="166" width="120" height="44" rx="10" class="caja"/>
+<text x="80" y="186" class="t t-b" text-anchor="middle">…azul</text><text x="80" y="202" class="t t-b" text-anchor="middle">porque</text>
+
+<line x1="142" y1="182" x2="226" y2="96" class="ln s-warm" style="stroke-width:2.6" marker-end="url(#g6d2-w)"/>
+<text x="150" y="122" class="t t-s k-warm t-b">0,50</text>
+<line x1="142" y1="194" x2="226" y2="232" class="ln s-enl" style="stroke-width:2.6" marker-end="url(#g6d2-g)"/>
+<text x="176" y="236" class="t t-s k-enl t-b">0,30</text>
+<line x1="142" y1="204" x2="226" y2="318" class="ln ln-d" marker-end="url(#g6d2-m)"/>
+<text x="160" y="290" class="t t-s t-m">0,20</text>
+<rect x="230" y="74" width="100" height="40" rx="10" class="c-fis"/>
+<text x="280" y="99" class="t t-b" text-anchor="middle">la</text>
+<rect x="230" y="214" width="100" height="40" rx="10" class="c-enl"/>
+<text x="280" y="239" class="t t-b" text-anchor="middle">el</text>
+<rect x="230" y="300" width="100" height="40" rx="10" class="caja apagado"/>
+<text x="280" y="325" class="t t-b t-m" text-anchor="middle">las</text>
+<text x="280" y="358" class="t t-s t-m" text-anchor="middle">podado: no entra en el haz de 2</text>
+
+<line x1="332" y1="86" x2="436" y2="52" class="ln s-warm" style="stroke-width:2.6" marker-end="url(#g6d2-w)"/>
+<text x="372" y="56" class="t t-s k-warm t-b">0,35</text>
+<line x1="332" y1="94" x2="436" y2="94" class="ln" marker-end="url(#g6d2-m)"/>
+<text x="372" y="88" class="t t-s t-m">0,33</text>
+<line x1="332" y1="102" x2="436" y2="136" class="ln" marker-end="url(#g6d2-m)"/>
+<text x="372" y="134" class="t t-s t-m">0,32</text>
+<text x="442" y="56" class="t t-b k-warm">atmósfera</text>
+<text x="442" y="98" class="t">luz</text>
+<text x="442" y="140" class="t">Tierra</text>
+<text x="640" y="56" class="t t-mono k-warm t-b">0,50 × 0,35 = 0,175</text>
+<text x="640" y="98" class="t t-mono t-m">0,50 × 0,33 = 0,165</text>
+<text x="640" y="140" class="t t-mono t-m">0,50 × 0,32 = 0,160</text>
+
+<line x1="332" y1="226" x2="436" y2="208" class="ln s-enl" style="stroke-width:2.6" marker-end="url(#g6d2-g)"/>
+<text x="372" y="206" class="t t-s k-enl t-b">0,90</text>
+<line x1="332" y1="242" x2="436" y2="262" class="ln" marker-end="url(#g6d2-m)"/>
+<text x="372" y="270" class="t t-s t-m">0,10</text>
+<text x="442" y="212" class="t t-b k-enl">aire</text>
+<text x="442" y="266" class="t">sol</text>
+<text x="640" y="212" class="t t-mono k-enl t-b">0,30 × 0,90 = 0,270</text>
+<text x="640" y="266" class="t t-mono t-m">0,30 × 0,10 = 0,030</text>
+
+<rect x="560" y="296" width="320" height="70" rx="10" class="caja"/>
+<line x1="576" y1="318" x2="606" y2="318" class="ln s-warm" style="stroke-width:2.6"/>
+<text x="614" y="322" class="t t-s">codicioso: «la atmósfera» (0,175)</text>
+<line x1="576" y1="346" x2="606" y2="346" class="ln s-enl" style="stroke-width:2.6"/>
+<text x="614" y="350" class="t t-s">haz de ancho 2: «el aire» (0,270)</text>
+</svg></div><figcaption><b>Codicioso frente a búsqueda en haz.</b> Colibrí no sabe explicar, así que el ejemplo es de un modelo real al que le pedimos que explique: su respuesta sigue con «El cielo es azul porque…». El árbol muestra los dos pasos siguientes (números de ejemplo). El codicioso (línea cálida) toma « la» porque vale 0,50, pero después las tres opciones están casi empatadas: la mejor secuencia que encuentra vale 0,50 × 0,35 = 0,175. La búsqueda en haz con ancho 2 (línea verde) guarda también « el», con 0,30, y en el segundo paso « aire» vale 0,90: la secuencia «el aire» vale 0,27 y gana. « las» queda podado en el primer paso porque no está entre los dos mejores.</figcaption></figure><div class="prose"><p>La <b>búsqueda en haz</b> (<i>beam search</i>) hace eso: en lugar de una sola frase, mantiene las <i>B</i> secuencias parciales más probables (el ancho del haz), las extiende todas un token, y vuelve a quedarse con las <i>B</i> mejores. Al final devuelve la de mayor probabilidad total. Fue el estándar en la traducción automática y en el reconocimiento de voz, donde hay una respuesta «correcta» y conviene encontrar la más probable.</p><p>En los chats casi no se usa, por dos razones. Primero, cuesta <i>B</i> veces más cálculo. Segundo, y más curioso: el texto más probable no es el más humano. Los textos que maximizan la probabilidad tienden a ser cortos, genéricos y repetitivos, y en los textos largos a veces caen en bucles («el cielo es azul porque el cielo es azul porque…»). Un estudio de 2019 sobre la degeneración del texto mostró que las personas no escriben eligiendo siempre la palabra más probable: el lenguaje humano tiene sorpresas. De ahí nace la idea de sortear.</p></div></section>
+<section><h2>Muestreo con temperatura</h2><div class="prose"><p><b>Muestrear</b> (<i>sampling</i>) es elegir el token al azar, pero respetando la distribución: si «␣azul» tiene 84 %, sale 84 de cada 100 veces; «␣cel», 8 de cada 100. Así la respuesta varía de una vez a otra sin dejar de ser razonable.</p><p>Para controlar cuánto se arriesga el muestreo existe la <b>temperatura</b> (<i>temperature</i>, <i>T</i>): antes del softmax, cada logit se divide por <i>T</i>.</p><ul><li>Con <i>T</i> = 1 la distribución queda como la entregó el modelo.</li><li>Con <i>T</i> menor que 1 las diferencias se agrandan: los favoritos se vuelven más favoritos. Con <i>T</i> = 0,7, «␣azul» sube a 95 %, y con <i>T</i> = 0,5, a 99 %.</li><li>Con <i>T</i> mayor que 1 las diferencias se achican y la distribución se aplana. Con <i>T</i> = 1,5, «␣azul» baja a 62 % y los tokens que no tienen nada que hacer ahí, como «␣noche», dejan de ser imposibles.</li><li>Con <i>T</i> tendiendo a 0, todo el peso se va al favorito. Por convención, «temperatura 0» quiere decir codicioso.</li></ul></div><div class="analogia"><b>Imagínalo así</b><p>La temperatura es como el ánimo de alguien que pide en un restaurante que conoce bien. Con temperatura baja pide siempre su plato favorito. Con temperatura 1 a veces prueba el segundo o el tercero de su lista. Con temperatura alta pide casi cualquier cosa del menú, incluso lo que nunca le gustó.</p></div><div class="prose"><p>El nombre viene de la física estadística, donde la distribución de Boltzmann usa la misma fórmula: a más temperatura, más desorden. No hay un valor correcto universal. Para extraer datos, clasificar o responder con un hecho conviene una temperatura baja (0 a 0,3). Para redactar, proponer ideas o escribir ficción, una media (0,7 a 1). Por encima de 1,2 el texto se vuelve rápidamente incoherente.</p></div><div class="lab" id="06-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>La distribución del siguiente token, en vivo</h3></div><p class="hint">Colibrí responde «¿De qué color es el cielo?». Las barras muestran la probabilidad de los 9 tokens más probables de su vocabulario de 32 después de «El cielo es», con su id. Mueve la temperatura y mira cómo se afila o se aplana la distribución; luego baja top-k o top-p y mira qué candidatos quedan tachados. Pulsa «Generar la respuesta» varias veces y toca cualquier token rosa de la respuesta para ver la distribución de ese paso. Con temperatura 0 siempre sale <code>[9, 16, 12, 21, 6, 1]</code>.</p><style>
+[id="06-lab-1"] .c6l1-ctx{font:500 .95rem var(--f-body);line-height:2;display:flex;flex-wrap:wrap;gap:3px;align-items:center}
+[id="06-lab-1"] .c6l1-ctx .pre{color:var(--muted);margin-right:4px}
+[id="06-lab-1"] .c6l1-ctx .c6l1-tok{font:500 .88rem var(--f-mono);padding:1px 6px;border-radius:5px;border:1px solid var(--c-fis);background:var(--c-fis-s);white-space:pre}
+[id="06-lab-1"] .c6l1-ctx button{font:600 .88rem var(--f-mono);padding:1px 6px;border-radius:5px;background:var(--c-apl-s);border-color:var(--c-apl);color:var(--ink);white-space:pre}
+[id="06-lab-1"] .c6l1-ctx button[aria-pressed="true"]{background:var(--c-apl);border-color:var(--c-apl);color:var(--card)}
+[id="06-lab-1"] .c6l1-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,130px),1fr));gap:8px}
+[id="06-lab-1"] .c6l1-k{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper)}
+[id="06-lab-1"] .c6l1-k span{display:block;font:600 .74rem var(--f-display);color:var(--muted)}
+[id="06-lab-1"] .c6l1-k output{font:700 1.25rem var(--f-mono);color:var(--ink)}
+[id="06-lab-1"] .c6l1-bars{display:grid;gap:3px;font:500 .84rem var(--f-mono)}
+[id="06-lab-1"] .c6l1-row{display:grid;grid-template-columns:8.2em minmax(0,1fr) 4.2em;align-items:center;gap:8px}
+[id="06-lab-1"] .c6l1-row .c6l1-tok{white-space:nowrap;overflow:hidden;text-align:right}
+[id="06-lab-1"] .c6l1-row .c6l1-tok small{display:inline;color:var(--muted);font-size:.72rem}
+[id="06-lab-1"] .c6l1-row .pc{text-align:right;font-variant-numeric:tabular-nums}
+[id="06-lab-1"] .c6l1-row .bar{height:14px;border-radius:3px;background:var(--grid);position:relative;overflow:hidden}
+[id="06-lab-1"] .c6l1-row .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--c-apl);border-radius:3px}
+[id="06-lab-1"] .c6l1-row.fuera .bar i{background:var(--muted);opacity:.45}
+[id="06-lab-1"] .c6l1-row.fuera .c6l1-tok,[id="06-lab-1"] .c6l1-row.fuera .pc{color:var(--muted);text-decoration:line-through}
+[id="06-lab-1"] .c6l1-row.elegido .c6l1-tok{color:var(--warm);font-weight:700}
+[id="06-lab-1"] .c6l1-row.elegido .bar i{background:var(--warm)}
+[id="06-lab-1"] .c6l1-row.resto .c6l1-tok{color:var(--muted);font-style:italic}
+</style>
+<div class="ctls">
+  <label class="ctl">Temperatura <output id="c6l1-t-o"></output>
+    <input id="c6l1-t" type="range" min="0" max="200" step="5" value="100"></label>
+  <label class="ctl">Top-k <output id="c6l1-k-o"></output>
+    <input id="c6l1-k" type="range" min="1" max="32" step="1" value="32"></label>
+  <label class="ctl">Top-p <output id="c6l1-p-o"></output>
+    <input id="c6l1-p" type="range" min="5" max="100" step="1" value="100"></label>
+</div>
+<div class="btns">
+  <button type="button" class="primary" id="c6l1-gen">Generar la respuesta</button>
+  <button type="button" id="c6l1-rst">Volver a los valores de fábrica</button>
+  <label class="hint" style="display:flex;gap:6px;align-items:center">Semilla <input id="c6l1-seed" type="number" min="1" max="9999" value="7" style="width:5.5em;font:500 .9rem var(--f-mono);padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)"></label>
+</div>
+<div class="c6l1-ctx" id="c6l1-ctx" aria-live="polite"></div>
+<p class="hint" id="c6l1-paso"></p>
+<div class="c6l1-bars" id="c6l1-bars" role="img" aria-label="Probabilidad de cada token candidato en el paso elegido"></div>
+<div class="legend"><span><i style="background:var(--c-apl)"></i>puede salir</span><span><i style="background:var(--muted)"></i>lo descartan top-k o top-p</span><span><i style="background:var(--warm)"></i>el token que salió</span></div>
+<div class="c6l1-kpis">
+  <div class="c6l1-k"><span>Candidatos vivos</span><output id="c6l1-kv"></output></div>
+  <div class="c6l1-k"><span>P(el favorito)</span><output id="c6l1-kf"></output></div>
+  <div class="c6l1-k"><span>Incertidumbre</span><output id="c6l1-kh"></output></div>
+</div>
+<div class="readout texto" id="c6l1-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En el navegador</span><h3>La temperatura de un modelo real en el navegador</h3></div><p>El Transformer Explainer, de Georgia Tech, corre GPT-2 en su versión pequeña (124 millones de parámetros) dentro de tu navegador, sin registro, y muestra la distribución del siguiente token. GPT-2 se entrenó sobre todo en inglés, así que usa una frase en inglés.</p><ol class="steps"><li><span>Abre <a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">poloclub.github.io/transformer-explainer</a> y espera a que cargue el modelo.</span></li><li><span>Escribe <code>The color of the sky is</code> en el cuadro de texto y mira la lista de candidatos con su probabilidad.</span></li><li><span>Mueve el control de temperatura a 0,2 y luego a 2. Anota cuánto cambia la probabilidad del primer candidato.</span></li><li><span>Prueba los controles de top-k y top-p, si tu versión los muestra, y pulsa «Generate» varias veces con cada configuración.</span></li></ol><p><b>Qué observar:</b> con temperatura baja casi toda la probabilidad se concentra en uno o dos tokens y la continuación se repite; con temperatura alta aparecen candidatos raros y el texto se desordena. Los nombres de los controles pueden cambiar con las versiones de la herramienta.</p></div></section>
+<section><h2>Top-k y top-p</h2><div class="prose"><p>La temperatura alta tiene un defecto: aplana toda la cola. El vocabulario tiene más de cien mil tokens; aunque cada uno de los absurdos tenga una probabilidad minúscula, juntos pueden sumar bastante, y basta uno para arruinar la frase. Por eso casi siempre se combina con un recorte.</p><p><b>Top-k</b> (los <i>k</i> mejores, propuesto en 2018 para generar cuentos) deja solo los <i>k</i> tokens más probables, vuelve a normalizar para que sumen 1 y sortea entre ellos. Con <i>k</i> = 3, después de «El cielo es» solo pueden salir «␣azul», «␣cel» y «␣gris». Su problema es que <i>k</i> es fijo: cuando el modelo está seguro (después de «de color» casi seguro viene « azul»), 40 candidatos son demasiados; cuando hay muchas continuaciones válidas (el comienzo de un cuento), 40 pueden ser pocos.</p><p><b>Top-p</b> o <b>muestreo de núcleo</b> (<i>nucleus sampling</i>, 2019) corrige eso: ordena los tokens de mayor a menor y se queda con los primeros hasta que su probabilidad acumulada llega a <i>p</i>. Con <i>p</i> = 0,9 y la distribución de Colibrí a temperatura 1, «␣azul» (84 %) y «␣cel» (8 %) ya suman 92 %: el núcleo tiene dos tokens. A temperatura 1,5 hacen falta cinco para llegar al 90 %, pero «␣noche» y los demás absurdos siguen afuera. En un paso donde el modelo duda, el núcleo crece solo. El tamaño del recorte se adapta a la seguridad del modelo.</p></div><div class="analogia"><b>Imagínalo así</b><p>Top-k es invitar a la fiesta a los diez primeros de la lista, siempre diez. Top-p es invitar a los primeros hasta completar el 90 % de los votos: si uno solo tiene el 95 %, va solo; si los votos están repartidos, van muchos.</p></div><div class="prose"><p>El orden habitual en un muestreador es: logits, temperatura, softmax, top-k, top-p, sorteo. Existen otras variantes: <b>min-p</b> descarta los tokens con menos de cierta fracción de la probabilidad del favorito, y las <b>penalizaciones de repetición</b> (<i>repetition penalty</i>) bajan el logit de los tokens que ya aparecieron para evitar bucles. Todas son ajustes del mismo paso ⑤ de la figura.</p><p>Que el muestreo tenga azar no quiere decir que no se pueda repetir. El azar de una computadora sale de un generador de números pseudoaleatorios con una <b>semilla</b> (<i>seed</i>): con la misma semilla, los mismos parámetros y el mismo modelo, el sorteo da lo mismo. Las APIs locales como la de Ollama aceptan la semilla; en las APIs de la nube, aun con semilla, el resultado puede variar un poco por la forma en que los servidores agrupan los pedidos. El porqué de esas variaciones en una aplicación real está en <a href="https://aaramirez.github.io/aplicaciones-con-ia/temario.html" target="_blank" rel="noopener">Aplicaciones con IA</a>.</p></div><div class="lab" id="06-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>La misma pregunta, generada 10 veces</h3></div><p class="hint">Elige una configuración y mira las 10 respuestas que da Colibrí, cada una con una semilla distinta. Cuenta cuántas son distintas, cuántas son exactamente «El cielo es azul.» y cuántas tienen un token sin sentido. Activa «La misma semilla en las 10» para comprobar que el azar es reproducible.</p><style>
+[id="06-lab-2"] .c6l2-list{margin:0;padding-left:2.2em;display:grid;gap:4px;font:500 .92rem var(--f-body)}
+[id="06-lab-2"] .c6l2-list li::marker{font:600 .8rem var(--f-mono);color:var(--muted)}
+[id="06-lab-2"] .c6l2-list .rep{color:var(--muted)}
+[id="06-lab-2"] .c6l2-list .raro{color:var(--warm);font-weight:700}
+[id="06-lab-2"] .c6l2-chk{display:flex;gap:8px;align-items:center;font:500 .86rem var(--f-display)}
+[id="06-lab-2"] .c6l2-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,130px),1fr));gap:8px}
+[id="06-lab-2"] .c6l2-k{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper)}
+[id="06-lab-2"] .c6l2-k span{display:block;font:600 .74rem var(--f-display);color:var(--muted)}
+[id="06-lab-2"] .c6l2-k output{font:700 1.25rem var(--f-mono);color:var(--ink)}
+</style>
+<div class="btns" role="group" aria-label="Configuración de muestreo">
+  <button type="button" data-c="0" aria-pressed="true">Codicioso · T 0</button>
+  <button type="button" data-c="1" aria-pressed="false">Prudente · T 0,5</button>
+  <button type="button" data-c="2" aria-pressed="false">Equilibrado · T 1 · top-p 0,9</button>
+  <button type="button" data-c="3" aria-pressed="false">Creativo · T 1</button>
+  <button type="button" data-c="4" aria-pressed="false">Desatado · T 1,8</button>
+</div>
+<div class="btns">
+  <button type="button" class="primary" id="c6l2-otra">Otras 10 (semillas nuevas)</button>
+  <label class="c6l2-chk"><input type="checkbox" id="c6l2-fija"> La misma semilla en las 10</label>
+</div>
+<ol class="c6l2-list" id="c6l2-list" aria-live="polite"></ol>
+<div class="c6l2-kpis">
+  <div class="c6l2-k"><span>Respuestas distintas</span><output id="c6l2-kd"></output></div>
+  <div class="c6l2-k"><span>«El cielo es azul.»</span><output id="c6l2-ka"></output></div>
+  <div class="c6l2-k"><span>Sin sentido</span><output id="c6l2-kr"></output></div>
+</div>
+<div class="readout texto" id="c6l2-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Las probabilidades de un modelo real con Ollama</h3></div><p>Vas a pedirle a un modelo local la respuesta a la pregunta del curso, ver las cinco opciones que consideró en cada token y generar con varias temperaturas y semillas. Necesitas <a href="https://ollama.com/download" target="_blank" rel="noopener">Ollama</a> en una versión reciente (las versiones antiguas no devuelven las probabilidades, <code>logprobs</code>) y el modelo descargado con <code>ollama pull llama3.2:1b</code>. Guarda el script como <code>muestreo.py</code>:</p><div class="code-copia"><pre><code>import json, math, urllib.request
+
+URL = "http://localhost:11434/api/generate"
+MODELO = "llama3.2:1b"
+PREGUNTA = "¿De qué color es el cielo? Responde en una frase."
+
+def pedir(temperatura, semilla):
+    cuerpo = {"model": MODELO, "prompt": PREGUNTA, "stream": False,
+              "logprobs": True, "top_logprobs": 5,
+              "options": {"temperature": temperatura, "seed": semilla,
+                          "num_predict": 30}}
+    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),
+                                    headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(pedido) as r:
+        return json.load(r)
+
+r = pedir(0, 1)
+print("Respuesta:", r["response"].strip())
+print("Lo que consideró en los primeros 6 tokens:")
+for paso in r.get("logprobs", [])[:6]:
+    opciones = ", ".join(f"{o['token']!r} {math.exp(o['logprob']):.0%}"
+                         for o in paso["top_logprobs"])
+    print(f"  salió {paso['token']!r:14} | {opciones}")
+
+for t in (0, 0.7, 1.5):
+    for semilla in (1, 2, 3):
+        texto = pedir(t, semilla)["response"].strip().replace("\n", " ")
+        print(f"T={t:&lt;4} semilla={semilla}: {texto[:90]}")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>ollama pull llama3.2:1b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python muestreo.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>ollama pull llama3.2:1b</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python3 muestreo.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Mira la tabla de los primeros tokens: qué salió y qué otras cuatro opciones tenía, con su probabilidad.</span></li><li><span>Compara las tres respuestas de cada temperatura.</span></li><li><span>Ejecuta el script otra vez sin cambiar nada y compara con la primera corrida.</span></li></ol><p><b>Qué observar:</b> con temperatura 0 las tres semillas dan la misma respuesta, porque no hay sorteo. Con 0,7 aparecen variaciones de redacción y con 1,5, variaciones de contenido. Al repetir la corrida, cada par de temperatura y semilla da el mismo texto: el azar es reproducible. En los tokens donde la opción ganadora tiene menos del 50 %, el modelo tenía dudas reales; ahí es donde la temperatura cambia la respuesta. Si tu versión de Ollama no devuelve <code>logprobs</code>, la tabla sale vacía y el resto funciona igual.</p></div></section>
+<section><h2>Generar token por token: la caché de claves y valores y la latencia</h2><div class="prose"><p>El bucle de la figura del inicio tiene un costo escondido. Para escribir el token 301 de la respuesta, el modelo necesita mirar con atención (capítulo 3) a los 300 anteriores y a toda la pregunta. Si en cada paso se volviera a pasar todo el texto por todas las capas, el trabajo crecería con el cuadrado del largo.</p><p>La salida es notar que, en un modelo que solo mira hacia atrás, las <b>claves y valores</b> (<i>keys</i> y <i>values</i>) de un token ya procesado no cambian cuando llegan tokens nuevos. Se calculan una vez y se guardan en la <b>caché de claves y valores</b> (<i>KV cache</i>). En cada paso, solo el token nuevo atraviesa las capas: calcula su consulta, la compara con las claves guardadas, mezcla los valores guardados y agrega su propia clave y su propio valor a la caché.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como un acta de reunión. Quien llega tarde no pide que le repitan toda la reunión desde el principio: lee el acta, que ya resume cada intervención, y agrega la suya al final. La caché es el acta del modelo: cada token deja escrito lo que otros necesitarán consultar de él.</p></div><figure class="fig fig-flujo" id="06-diagrama-3"><div class="lienzo"><svg viewBox="0 0 920 500" style="min-width:760px" role="img" aria-label="Diagrama de secuencia de la generación con caché de claves y valores. En el prellenado la aplicación envía la pregunta completa, el modelo procesa todos sus tokens a la vez, guarda sus claves y valores en la caché y devuelve el primer token. En la decodificación, cada token nuevo entra solo, el modelo lee de la caché las claves y valores anteriores, agrega los suyos y devuelve el siguiente token, una vez por token hasta el final">
+<defs>
+<marker id="g6d3-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="g6d3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-apl"/></marker>
+<marker id="g6d3-e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-enl"/></marker>
+</defs>
+<rect x="30" y="14" width="150" height="50" rx="10" class="caja"/>
+<text x="105" y="36" class="t t-b" text-anchor="middle">Aplicación</text>
+<text x="105" y="53" class="t t-s t-m" text-anchor="middle">el chat o tu programa</text>
+<line x1="105" y1="64" x2="105" y2="486" class="vida"/>
+<rect x="300" y="14" width="150" height="50" rx="10" class="c-red"/>
+<text x="375" y="36" class="t t-b k-red" text-anchor="middle">Modelo</text>
+<text x="375" y="53" class="t t-s t-m" text-anchor="middle">capas del Transformer</text>
+<line x1="375" y1="64" x2="375" y2="486" class="vida"/>
+<rect x="570" y="14" width="150" height="50" rx="10" class="c-enl"/>
+<text x="645" y="36" class="t t-b k-enl" text-anchor="middle">Caché K y V</text>
+<text x="645" y="53" class="t t-s t-m" text-anchor="middle">en la memoria de la GPU</text>
+<line x1="645" y1="64" x2="645" y2="486" class="vida"/>
+<text x="20" y="92" class="t t-xs t-b t-m">PRELLENADO (PREFILL)</text>
+<line x1="105" y1="116" x2="373" y2="116" class="ln" style="stroke-width:2" marker-end="url(#g6d3-m)"/>
+<text x="114" y="108" class="t" style="font-size:12px">① la pregunta completa: 500 tokens</text>
+<rect x="369" y="124" width="12" height="74" rx="3" class="c-red"/>
+<text x="362" y="150" class="t t-s k-red" text-anchor="end">los 500 a la vez,</text>
+<text x="362" y="166" class="t t-s k-red" text-anchor="end">en paralelo</text>
+<line x1="381" y1="148" x2="643" y2="148" class="ln s-enl" style="stroke-width:2" marker-end="url(#g6d3-e)"/>
+<text x="392" y="140" class="t" style="font-size:12px">② guarda la clave y el valor de cada token</text>
+<line x1="375" y1="214" x2="107" y2="214" class="ln s-apl" style="stroke-width:2" marker-end="url(#g6d3-a)"/>
+<text x="114" y="206" class="t" style="font-size:12px">③ primer token: «El»</text>
+<text x="114" y="232" class="t t-s t-m">aquí termina el tiempo hasta el primer token</text>
+<line x1="20" y1="252" x2="740" y2="252" class="ln ln-d"/>
+<text x="20" y="278" class="t t-xs t-b t-m">DECODIFICACIÓN (DECODE): UNA VUELTA POR TOKEN</text>
+<line x1="105" y1="302" x2="373" y2="302" class="ln" style="stroke-width:2" marker-end="url(#g6d3-m)"/>
+<text x="114" y="294" class="t" style="font-size:12px">④ entra solo el token nuevo: «El»</text>
+<rect x="369" y="310" width="12" height="100" rx="3" class="c-red"/>
+<line x1="643" y1="330" x2="383" y2="330" class="ln s-enl" style="stroke-width:2" marker-end="url(#g6d3-e)"/>
+<text x="392" y="322" class="t" style="font-size:12px">⑤ lee K y V de los 500 anteriores</text>
+<line x1="381" y1="364" x2="643" y2="364" class="ln s-enl" style="stroke-width:2" marker-end="url(#g6d3-e)"/>
+<text x="392" y="356" class="t" style="font-size:12px">⑥ agrega su K y su V (ahora 501)</text>
+<line x1="375" y1="400" x2="107" y2="400" class="ln s-apl" style="stroke-width:2" marker-end="url(#g6d3-a)"/>
+<text x="114" y="392" class="t" style="font-size:12px">⑦ siguiente token: « cielo»</text>
+<text x="114" y="436" class="t t-s t-m">④ a ⑦ se repiten: « es», « azul», « porque»… hasta el token de fin.</text>
+<text x="114" y="454" class="t t-s t-m">Sin caché, cada vuelta volvería a procesar los 500 + todos los generados.</text>
+
+<text x="770" y="92" class="t t-xs t-b t-m">QUÉ LO LIMITA</text>
+<rect x="770" y="104" width="10" height="130" rx="3" class="c-red"/>
+<text x="790" y="124" class="t t-s t-b">el cálculo</text>
+<text x="790" y="142" class="t t-s t-m">muchas</text>
+<text x="790" y="158" class="t t-s t-m">multiplicaciones</text>
+<text x="790" y="174" class="t t-s t-m">a la vez: la GPU</text>
+<text x="790" y="190" class="t t-s t-m">trabaja llena</text>
+<rect x="770" y="290" width="10" height="170" rx="3" class="c-enl"/>
+<text x="790" y="310" class="t t-s t-b">la memoria</text>
+<text x="790" y="328" class="t t-s t-m">por cada token</text>
+<text x="790" y="344" class="t t-s t-m">hay que leer todos</text>
+<text x="790" y="360" class="t t-s t-m">los pesos y la</text>
+<text x="790" y="376" class="t t-s t-m">caché: manda el</text>
+<text x="790" y="392" class="t t-s t-m">ancho de banda</text>
+</svg></div><figcaption><b>Prellenado y decodificación con caché.</b> Los participantes están arriba y el tiempo corre hacia abajo. En el prellenado, ① la aplicación envía la pregunta completa, el modelo procesa sus 500 tokens a la vez, ② guarda la clave y el valor de cada uno en la caché y ③ devuelve el primer token. En la decodificación, ④ entra solo el token nuevo, ⑤ el modelo lee de la caché las claves y valores anteriores, ⑥ agrega los suyos y ⑦ devuelve el siguiente token; ④ a ⑦ se repiten una vez por token. A la derecha, qué limita cada fase: el cálculo en el prellenado, la memoria en la decodificación.</figcaption></figure><div class="prose"><p>La figura muestra las dos fases que explican casi todo sobre la velocidad de un modelo:</p><ul><li>El <b>prellenado</b> (<i>prefill</i>) procesa la pregunta completa de una vez. Como todos los tokens de entrada se conocen, se calculan en paralelo y la GPU (<i>Graphics Processing Unit</i>, unidad de procesamiento gráfico, el chip que hace las multiplicaciones del modelo) trabaja llena. Su duración define el <b>tiempo hasta el primer token</b> (<i>time to first token</i>, TTFT).</li><li>La <b>decodificación</b> (<i>decode</i>) produce un token por vuelta. Cada vuelta hace poco cálculo, pero tiene que leer desde la memoria todos los pesos del modelo y toda la caché. Por eso la velocidad en tokens por segundo depende sobre todo del <b>ancho de banda de memoria</b> (<i>memory bandwidth</i>): un modelo que ocupa 16 GB en una GPU que lee 1 TB por segundo no puede pasar de unos 60 tokens por segundo para un usuario, por rápido que sea el chip.</li></ul><p>La caché no es gratis: ocupa memoria que crece con cada token. En un modelo de unos 8.000 millones de parámetros, cada token guarda alrededor de 128 KB entre todas sus capas, así que una conversación de 30.000 tokens necesita casi 4 GB solo de caché. Esa es una de las razones por las que el contexto largo cuesta más, y por las que el costo de un modelo se cobra por token de entrada y de salida (la cuenta concreta está en el capítulo 10).</p></div><div class="lab" id="06-lab-3"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Cuánto ahorran la caché y la decodificación especulativa</h3></div><p class="hint">En la primera parte, mueve el largo de la pregunta y de la respuesta y compara cuántas posiciones procesa el modelo con y sin caché, y cuánta memoria ocupa la caché. En la segunda, cambia cuántos tokens propone el borrador, su tasa de acierto y su costo, y mira la aceleración que resulta. Pulsa «Simular otra ronda» para ver una ronda concreta.</p><style>
+[id="06-lab-3"] .c6l3-sec{display:grid;gap:12px;border-top:1px solid var(--line);padding-top:12px}
+[id="06-lab-3"] .c6l3-sec:first-of-type{border-top:0;padding-top:0}
+[id="06-lab-3"] .c6l3-h{font:700 .8rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0}
+[id="06-lab-3"] .c6l3-cmp{display:grid;gap:6px;font:500 .84rem var(--f-display)}
+[id="06-lab-3"] .c6l3-cmp .fila{display:grid;grid-template-columns:8.5em minmax(0,1fr);gap:8px;align-items:center}
+[id="06-lab-3"] .c6l3-cmp .barra{height:16px;border-radius:4px;background:var(--grid);overflow:hidden}
+[id="06-lab-3"] .c6l3-cmp .barra i{display:block;height:100%;border-radius:4px}
+[id="06-lab-3"] .c6l3-ronda{display:flex;flex-wrap:wrap;gap:4px;font:600 .85rem var(--f-mono)}
+[id="06-lab-3"] .c6l3-ronda span{padding:3px 7px;border-radius:5px;border:1.5px solid var(--line)}
+[id="06-lab-3"] .c6l3-ronda .si{border-color:var(--good);color:var(--good)}
+[id="06-lab-3"] .c6l3-ronda .no{border-color:var(--warm);color:var(--warm);text-decoration:line-through}
+[id="06-lab-3"] .c6l3-ronda .fix{background:var(--accent);border-color:var(--accent);color:var(--card)}
+[id="06-lab-3"] .c6l3-ronda .na{border-style:dashed;color:var(--muted)}
+</style>
+<div class="c6l3-sec">
+  <p class="c6l3-h">1 · La caché de claves y valores</p>
+  <div class="ctls">
+    <label class="ctl">Tokens de la pregunta (contexto) <output id="c6l3-p-o"></output>
+      <input id="c6l3-p" type="range" min="10" max="8000" step="10" value="500"></label>
+    <label class="ctl">Tokens de la respuesta <output id="c6l3-n-o"></output>
+      <input id="c6l3-n" type="range" min="10" max="2000" step="10" value="300"></label>
+  </div>
+  <div class="c6l3-cmp" id="c6l3-cmp" role="img" aria-label="Trabajo total con y sin caché de claves y valores"></div>
+  <div class="readout texto" id="c6l3-out1" aria-live="polite"></div>
+</div>
+<div class="c6l3-sec">
+  <p class="c6l3-h">2 · La decodificación especulativa</p>
+  <div class="ctls">
+    <label class="ctl">Tokens que propone el borrador (k) <output id="c6l3-k-o"></output>
+      <input id="c6l3-k" type="range" min="1" max="8" step="1" value="4"></label>
+    <label class="ctl">Tasa de aceptación (α) <output id="c6l3-a-o"></output>
+      <input id="c6l3-a" type="range" min="30" max="95" step="5" value="70"></label>
+    <label class="ctl">Costo del borrador frente al grande <output id="c6l3-c-o"></output>
+      <input id="c6l3-c" type="range" min="2" max="40" step="1" value="5"></label>
+  </div>
+  <div class="btns"><button type="button" id="c6l3-ronda-b">Simular otra ronda</button></div>
+  <div class="c6l3-ronda" id="c6l3-ronda" aria-live="polite"></div>
+  <div class="legend"><span><i style="background:var(--good)"></i>propuesto y aceptado</span><span><i style="background:var(--warm)"></i>rechazado</span><span><i style="background:var(--accent)"></i>lo escribe el modelo grande</span></div>
+  <div class="readout texto" id="c6l3-out2" aria-live="polite"></div>
+</div></div></section>
+<section><h2>Decodificación restringida: forzar un formato</h2><div class="prose"><p>A veces la respuesta no la lee una persona sino un programa, que espera un JSON (<i>JavaScript Object Notation</i>, un formato de texto para datos) con ciertos campos. Pedirlo en las instrucciones funciona casi siempre, pero «casi» no alcanza cuando un error rompe el sistema que lo recibe.</p><p>La <b>decodificación restringida</b> (<i>constrained decoding</i>) resuelve eso en el muestreador. Antes de sortear cada token, se revisa cuáles mantendrían el texto dentro de una <b>gramática</b> (<i>grammar</i>) o de un esquema JSON, y al resto se les pone logit −∞: su probabilidad queda en cero. Si el texto va en <code>{"color": </code>, solo se permiten tokens que abran una cadena entre comillas; si el esquema dice que <code>color</code> solo puede ser <code>"azul"</code>, <code>"gris"</code> o <code>"negro"</code>, ningún otro valor tiene probabilidad. El modelo sigue eligiendo entre lo permitido según sus preferencias, pero no puede salirse del formato.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como un formulario con listas desplegables en lugar de campos libres. La persona sigue decidiendo qué responder, pero el formulario no le deja escribir una fecha donde va un número de teléfono.</p></div><div class="prose"><p>Por dentro, la gramática se convierte en una máquina de estados que, en cada paso, sabe qué tokens son válidos. Bibliotecas abiertas como Outlines o las gramáticas GBNF de llama.cpp lo hacen así, y Ollama lo expone con el campo <code>format</code>, que acepta un esquema JSON. La restricción garantiza la forma, no el contenido: el modelo puede devolver un JSON perfecto con un dato equivocado. Cómo se usan las salidas estructuradas en un producto está en <a href="https://aaramirez.github.io/aplicaciones-con-ia/temario.html" target="_blank" rel="noopener">Aplicaciones con IA</a>.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Forzar un JSON aunque la temperatura sea alta</h3></div><p>Vas a pedir lo mismo dos veces, con temperatura 1,5 para que el modelo se desordene: una vez sin restricción y otra con un esquema JSON en el campo <code>format</code>. Usa el mismo modelo de la práctica anterior. Guarda el script como <code>formato.py</code>:</p><div class="code-copia"><pre><code>import json, urllib.request
+
+URL = "http://localhost:11434/api/generate"
+ESQUEMA = {"type": "object",
+           "properties": {"dia": {"type": "string"},
+                          "atardecer": {"type": "string"},
+                          "noche": {"type": "string"}},
+           "required": ["dia", "atardecer", "noche"]}
+
+def pedir(formato):
+    cuerpo = {"model": "llama3.2:1b", "stream": False,
+              "prompt": "¿De qué color es el cielo de día, al atardecer y de noche? "
+                        "Responde en JSON con las claves dia, atardecer y noche.",
+              "options": {"temperature": 1.5, "seed": 4, "num_predict": 120}}
+    if formato:
+        cuerpo["format"] = ESQUEMA
+    pedido = urllib.request.Request(URL, data=json.dumps(cuerpo).encode("utf-8"),
+                                    headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(pedido) as r:
+        return json.load(r)["response"]
+
+for formato in (False, True):
+    texto = pedir(formato)
+    try:
+        json.loads(texto)
+        valido = "JSON válido"
+    except ValueError:
+        valido = "NO es JSON válido"
+    print(f"--- con esquema: {formato} → {valido}\n{texto}\n")</code></pre><button type="button" class="copiar copiar-todo">Copiar</button></div><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python formato.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 formato.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps"><li><span>Mira si la primera respuesta, sin esquema, se puede leer como JSON.</span></li><li><span>Cambia <code>seed</code> a 5, 6 y 7 y vuelve a ejecutar.</span></li></ol><p><b>Qué observar:</b> sin esquema, con temperatura alta, la respuesta a veces trae texto antes o después del JSON, comillas mal puestas o claves con otro nombre, y el programa falla. Con esquema, siempre sale un JSON con las tres claves, aunque los colores que diga puedan ser raros: la restricción controla la forma, no la verdad.</p></div></section>
+<section><h2>Decodificación especulativa</h2><div class="prose"><p>La decodificación es lenta porque cada token exige una pasada completa del modelo grande, y esa pasada está limitada por la memoria, no por el cálculo: la GPU podría verificar varios tokens en el mismo tiempo que tarda en producir uno. La <b>decodificación especulativa</b> (<i>speculative decoding</i>), propuesta en 2022 por dos equipos de Google y DeepMind casi al mismo tiempo, aprovecha esa capacidad sobrante.</p><p>La idea: un <b>modelo borrador</b> (<i>draft model</i>), mucho más pequeño y rápido, adivina los próximos <i>k</i> tokens. Después, el modelo grande los revisa todos en una sola pasada, como si fueran parte de la entrada (igual que en el prellenado). Acepta los que habría escrito él y, en el primer desacuerdo, descarta el resto y pone su propio token.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como un practicante que redacta el borrador de una carta y un abogado que la revisa. El abogado lee las cuatro frases del borrador de una sola vez, firma las tres primeras y corrige la cuarta. Escribir él mismo cada frase le habría tomado cuatro veces más.</p></div><figure class="fig fig-flujo" id="06-diagrama-4"><div class="lienzo"><svg viewBox="0 0 920 430" style="min-width:760px" role="img" aria-label="Diagrama de secuencia de una ronda de decodificación especulativa. El modelo borrador, pequeño y rápido, propone cuatro tokens: dispersa, más, la, roja. El modelo grande los revisa los cuatro en una sola pasada, acepta los tres primeros, rechaza roja y escribe en su lugar luz. El texto avanza cuatro tokens con una sola pasada del modelo grande">
+<defs>
+<marker id="g6d4-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker>
+<marker id="g6d4-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-red"/></marker>
+<marker id="g6d4-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="k-apl"/></marker>
+</defs>
+<rect x="30" y="14" width="160" height="50" rx="10" class="c-red" style="stroke-dasharray:5 4"/>
+<text x="110" y="36" class="t t-b k-red" text-anchor="middle">Borrador</text>
+<text x="110" y="53" class="t t-s t-m" text-anchor="middle">modelo pequeño, rápido</text>
+<line x1="110" y1="64" x2="110" y2="416" class="vida"/>
+<rect x="330" y="14" width="160" height="50" rx="10" class="c-red"/>
+<text x="410" y="36" class="t t-b k-red" text-anchor="middle">Modelo grande</text>
+<text x="410" y="53" class="t t-s t-m" text-anchor="middle">el que manda</text>
+<line x1="410" y1="64" x2="410" y2="416" class="vida"/>
+<rect x="630" y="14" width="160" height="50" rx="10" class="caja"/>
+<text x="710" y="36" class="t t-b" text-anchor="middle">Texto</text>
+<text x="710" y="53" class="t t-s t-m" text-anchor="middle">«…porque la atmósfera»</text>
+<line x1="710" y1="64" x2="710" y2="416" class="vida"/>
+<text x="20" y="92" class="t t-xs t-b t-m">① EL BORRADOR ADIVINA 4 TOKENS, UNO TRAS OTRO</text>
+<rect x="104" y="102" width="12" height="96" rx="3" class="c-red" style="stroke-dasharray:3 2"/>
+<g class="t-mono">
+<text x="128" y="120" class="t t-s">1 · dispersa</text>
+<text x="128" y="142" class="t t-s">2 · más</text>
+<text x="128" y="164" class="t t-s">3 · la</text>
+<text x="128" y="186" class="t t-s">4 · roja</text>
+</g>
+<text x="230" y="150" class="t t-s t-m">4 pasadas baratas</text>
+<line x1="116" y1="214" x2="408" y2="214" class="ln s-red" style="stroke-width:2;stroke-dasharray:6 4" marker-end="url(#g6d4-r)"/>
+<text x="124" y="206" class="t" style="font-size:12px">② «dispersa más la roja»: revísalos</text>
+<text x="20" y="242" class="t t-xs t-b t-m">③ EL GRANDE LOS REVISA LOS 4 EN UNA SOLA PASADA</text>
+<rect x="404" y="252" width="12" height="84" rx="3" class="c-red"/>
+<g class="t-mono">
+<text x="428" y="270" class="t t-s k-enl">✓ dispersa</text>
+<text x="428" y="290" class="t t-s k-enl">✓ más</text>
+<text x="428" y="310" class="t t-s k-enl">✓ la</text>
+<text x="428" y="330" class="t t-s k-warm">✗ roja → escribe « luz»</text>
+</g>
+<line x1="416" y1="360" x2="708" y2="360" class="ln s-apl" style="stroke-width:2" marker-end="url(#g6d4-a)"/>
+<text x="424" y="352" class="t" style="font-size:12px">④ « dispersa más la luz»: +4 tokens</text>
+<text x="20" y="392" class="t t-s t-m">Lo propuesto después del primer rechazo se descarta. Si el borrador acierta los 4, el grande agrega uno más de regalo.</text>
+<text x="20" y="410" class="t t-s t-m">La regla de aceptación garantiza que el texto sigue la misma distribución que si escribiera solo el modelo grande.</text>
+<rect x="810" y="96" width="10" height="110" rx="3" class="c-red" style="stroke-dasharray:3 2"/>
+<text x="828" y="116" class="t t-s t-b">barato</text>
+<text x="828" y="134" class="t t-s t-m">el borrador</text>
+<text x="828" y="150" class="t t-s t-m">cuesta poco</text>
+<rect x="810" y="248" width="10" height="92" rx="3" class="c-red"/>
+<text x="828" y="268" class="t t-s t-b">1 pasada</text>
+<text x="828" y="286" class="t t-s t-m">grande en</text>
+<text x="828" y="302" class="t t-s t-m">vez de 4</text>
+</svg></div><figcaption><b>Una ronda de decodificación especulativa.</b> Los participantes están arriba y el tiempo corre hacia abajo. ① El borrador adivina cuatro tokens después de «…porque la atmósfera»: « dispersa», « más», « la», « roja». ② Se los pasa al modelo grande, que ③ los revisa los cuatro en una sola pasada: acepta los tres primeros, rechaza « roja» y en su lugar escribe « luz». ④ El texto avanza cuatro tokens con una sola pasada del modelo grande. A la derecha, el costo de cada fase.</figcaption></figure><div class="prose"><p>Lo notable es que la regla de aceptación (aceptar con una probabilidad que compara las dos distribuciones y, si se rechaza, sortear de una distribución corregida) garantiza que el texto final sigue <b>exactamente</b> la misma distribución que si el modelo grande escribiera solo. No es una aproximación: se gana velocidad sin perder calidad. Cuánto se gana depende de cuánto acierta el borrador. Si acepta con probabilidad α cada token y propone <i>k</i>, cada ronda produce en promedio (1 − α&lt;sup&gt;k+1&lt;/sup&gt;) ÷ (1 − α) tokens. Con α = 0,7 y <i>k</i> = 4 son unos 2,8 tokens por pasada grande; los artículos originales reportan aceleraciones de 2 a 3 veces.</p><p>Hay variantes que no necesitan un segundo modelo: cabezas extra que adivinan varios tokens a la vez, o borradores tomados de la misma entrada cuando la respuesta repite mucho texto del contexto, como al corregir un código. Todas comparten la misma apuesta: adivinar barato y verificar en paralelo.</p></div><div class="caso"><b>Un caso real</b><p><b>El extractor que respondía distinto cada vez.</b> Un equipo armó un servicio que leía correos de clientes y devolvía un JSON con el motivo del reclamo. Funcionó en las pruebas, pero en producción un 3 % de las respuestas rompía el sistema que las recibía: a veces el JSON venía con un comentario delante, a veces el campo se llamaba «razón» en lugar de «motivo». Además, el mismo correo, procesado dos veces, daba motivos distintos. La causa estaba en el muestreador: alguien había dejado la temperatura en 0,9, el valor por defecto de un ejemplo para redactar textos. La corrección fue doble: temperatura 0 para que el mismo correo diera siempre el mismo resultado, y un esquema JSON con la lista cerrada de motivos en la decodificación restringida. Los errores de formato desaparecieron; los errores de clasificación quedaron, y para esos hizo falta medir y mejorar las instrucciones.</p></div><div class="ml"><b>En la práctica</b><p><b>Configuraciones de partida, según la tarea.</b> Para extraer datos, clasificar o responder con un hecho: temperatura 0 a 0,2 y, si la salida la lee un programa, un esquema JSON. Para conversar o explicar: temperatura 0,5 a 0,8 con top-p entre 0,9 y 0,95. Para generar ideas o textos creativos: temperatura 0,9 a 1,1 con top-p 0,95, y varias respuestas para elegir. Cambia un parámetro a la vez y compara con la misma semilla. Algunos proveedores recomiendan mover la temperatura o top-p, no los dos a la vez, y los modelos de razonamiento a veces fijan sus propios valores.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Generar es muestrear. El modelo entrega una distribución de probabilidad sobre todo el vocabulario y un muestreador, que es código simple, elige el token: la temperatura regula cuánto se arriesga, top-k y top-p recortan la cola, la semilla hace el azar reproducible y una gramática puede prohibir lo que rompe el formato. La caché de claves y valores y la decodificación especulativa no cambian qué se escribe, sino cuánto tarda.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Qué entrega el modelo al final de sus capas: un token o algo más?</summary><p>Un logit por cada token del vocabulario. Softmax los convierte en una distribución de probabilidad, y el muestreador, que está fuera de la red, elige el token.</p></details><details><summary>Con los logits del capítulo, ¿qué pasa con la probabilidad de « azul» al bajar la temperatura de 1 a 0,7? ¿Y al subirla a 1,5?</summary><p>Con 0,7 sube (de 84 % a cerca de 95 %) porque dividir por un número menor que 1 agranda las diferencias. Con 1,5 baja a cerca de 62 % y los candidatos raros ganan probabilidad.</p></details><details><summary>¿Por qué la búsqueda en haz casi no se usa en los chats?</summary><p>Porque cuesta varias veces más cálculo y porque el texto más probable tiende a ser corto, genérico y repetitivo; el lenguaje humano tiene sorpresas que el muestreo conserva.</p></details><details><summary>Después de «de color», el modelo da 96 % a « azul». ¿Cuántos candidatos quedan con top-p = 0,9 y cuántos con top-k = 40?</summary><p>Con top-p queda uno solo, porque « azul» ya supera el 90 %. Con top-k quedan 40, aunque 39 tengan probabilidades minúsculas: por eso top-p se adapta mejor.</p></details><details><summary>¿Por qué la velocidad en tokens por segundo depende más de la memoria que del cálculo?</summary><p>Porque en la decodificación cada token exige leer todos los pesos del modelo y la caché desde la memoria, y hace poco cálculo con ellos: el cuello de botella es el ancho de banda.</p></details><details><summary>¿La decodificación especulativa cambia lo que escribe el modelo grande?</summary><p>No. La regla de aceptación garantiza la misma distribución que si escribiera solo; el borrador solo adelanta trabajo y se gana velocidad cuando acierta seguido.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Qué es la distribución de Boltzmann y qué representa la temperatura en la física estadística?<small>Pista: busca «distribución de Boltzmann» y compárala con la fórmula de softmax.</small></li><li>¿Por qué en la aritmética de coma flotante (a + b) + c no siempre da lo mismo que a + (b + c), y qué tiene que ver eso con que una GPU dé resultados un poco distintos según cómo agrupe los cálculos?<small>Pista: busca «floating point non-associativity».</small></li><li>¿Qué es la entropía de Shannon y por qué se mide en bits?<small>Pista: el primer laboratorio del capítulo la muestra; busca «entropía de la información».</small></li><li>¿Cómo funcionan las técnicas que agrupan pedidos de muchos usuarios en la GPU, como el <i>continuous batching</i>, y por qué suben los tokens por segundo totales sin que cada usuario vaya más rápido?</li><li>¿Qué son la atención de consultas agrupadas (<i>grouped-query attention</i>) y <i>PagedAttention</i>, y cómo reducen la memoria de la caché?</li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/1904.09751" target="_blank" rel="noopener">The Curious Case of Neural Text Degeneration (Holtzman y otros, 2019) <small>artículo que propuso top-p, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2211.17192" target="_blank" rel="noopener">Fast Inference from Transformers via Speculative Decoding (Leviathan y otros, 2022) <small>artículo, en inglés</small></a><a class="vid" href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener">Transformer Explainer <small>herramienta interactiva, en inglés</small></a><a class="vid" href="https://docs.ollama.com/api/generate" target="_blank" rel="noopener">Documentación de la API de Ollama: generar <small>referencia de <code>temperature</code>, <code>top_p</code>, <code>seed</code>, <code>logprobs</code> y <code>format</code>, en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/modelos-de-ia" target="_blank" rel="noopener">github.com/aaramirez/modelos-de-ia</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  // Colibrí, el modelo de juguete del curso: 32 tokens.
+  const V=['<inicio>','<fin>','<usuario>','<asistente>','¿','?','.',',','De','El','␣qué','␣color','␣es','␣el','␣la','␣de','␣cielo','␣mar','␣nube','␣sol','␣noche','␣azul','␣gris','␣rojo','␣verde','␣claro','␣os','curo','␣cel','este','␣y','␣muy'];
+  // Logits de la capa de salida según el último token (los demás tokens: −3; especiales: −6; signos: −2,5).
+  const S={
+    12:{21:6.0,28:3.6,22:2.9,31:2.2,25:2.0,26:1.5,23:0.1,24:-1.2},
+    21:{6:4.0,30:2.0,25:1.2,7:0.5},22:{6:4.0,30:1.8,25:0.8},23:{6:3.5,30:1.5},24:{6:3.5,30:1.5},25:{6:4.0,30:1.5},
+    28:{29:8.0},29:{6:4.0,30:2.0,25:1.0},26:{27:8.0},27:{6:4.0,30:1.5},
+    31:{25:3.5,21:3.0,26:2.0,22:1.5},30:{25:3.0,21:2.0,22:1.5,31:1.5},7:{30:2.0,31:2.0,25:2.0},6:{1:9.0}
+  };
+  const base=j=>j<4?-6:(j>=4&&j<=7?-2.5:-3);
+  const logits=c=>V.map((_,j)=>(S[c]&&S[c][j]!==undefined)?S[c][j]:(S[c]?base(j):(j===6?3:base(j))));
+  const PRE=[9,16,12];
+  const MAXT=10;
+  const mulberry=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  const coma=(x,d)=>x.toFixed(d).replace('.',',');
+  function dist(c,T,k,p){
+    const L=logits(c).map((v,j)=>({j,v})).sort((a,b)=>b.v-a.v);
+    let pr;
+    if(T===0)pr=L.map((x,i)=>i===0?1:0);
+    else{const mx=L[0].v/T,e=L.map(x=>Math.exp(x.v/T-mx)),s=e.reduce((a,b)=>a+b,0);pr=e.map(v=>v/s);}
+    let acum=0,corte=false;
+    const keep=L.map((x,i)=>{if(T===0)return i===0;if(i>=k||corte)return false;acum+=pr[i];if(acum>=p-1e-9)corte=true;return true;});
+    const s2=pr.reduce((a,v,i)=>a+(keep[i]?v:0),0);
+    return L.map((x,i)=>({j:x.j,antes:pr[i],p:keep[i]?pr[i]/s2:0,vivo:keep[i]}));
+  }
+  let gen=[],sel=0;
+  const params=()=>({T:+$('#c6l1-t').value/100,k:+$('#c6l1-k').value,p:+$('#c6l1-p').value/100});
+  function generar(){
+    const {T,k,p}=params(),rnd=mulberry(+$('#c6l1-seed').value||1);
+    gen=[];let ult=12;
+    for(let n=0;n<MAXT;n++){
+      const D=dist(ult,T,k,p);let r=rnd(),el=D.find(d=>d.vivo);
+      for(const d of D){if(!d.vivo)continue;if(r<d.p){el=d;break;}r-=d.p;}
+      gen.push({ctx:ult,j:el.j,prob:el.p});ult=el.j;
+      if(el.j===1)break;
+    }
+    sel=0;pintar();
+  }
+  function pintar(){
+    const {T,k,p}=params();
+    $('#c6l1-t-o').textContent=coma(T,2)+(T===0?' (codicioso)':'');
+    $('#c6l1-k-o').textContent=k===32?'32 (sin límite)':k;
+    $('#c6l1-p-o').textContent=coma(p,2)+(p===1?' (sin límite)':'');
+    const ctx=$('#c6l1-ctx');
+    ctx.innerHTML='<span class="pre">Colibrí responde:</span>'+PRE.map(j=>'<span class="c6l1-tok">'+V[j]+'</span>').join('');
+    gen.forEach((g,i)=>{const b=document.createElement('button');b.type='button';b.textContent=V[g.j];b.setAttribute('aria-pressed',i===sel?'true':'false');b.title='Ver la distribución de este paso';b.addEventListener('click',()=>{sel=i;pintar();});ctx.appendChild(b);});
+    if(gen.length&&gen[gen.length-1].j!==1)ctx.insertAdjacentHTML('beforeend','<span class="pre"> … (tope de '+MAXT+' tokens)</span>');
+    const c=gen.length?gen[sel].ctx:12,el=gen.length?gen[sel].j:null;
+    $('#c6l1-paso').textContent=gen.length?'Paso '+(sel+1)+' de '+gen.length+': lo que Colibrí podía escribir después de «'+V[c]+'». Toca otro token rosa para ver su paso.':'Paso 1: lo que Colibrí puede escribir después de «␣es» (id 12). Se muestran los 9 más probables de 32.';
+    const D=dist(c,T,k,p),top=D.slice(0,9),resto=D.slice(9);
+    const fila=d=>'<div class="c6l1-row'+(d.vivo?'':' fuera')+(d.j===el?' elegido':'')+'"><span class="c6l1-tok">'+V[d.j]+' <small>'+d.j+'</small></span><span class="bar"><i style="width:'+(100*(d.vivo?d.p:d.antes)).toFixed(1)+'%"></i></span><span class="pc">'+coma(100*(d.vivo?d.p:d.antes),1)+' %</span></div>';
+    const pr=resto.reduce((a,d)=>a+(d.vivo?d.p:d.antes),0),rv=resto.some(d=>d.vivo);
+    $('#c6l1-bars').innerHTML=top.map(fila).join('')+'<div class="c6l1-row resto'+(rv?'':' fuera')+'"><span class="c6l1-tok">otros '+resto.length+'</span><span class="bar"><i style="width:'+(100*pr).toFixed(1)+'%"></i></span><span class="pc">'+coma(100*pr,1)+' %</span></div>';
+    const vivos=D.filter(d=>d.vivo).length,H=-D.reduce((a,d)=>a+(d.p>0?d.p*Math.log2(d.p):0),0);
+    $('#c6l1-kv').textContent=vivos+' de 32';$('#c6l1-kf').textContent=coma(100*D[0].p,1)+' %';$('#c6l1-kh').textContent=coma(H,2)+' bits';
+    let txt='';
+    if(gen.length){const pt=gen.reduce((a,g)=>a*g.prob,1);const ids=[9,16,12].concat(gen.map(g=>g.j));
+      txt+='<span>Respuesta: «El cielo es'+gen.filter(g=>g.j!==1).map(g=>V[g.j].replace('␣',' ')).join('')+'» · ids ['+ids.join(', ')+'] · probabilidad de esta secuencia exacta: '+(pt<0.0001?pt.toExponential(1).replace('.',','):coma(100*pt,2)+' %')+'</span>';}
+    else txt+='<span>Pulsa «Generar la respuesta» para que Colibrí escriba con esta configuración.</span>';
+    if(T>=1.5&&k===32&&p===1)txt+='<span class="warn">Con temperatura alta y sin recortes, los «otros» tokens ganan probabilidad y pueden salir respuestas sin sentido. Prueba a bajar top-p a 0,9.</span>';
+    else if(T===0)txt+='<span class="ok">Temperatura 0: Colibrí es codicioso y la respuesta no cambia con la semilla: «El cielo es azul.».</span>';
+    $('#c6l1-out').innerHTML=txt;
+  }
+  ['#c6l1-t','#c6l1-k','#c6l1-p'].forEach(s=>$(s).addEventListener('input',()=>{gen.length?generar():pintar();}));
+  $('#c6l1-seed').addEventListener('change',()=>{if(gen.length)generar();});
+  $('#c6l1-gen').addEventListener('click',()=>{const s=$('#c6l1-seed');if(gen.length)s.value=(+s.value%9999)+1;generar();});
+  $('#c6l1-rst').addEventListener('click',()=>{$('#c6l1-t').value=100;$('#c6l1-k').value=32;$('#c6l1-p').value=100;gen=[];pintar();});
+  pintar();
+})();
+</script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  // Colibrí: los mismos 32 tokens y los mismos logits que el laboratorio anterior.
+  const V=['<inicio>','<fin>','<usuario>','<asistente>','¿','?','.',',','De','El','␣qué','␣color','␣es','␣el','␣la','␣de','␣cielo','␣mar','␣nube','␣sol','␣noche','␣azul','␣gris','␣rojo','␣verde','␣claro','␣os','curo','␣cel','este','␣y','␣muy'];
+  const S={
+    12:{21:6.0,28:3.6,22:2.9,31:2.2,25:2.0,26:1.5,23:0.1,24:-1.2},
+    21:{6:4.0,30:2.0,25:1.2,7:0.5},22:{6:4.0,30:1.8,25:0.8},23:{6:3.5,30:1.5},24:{6:3.5,30:1.5},25:{6:4.0,30:1.5},
+    28:{29:8.0},29:{6:4.0,30:2.0,25:1.0},26:{27:8.0},27:{6:4.0,30:1.5},
+    31:{25:3.5,21:3.0,26:2.0,22:1.5},30:{25:3.0,21:2.0,22:1.5,31:1.5},7:{30:2.0,31:2.0,25:2.0},6:{1:9.0}
+  };
+  const base=j=>j<4?-6:(j>=4&&j<=7?-2.5:-3);
+  const logits=c=>V.map((_,j)=>(S[c]&&S[c][j]!==undefined)?S[c][j]:(S[c]?base(j):(j===6?3:base(j))));
+  const BIEN=new Set([1,6,7,21,22,25,26,27,28,29,30,31]);// tokens que dan una respuesta con sentido
+  const CONF=[{T:0,p:1},{T:.5,p:1},{T:1,p:.9},{T:1,p:1},{T:1.8,p:1}];
+  const mulberry=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  function paso(c,T,p,rnd){
+    const L=logits(c).map((v,j)=>({j,v})).sort((a,b)=>b.v-a.v);
+    if(T===0)return L[0].j;
+    const mx=L[0].v/T,e=L.map(x=>Math.exp(x.v/T-mx)),s=e.reduce((a,b)=>a+b,0),pr=e.map(v=>v/s);
+    let acum=0,n=0;while(n<L.length){acum+=pr[n];n++;if(acum>=p-1e-9)break;}
+    let r=rnd()*acum;for(let i=0;i<n;i++){if(r<pr[i])return L[i].j;r-=pr[i];}return L[n-1].j;
+  }
+  function generar(seed,c){const rnd=mulberry(seed),out=[];let ult=12;
+    for(let i=0;i<10;i++){const t=paso(ult,c.T,c.p,rnd);out.push(t);ult=t;if(t===1)break;}return out;}
+  const texto=r=>'El cielo es'+r.filter(j=>j!==1).map(j=>V[j].replace('␣',' ')).join('');
+  let conf=0,base0=100;
+  function pintar(){
+    const c=CONF[conf],fija=$('#c6l2-fija').checked;
+    const res=[];for(let i=0;i<10;i++)res.push(generar(fija?base0:base0+i,c));
+    const T=res.map(texto),vistos=new Map();T.forEach(t=>vistos.set(t,(vistos.get(t)||0)+1));
+    $('#c6l2-list').innerHTML=res.map((r,i)=>{const rep=T.indexOf(T[i])<i;
+      return '<li'+(rep?' class="rep"':'')+'>El cielo es'+r.filter(j=>j!==1).map(j=>BIEN.has(j)?V[j].replace('␣',' '):'<span class="raro">'+V[j].replace('␣',' ')+'</span>').join('')+(r[r.length-1]===1?'':' …')+(rep?' <small>(repetida)</small>':'')+'</li>';}).join('');
+    const raras=res.filter(r=>r.some(j=>!BIEN.has(j))).length,azul=T.filter(t=>t==='El cielo es azul.').length;
+    $('#c6l2-kd').textContent=vistos.size+' de 10';$('#c6l2-ka').textContent=azul+' de 10';$('#c6l2-kr').textContent=raras+' de 10';
+    const [mt,mn]=[...vistos.entries()].sort((a,b)=>b[1]-a[1])[0];
+    let txt='<span>La más repetida ('+mn+' '+(mn===1?'vez':'veces')+'): «'+mt+'»</span>';
+    txt+=raras?'<span class="warn">'+raras+' de 10 tienen un token sin sentido (resaltado): rojo, verde o alguno de los «otros» que la temperatura despertó.</span>':'<span class="ok">Ninguna respuesta tiene tokens sin sentido.</span>';
+    if(fija&&c.T>0)txt+='<span>Con la misma semilla, las 10 salen iguales aunque haya sorteo: el azar es reproducible.</span>';
+    if(c.T===0)txt+='<span>Codicioso: no hay sorteo, así que la semilla no importa.</span>';
+    $('#c6l2-out').innerHTML=txt;
+  }
+  document.querySelectorAll('[id="06-lab-2"] [data-c]').forEach(b=>b.addEventListener('click',()=>{conf=+b.dataset.c;document.querySelectorAll('[id="06-lab-2"] [data-c]').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));pintar();}));
+  $('#c6l2-otra').addEventListener('click',()=>{base0+=10;pintar();});
+  $('#c6l2-fija').addEventListener('change',pintar);
+  pintar();
+})();
+</script>
+<script>
+(function(){
+  const {$}=window.Lab;
+  const miles=n=>Math.round(n).toLocaleString('es');
+  const dec=(n,d)=>n.toFixed(d).replace('.',',');
+  // Un modelo de unos 8.000 millones de parámetros: 32 capas, 8 cabezas de clave y valor de 128 dimensiones, 2 bytes por número.
+  const BYTES_TOKEN=2*32*8*128*2;
+  function cache(){
+    const P=+$('#c6l3-p').value,N=+$('#c6l3-n').value;
+    $('#c6l3-p-o').textContent=miles(P);$('#c6l3-n-o').textContent=miles(N);
+    const sin=N*P+N*(N-1)/2, con=P+N;
+    const ratio=sin/con;
+    $('#c6l3-cmp').innerHTML='<div class="fila"><span>Sin caché</span><span class="barra"><i style="width:100%;background:var(--warm)"></i></span></div>'+
+      '<div class="fila"><span>Con caché</span><span class="barra"><i style="width:'+Math.max(.6,100*con/sin).toFixed(2)+'%;background:var(--good)"></i></span></div>';
+    const mem=(P+N)*BYTES_TOKEN/1048576;
+    $('#c6l3-out1').innerHTML='<span>Sin caché: en cada paso se vuelve a pasar todo el texto por el modelo → <b>'+miles(sin)+'</b> posiciones procesadas</span>'+
+      '<span>Con caché: la pregunta una vez (de golpe) y después un token por paso → <b>'+miles(con)+'</b> posiciones</span>'+
+      '<span class="big">La caché ahorra '+dec(ratio,ratio<10?1:0)+' veces el trabajo</span>'+
+      '<span>Lo que cuesta: memoria. Para '+miles(P+N)+' tokens la caché ocupa unos <b>'+(mem>=1024?dec(mem/1024,2)+' GiB':dec(mem,0)+' MiB')+'</b> (128 KiB por token en un modelo de 8.000 millones de parámetros)</span>';
+  }
+  const FRASE=[' la',' atmósfera',' dispersa',' más',' la',' luz',' azul',' que',' la',' roja','.'];
+  const ALT={' atmósfera':' luz',' dispersa':' refleja',' más':' mejor',' luz':' parte',' azul':' corta',' que':' y',' roja':' verde',' la':' el','.':','};
+  let semilla=11;
+  const mulberry=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  function espec(){
+    const k=+$('#c6l3-k').value,a=+$('#c6l3-a').value/100,c=+$('#c6l3-c').value/100;
+    $('#c6l3-k-o').textContent=k;$('#c6l3-a-o').textContent=dec(a*100,0)+' %';$('#c6l3-c-o').textContent=dec(c*100,0)+' %';
+    const E=(1-Math.pow(a,k+1))/(1-a);
+    const t=k*c+1;
+    const acel=E/t;
+    // Una ronda simulada: el borrador propone k tokens; el grande los revisa todos en una sola pasada.
+    const rnd=mulberry(semilla);
+    const ini=Math.floor(rnd()*3);
+    let html='',acept=0,cortado=false;
+    for(let i=0;i<k;i++){
+      const real=FRASE[(ini+i)%FRASE.length];
+      if(cortado){html+='<span class="na" title="Se descarta sin revisar">'+(ALT[real]||real).trim()+'</span>';continue;}
+      if(rnd()<a){html+='<span class="si">'+real.trim()+'</span>';acept++;}
+      else{html+='<span class="no">'+(ALT[real]||real).trim()+'</span><span class="fix">'+real.trim()+'</span>';cortado=true;}
+    }
+    if(!cortado)html+='<span class="fix">'+FRASE[(ini+k)%FRASE.length].trim()+'</span>';
+    $('#c6l3-ronda').innerHTML=html;
+    const ganados=acept+1;
+    $('#c6l3-out2').innerHTML='<span>Esta ronda: el borrador acertó <b>'+acept+' de '+k+'</b>, y el modelo grande agregó 1 token propio → <b>'+ganados+' tokens</b> por una sola pasada del modelo grande</span>'+
+      '<span>En promedio: (1 − α<sup>k+1</sup>) ÷ (1 − α) = <b>'+dec(E,2)+'</b> tokens por ronda, que cuestan k·costo + 1 = '+dec(t,2)+' pasadas</span>'+
+      '<span class="'+(acel>1?'big':'warn')+'">Aceleración esperada: '+dec(acel,2)+'×'+(acel<=1?' — aquí no conviene: el borrador cuesta más de lo que acierta':'')+'</span>'+
+      '<span>El texto final es el mismo que habría escrito el modelo grande solo: el borrador solo adelanta trabajo.</span>';
+  }
+  ['#c6l3-p','#c6l3-n'].forEach(s=>$(s).addEventListener('input',cache));
+  ['#c6l3-k','#c6l3-a','#c6l3-c'].forEach(s=>$(s).addEventListener('input',espec));
+  $('#c6l3-ronda-b').addEventListener('click',()=>{semilla++;espec();});
+  cache();espec();
+})();
+</script>
+</body>
+</html>
