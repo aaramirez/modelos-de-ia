@@ -132,7 +132,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="c10l1-k"><span>Tokens/s del equipo</span><output id="c10l1-k4"></output></div>
   <div class="c10l1-k"><span>US$ por millón de tokens</span><output id="c10l1-k5"></output></div>
 </div>
-<div class="readout texto" id="c10l1-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Calcula la memoria de un modelo real desde su configuración</h3></div><p>Todo modelo publicado en Hugging Face trae un archivo <code>config.json</code> con su arquitectura. Este script lo descarga (es público y no pide cuenta) y calcula los pesos y la caché KV. Solo usa la biblioteca estándar de Python.</p><div class="code-copia code-lineas"><pre><code><span class="ln">import json, urllib.request</span>
+<div class="readout texto" id="c10l1-out" aria-live="polite"></div></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Calcula la memoria de un modelo real desde su configuración</h3></div><p>Todo modelo publicado en Hugging Face trae un archivo <code>config.json</code> con su arquitectura. Este script lo descarga (es público y no pide cuenta) y calcula los pesos y la caché KV. Solo usa la biblioteca estándar de Python.</p><div class="code-copia code-lineas"><pre tabindex="0"><code><span class="ln">import json, urllib.request</span>
 <span class="ln"></span>
 <span class="ln">URL = "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/resolve/main/config.json"</span>
 <span class="ln">c = json.load(urllib.request.urlopen(URL))</span>
